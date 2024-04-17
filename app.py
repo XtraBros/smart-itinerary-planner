@@ -6,7 +6,7 @@ import pandas as pd
 
 app = Flask(__name__)
 
-openai_api_key = 'sk-proj-FUc3D3gTXzP2mOeZYYi6T3BlbkFJ7asHZq1wYYiNBsgyxXp3'
+openai_api_key = 'your_openai_key'
 client = OpenAI(api_key=openai_api_key)
 
 # Load data once when the server starts
