@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Application</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <style>
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        #left-panel {
+            width: 30%;
+            padding: 20px;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+        }
+        #map {
+            width: 70%;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="text"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            width: 50%; /* Shortened width */
+            padding: 10px;
+            margin: 10px 0; /* Centered button in the form */
+        }
+        #chatbot-area {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center; /* Center align the chatbot input horizontally */
+        }
+        #chatbot-messages {
+            overflow-y: auto;
+            flex-grow: 1;
+            width: 100%; /* Ensure the message area fills the width */
+        }
+        #chatbot-input {
+            width: 90%; /* Adjust width if necessary */
+        }
+        .chat-message {
+            padding: 5px;
+            margin-bottom: 2px; /* Manage space between messages */
+        }
+        .visitor-message {
+            color: black;
+            /* font-weight: bold; */
+        }
+        .guide-message {
+            color: blue;
+            /* font-style: italic; */
+            margin-top: 5px; /* Additional space above guide messages */
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="left-panel">
+            <form id="routeForm">
+                <input type="text" name="coordinates" placeholder="Enter coords as lat, long; lat, long; ..." required>
+                <button type="submit">Show Route</button>
+            </form>
+            <div id="chatbot-area">
+                <div id="chatbot-messages">
+                    <!-- Chat messages will be displayed here -->
+                </div>
+                <input type="text" id="chatbot-input" placeholder="Type a message..." onkeydown="submitChat(event)">
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
+</body>
+</html>
