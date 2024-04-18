@@ -1,10 +1,10 @@
 id,name,coordinate,category,for
-0, Entrance, (1.4042554783956211; 103.79093992625945), place, all
-1, Exit, (1.4042554783956211; 103.79093992625945), place, all
-2, Ah Meng Restaurant, (1.40416; 103.79358), food, all
-3, KidzWorld, (1.40225; 103.79632), place, young
-4, RepTopia, (1.40244; 103.79550), place, young
-5, Giant Panda Forest,(1.403687714882717; 103.79260174510452),place,all
-6, Animal Playground,(1.40337; 103.79333),place,all
-7, White Rhinoceros,(1.40277; 103.79355),place,all
-8, Pavilion By The Lake, (1.4061400339071612;103.79457186815672), place, old
+0, Entrance, (103.79093992625945;1.4042554783956211), place, all
+1, Exit, (103.79093992625945;1.4042554783956211), place, all
+2, Ah Meng Restaurant, (103.79358;1.40416), food, all
+3, KidzWorld, (103.79632;1.40225), place, young
+4, RepTopia, (103.79550;1.40244), place, young
+5, Giant Panda Forest,(103.79257212713729;1.4039296741956393),place,all
+6, Animal Playground,(103.79333;1.40337),place,all
+7, White Rhinoceros,(103.79355;1.40277),place,all
+8, Pavilion By The Lake, (103.7944246950008;1.4058605112947549), place, old

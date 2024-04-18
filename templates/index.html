@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map Application</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <title>Smart Tour Guide</title>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
     <style>
         #container {
             display: flex;
             height: 100vh;
+            overflow: hidden;
         }
         #left-panel {
             width: 30%;
@@ -17,24 +19,16 @@
             background-color: #f4f4f4;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+        #panel-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
         }
         #map {
             width: 70%;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        input[type="text"] {
-            width: 90%;
-            padding: 10px;
-            margin: 10px 0;
-        }
-        button {
-            width: 50%; /* Shortened width */
-            padding: 10px;
-            margin: 10px 0; /* Centered button in the form */
         }
         #chatbot-area {
             flex-grow: 1;
@@ -43,75 +37,76 @@
             margin-top: 20px;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
-            align-items: center; /* Center align the chatbot input horizontally */
+            justify-content: space-between;
+            align-items: center;
         }
         #chatbot-messages {
+            max-height: 800px;
             overflow-y: auto;
+            width: 100%;
             flex-grow: 1;
-            width: 100%; /* Ensure the message area fills the width */
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        #input-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding-right: 5px;
         }
         #chatbot-input {
-            width: 90%; /* Adjust width if necessary */
+            flex-grow: 1;
+            padding: 12px 10px;
+            border: 1px solid #ccc;
+            border-right: none;
+            border-radius: 4px 0 0 4px;
+            margin-right: 5px;
+        }
+        #voice-btn {
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            background-color: #f4f4f4;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+        #voice-btn i {
+            color: #333;
+            font-size: 18px;
+            vertical-align: middle;
+        }
+        .chat-message {
+            padding: 5px;
+            margin-bottom: 2px;
+            font-size: 18px;
+        }
+        .visitor-message {
+            color: black;
+            font-size: 18px;
+        }
+        .guide-message {
+            color: blue;
+            margin-top: 5px;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
     <div id="container">
         <div id="left-panel">
-            <form>
-                <input type="text" name="start" placeholder="Start" required>
-                <input type="text" name="end" placeholder="End" required>
-                <button type="submit">Submit</button>
-            </form>
+            <h1 id="panel-title">Smart Tour Assistant</h1>
             <div id="chatbot-area">
                 <div id="chatbot-messages">
-                    <!-- Chat messages will be displayed here -->
                 </div>
-                <input type="text" id="chatbot-input" placeholder="Type a message..." onkeydown="submitChat(event)">
+                <div id="input-container">
+                    <input type="text" id="chatbot-input" placeholder="Type a message..." onkeydown="submitChat(event)">
+                    <button id="voice-btn" onclick="startVoiceInput()">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
             </div>
         </div>
         <div id="map"></div>
     </div>
-
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-    <script>
-        var map = L.map('map').setView([1.290270, 103.851959], 10); // Initialize map
-        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
-        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-                    'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-        maxZoom: 18,
-        id: 'mapbox/streets-v11', // This can be changed to any other Mapbox style
-        tileSize: 512,
-        zoomOffset: -1,
-        accessToken: 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'}).addTo(map);
-
-        L.Routing.control({
-            waypoints: [
-                L.latLng(1.4041736930279813, 103.79377413585765), // Start point
-                L.latLng(1.4023346078895, 103.79616760014146)  // End point
-            ],
-            router: L.Routing.mapbox('pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA', {profile: 'mapbox/walking'}),
-            lineOptions: {
-                styles: [{color: '#06f', opacity: 1, weight: 5}]
-            },
-            routeWhileDragging: true}).addTo(map);
-
-        // Function to handle chat input submission with Enter key
-        function submitChat(event) {
-            if (event.key === "Enter") {
-                event.preventDefault(); // Prevent the default action to not submit the form
-                var message = document.getElementById("chatbot-input").value;
-                if (message.trim() !== "") {
-                    var chatMessages = document.getElementById("chatbot-messages");
-                    var messageDiv = document.createElement("div");
-                    messageDiv.textContent = message;
-                    chatMessages.appendChild(messageDiv); // Add message to chat window
-                    document.getElementById("chatbot-input").value = ""; // Clear input field
-                }
-            }
-        }
-    </script>
+    <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
 </body>
 </html>

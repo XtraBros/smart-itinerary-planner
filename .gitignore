@@ -1,6 +1,8 @@
 mapbox_token.txt
 package-lock.json
 package.json
+config.py
+./templates/test.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

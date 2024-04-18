@@ -1,67 +1,59 @@
-var map = L.map('map').setView([1.404402126648088, 103.79302299630343], 17);
-L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
-    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-    maxZoom: 18,
-    id: 'mapbox/streets-v11',
-    tileSize: 512,
-    zoomOffset: -1,
-    accessToken: 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'}).addTo(map);
+mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
 
-var routingControl = null;
-
-// Function to handle route display
-function displayRoute(start, end) {
-    if (routingControl) {
-        map.removeControl(routingControl); // Remove the existing route, if any
-    }
-    routingControl = L.Routing.control({
-        waypoints: [
-            L.latLng(start[0], start[1]),
-            L.latLng(end[0], end[1])
-        ],
-        router: L.Routing.mapbox('pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA', {profile: 'mapbox/walking'}),
-        lineOptions: {
-            styles: [{color: '#06f', opacity: 1, weight: 5}]
-        },
-        routeWhileDragging: true
-    }).addTo(map);
-}
-
-document.getElementById('routeForm').addEventListener('submit', function(event) {
-    event.preventDefault(); // Prevent form from submitting normally
-    var input = document.getElementsByName('coordinates')[0].value;
-
-    var waypoints = input.split(';').map(function(pair) {
-        var coords = pair.split(',').map(Number);
-        return L.latLng(coords[0], coords[1]);
-    });
-
-    displayRoute(waypoints);
+var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [103.8285654153839, 1.24791502223719],
+    zoom: 14
 });
 
 function displayRoute(waypoints) {
-    if (routingControl) {
-        map.removeControl(routingControl); // Remove the existing route, if any
+    // Clear existing routes
+    if (map.getSource('route')) {
+        map.removeLayer('route');
+        map.removeSource('route');
     }
-    
-    routingControl = L.Routing.control({
-        waypoints: waypoints,
-        router: L.Routing.mapbox('pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA', {profile: 'mapbox/walking'}),
-        lineOptions: {
-            styles: [{color: '#06f', opacity: 1, weight: 5}]
-        },
-        routeWhileDragging: true
-    }).addTo(map);
-}
 
-function isValidCoordinate(coord) {
-    return coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1]) && Math.abs(coord[0]) <= 90 && Math.abs(coord[1]) <= 180;
+    addMarkers(waypoints)
+
+    // Get optimized trips from Mapbox Optimization API
+    var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
+    var url = `https://api.mapbox.com/optimized-trips/v1/mapbox/walking/${coordinates}?geometries=geojson&source=first&destination=last&roundtrip=false&access_token=${mapboxgl.accessToken}`;
+
+    // Get the route data from Mapbox Directions API
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            var route = data.trips[0].geometry;
+
+            map.addSource('route', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': route
+                }
+            });
+            map.addLayer({
+                'id': 'route',
+                'type': 'line',
+                'source': 'route',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#ff7e5f',
+                    'line-width': 6
+                }
+            });
+        })
+        .catch(err => console.error('Error fetching directions:', err));
 }
 
 function submitChat(event) {
     if (event.key === "Enter") {
-        event.preventDefault();  // Prevent form submission if it's part of a form.
+        event.preventDefault();
         var inputBox = document.getElementById("chatbot-input");
         var message = inputBox.value.trim();
 
@@ -69,7 +61,7 @@ function submitChat(event) {
             var chatMessages = document.getElementById("chatbot-messages");
             postMessage(message, chatMessages);
 
-            inputBox.value = ""; // Clear the input field after sending the message
+            inputBox.value = "";
         }
     }
 }
@@ -78,7 +70,7 @@ function postMessage(message, chatMessages) {
     // Append the visitor's message
     appendMessage("Visitor: " + message, "visitor-message", chatMessages);
 
-    // Send message to Flask and get the response
+    // Send message to Flask endpoint and get the response
     fetch('/ask_plan', {
         method: 'POST',
         headers: {
@@ -87,9 +79,9 @@ function postMessage(message, chatMessages) {
         body: JSON.stringify({message: message})
     }).then(response => response.json())
     .then(data => {
-        // Append the guide's response
+        // Append the response
         appendMessage("Guide: " + data.response, "guide-message", chatMessages);
-        return fetch('/get_route', { // Send the response to another endpoint for further processing
+        return fetch('/get_route', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -109,14 +101,11 @@ function appendMessage(text, className, chatMessages) {
     messageDiv.textContent = text;
     messageDiv.className = "chat-message " + className;
     chatMessages.appendChild(messageDiv);
-
-    // Auto scroll to the latest message
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function get_coordinates(data) {
     let placeNames = data.replace('(', '').replace(')', '').split(',').map(place => place.trim());
-    console.log(JSON.stringify({places: placeNames}));  // Log the data being sent
     fetch('/get_coordinates', {
         method: 'POST',
         headers: {
@@ -127,8 +116,22 @@ function get_coordinates(data) {
     .then(response => response.json())
     .then(coordinates => {
         console.log("The coordinates of recommended places: ", coordinates)
-        let waypoints = coordinates.map(coord => L.latLng(coord.lat, coord.lng));
+        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
         displayRoute(waypoints);
     })
     .catch(error => console.error('Error fetching coordinates:', error));
+}
+
+function addMarkers(waypoints) {
+    if (window.mapMarkers) {
+        window.mapMarkers.forEach(marker => marker.remove());
+    }
+    window.mapMarkers = [];
+
+    waypoints.forEach(coord => {
+        var marker = new mapboxgl.Marker()
+            .setLngLat([coord[0], coord[1]])
+            .addTo(map);
+        window.mapMarkers.push(marker);
+    });
 }
