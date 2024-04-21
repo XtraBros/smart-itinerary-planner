@@ -98,7 +98,8 @@ function postMessage(message, chatMessages) {
 
 function appendMessage(text, className, chatMessages) {
     var messageDiv = document.createElement("div");
-    messageDiv.textContent = text;
+    messageDiv.innerHTML = marked.parse(text);
+    //messageDiv.textContent = text;
     messageDiv.className = "chat-message " + className;
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;

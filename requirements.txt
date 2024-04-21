@@ -1,3 +1,4 @@
+# apt install portaudio19-dev
 annotated-types==0.6.0
 anyio==4.3.0
 attrs==23.2.0
