@@ -1,11 +1,34 @@
-mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
+// mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
+mapboxgl.accessToken = 'pk.eyJ1Ijoid2FuZ2Nob25neXU4NiIsImEiOiJjam5qd2FwMmcxNDRwM3FvMzc2aHVmNW5oIn0.4lYyhYClZxVWJXrbho_5hA'
 
 var map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v12',
-    center: [103.8285654153839, 1.24791502223719],
-    zoom: 14
+    // style: 'mapbox://styles/mapbox/streets-v12',
+    style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
+    // center: [103.8285654153839, 1.24791502223719],
+    center: [103.78839388, 1.4042306],
+    zoom: 15
 });
+
+map.on('load', function() {
+    // Define and set bounds for the map
+    var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
+    map.setMaxBounds(bounds);
+
+    // Add custom tiles
+    map.addSource('custom-tiles', {
+        type: 'raster',
+        tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        minzoom: 12,
+        maxzoom: 22
+    });
+    map.addLayer({
+        id: 'custom-tiles-layer',
+        type: 'raster',
+        source: 'custom-tiles'
+    });
+});        
 
 function displayRoute(waypoints) {
     // Clear existing routes
@@ -15,38 +38,44 @@ function displayRoute(waypoints) {
     }
 
     addMarkers(waypoints)
-
-    // Get optimized trips from Mapbox Optimization API
     var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
-    var url = `https://api.mapbox.com/optimized-trips/v1/mapbox/walking/${coordinates}?geometries=geojson&source=first&destination=last&roundtrip=false&access_token=${mapboxgl.accessToken}`;
+    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
     // Get the route data from Mapbox Directions API
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            var route = data.trips[0].geometry;
+            if (data.routes && data.routes.length > 0) {
+                var route = data.routes[0].geometry;
 
-            map.addSource('route', {
-                'type': 'geojson',
-                'data': {
-                    'type': 'Feature',
-                    'properties': {},
-                    'geometry': route
+                if (!map.getSource('route')) {
+                    map.addSource('route', {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'properties': {},
+                            'geometry': route
+                        }
+                    });
                 }
-            });
-            map.addLayer({
-                'id': 'route',
-                'type': 'line',
-                'source': 'route',
-                'layout': {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                'paint': {
-                    'line-color': '#ff7e5f',
-                    'line-width': 6
+                if (!map.getLayer('route')) {
+                    map.addLayer({
+                        'id': 'route',
+                        'type': 'line',
+                        'source': 'route',
+                        'layout': {
+                            'line-join': 'round',
+                            'line-cap': 'round'
+                        },
+                        'paint': {
+                            'line-color': '#ff0000',
+                            'line-width': 6
+                        }
+                    });
                 }
-            });
+            } else {
+                console.error('No route found: ', data);
+            }
         })
         .catch(err => console.error('Error fetching directions:', err));
 }
@@ -99,7 +128,6 @@ function postMessage(message, chatMessages) {
 function appendMessage(text, className, chatMessages) {
     var messageDiv = document.createElement("div");
     messageDiv.innerHTML = marked.parse(text);
-    //messageDiv.textContent = text;
     messageDiv.className = "chat-message " + className;
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;

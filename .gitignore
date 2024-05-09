@@ -3,6 +3,7 @@ package-lock.json
 package.json
 config.py
 ./templates/test.html
+my-proxy/node_modules
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

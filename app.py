@@ -11,7 +11,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 model_name = "gpt-4"
 
 # Load data once when the server starts
-place_info_df = pd.read_csv('sentosa.csv')
+place_info_df = pd.read_csv('zoo-info.csv')
 place_info_df.columns = place_info_df.columns.str.strip()
 place_info_df['name'] = place_info_df['name'].str.strip()
 place_info_df['coordinate'] = place_info_df['coordinate'].str.strip().str.replace('(', '').str.replace(')', '')
@@ -20,7 +20,7 @@ zoo_name = "Singapore Zoo"
 zoo_places_list = "Entrance, Exit, Ah Meng Restaurant, KidzWorld, RepTopia, Giant Panda Forest, Animal Playground, White Rhinoceros, Pavilion By The Lake"
 
 sentosa_name = "Singapore Sentosa Island"
-sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Palawan Beanch, Tanjong Beanch, Sentosa Golf Club, The Azure, Capella Singapore, Universal Studios Singapore"
+sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Palawan Beach, Tanjong Beach, Sentosa Golf Club, W Singapore, Capella Singapore, Universal Studios Singapore"
 
 @app.route('/')
 def home():
@@ -32,7 +32,7 @@ def ask_plan():
     response = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system", "content": f"You are a helpful tour guide who is working in {sentosa_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: [{sentosa_places_list}]. If not specified, the visitors will start from the Entrance and end at the Exit by default. But the Entrance and Exit should not be counted as attractions/amenities."},
+            {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: [{zoo_places_list}]. If not specified, the visitors will start from the Entrance and end at the Exit by default. But the Entrance and Exit should not be counted as attractions/amenities."},
             {"role": "user", "content": user_input}
         ],
         temperature=0,
@@ -45,7 +45,7 @@ def get_route():
     response = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system", "content": f"You are given a trip plan of this place: {sentosa_name}. Your task is to analyze the plan and output a list of names of all attractions/amenities into a pair of brackets, and separate them by commas. You must only list the names that exist in the given list: [{sentosa_places_list}]. They should also be in the same order as they appear in the trip plan. If not specified, the visitors will start from the Entrance and end at the Exit by default. So they should alsl be included in the list by default even if they are not mentioned explicitly. Here is an example resulting list: [Entrance, Place A, Place B, Place C, Exit]"},
+            {"role": "system", "content": f"You are given a trip plan of this place: {zoo_name}. Your task is to analyze the plan and output a list of names of all attractions/amenities into a pair of brackets, and separate them by commas. You must only list the names that exist in the given list: [{zoo_places_list}]. They should also be in the same order as they appear in the trip plan. If not specified, the visitors will start from the Entrance and end at the Exit by default. So they should alsl be included in the list by default even if they are not mentioned explicitly. Here is an example resulting list: [Entrance, Place A, Place B, Place C, Exit]"},
             {"role": "user", "content": user_input}
         ],
         temperature=0,
@@ -69,4 +69,4 @@ def get_coordinates():
     return jsonify(coordinates)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5123)
+    app.run(debug=True, port=5000)
