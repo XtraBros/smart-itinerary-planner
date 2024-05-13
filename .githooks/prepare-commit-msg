@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# An example hook script to prepare the commit log message.
+# Called by "git commit" with the name of the file that has the
+# commit message, followed by the description of the commit
+# message's source.  The hook's purpose is to edit the commit
+# message file.  If the hook fails with a non-zero status,
+# the commit is aborted.
+#
+# To enable this hook, rename this file to "prepare-commit-msg".
+
+# This hook includes three examples. The first one removes the
+# "# Please enter the commit message..." help message.
+#
+# The second includes the output of "git diff --name-status -r"
+# into the message, just before the "git status" output.  It is
+# commented because it doesn't cope with --amend or with squashed
+# commits.
+#
+# The third example adds a Signed-off-by line to the message, that can
+# still be edited.  This is rarely a good idea.
+
+
+# This hook works for branches named such as "feature/ABC-123-description" and will add "[ABC-123]" to the commit message.
+
+# get current branch
+branchName=`git rev-parse --abbrev-ref HEAD`
+
+# search jira issue id in a pattern such a "feature/ABC-123-description"
+jiraId=$(echo $branchName | sed -nE 's,(feature|bugfix|hotfix|test)/([0-9]+|noref)/.+,\2,p')
+
+# only prepare commit message if pattern matched and jiraId was found
+if [[ ! -z $jiraId ]]; then
+ # $1 is the name of the file containing the commit message
+ # sed -i.bak -e "1s/^/\n\n[$jiraId]\n/" $1
+ echo -e "#$jiraId ""$(cat $1)" > "$1"
+ # echo -e "[$jiraId]\n""$(cat $1)" > "$1"
+ # sed -i.bak -e "1s/^/$TRIMMED /" $1
+fi
