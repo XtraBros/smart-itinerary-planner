@@ -27,3 +27,27 @@ Example: **[feature] Add a new chain to execute user questions**
 
 ## Name a branch with prefix words
 feature, bugfix, hotfix, test
+
+Example:
+
+- if 42 is the issue number: **feature/42/create-new-button-component**
+
+- if no specific issue number, then use "noref" instead: **feature/noref/create-new-button-component**
+
+## Add commit message with keywords
+feat, fix, refactor, docs, test, chore
+
+Example:
+```
+git commit -m 'feat: add new button component; add new button components to templates'
+```
+
+## Name a pull request title
+Format: [#IssueNumber] Pull request title
+
+Example: **[#5958] Error alert email has a very long subject**
+
+## Format the description in pull request
+Format: close/fix/resolve $IssueNumber
+
+Example: **close/fix/resolve #5958**
