@@ -1,15 +1,18 @@
-// mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
+//mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
 mapboxgl.accessToken = 'pk.eyJ1Ijoid2FuZ2Nob25neXU4NiIsImEiOiJjam5qd2FwMmcxNDRwM3FvMzc2aHVmNW5oIn0.4lYyhYClZxVWJXrbho_5hA'
+
+var waypoints = [];
 
 var map = new mapboxgl.Map({
     container: 'map',
-    // style: 'mapbox://styles/mapbox/streets-v12',
+    //style: 'mapbox://styles/mapbox/streets-v12',
     style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
-    // center: [103.8285654153839, 1.24791502223719],
+    //center: [103.8285654153839, 1.24791502223719],
     center: [103.78839388, 1.4042306],
     zoom: 15
 });
-
+// variable to allow resizing function
+window.mapboxMap = map;
 map.on('load', function() {
     // Define and set bounds for the map
     var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
@@ -18,7 +21,10 @@ map.on('load', function() {
     // Add custom tiles
     map.addSource('custom-tiles', {
         type: 'raster',
-        tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+        // tiles not available.
+        //tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+        // using open source map to get tiles
+        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
         minzoom: 12,
         maxzoom: 22
@@ -164,3 +170,34 @@ function addMarkers(waypoints) {
         window.mapMarkers.push(marker);
     });
 }
+function fetchTemplate(url) {
+    return fetch(url).then(response => response.text());
+}
+
+function populateTemplate(template, data) {
+    return template.replace(/{{(\w+)}}/g, (match, key) => data[key] || '');
+}
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch the template
+    fetchTemplate('static/html/info-card.html').then(template => {
+        // Fetch places data from your server
+        fetch('/places')
+            .then(response => response.json())
+            .then(places => {
+                places.forEach(function(place) {
+                    var name = place['name'].replace(/\W/g, '')
+                    //place['thumbnail'] = `/static/thumbnails/${name}.png`
+                    place['thumbnail'] = "/static/thumbnails/dummy_thumbnail.png"
+                    var popupContent = populateTemplate(template, place);
+
+                    new mapboxgl.Marker()
+                        .setLngLat([place.longitude, place.latitude])
+                        .setPopup(new mapboxgl.Popup().setHTML(popupContent))
+                        .addTo(map);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading places:', error);
+            });
+    });
+});
