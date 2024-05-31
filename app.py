@@ -24,7 +24,7 @@ sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Pa
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', places=place_info_df)
 
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
@@ -67,6 +67,15 @@ def get_coordinates():
             coordinates.append({'lng': lng, 'lat': lat})
     print("coordinates: ", coordinates)
     return jsonify(coordinates)
+
+# Route to load POIs from csv file onto map on launch
+@app.route('/places')
+def places():
+    # Split the coordinates into separate columns
+    place_info_df[['longitude', 'latitude']] = place_info_df['coordinate'].str.strip('()').str.split(';', expand=True).astype(float)
+    # Convert the dataframe to a list of dictionaries
+    places = place_info_df[['name', 'latitude', 'longitude','description']].to_dict(orient='records')
+    return jsonify(places)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
