@@ -1,0 +1,13 @@
+.info-card-content {
+    width: 200px;
+    font-family: Arial, sans-serif;
+}
+.info-card-thumbnail {
+    max-width: 100%;
+    max-height: 100px;
+    height: auto;
+    margin-bottom: 10px;
+}
+.additional-info {
+    margin-top: 10px;
+}
