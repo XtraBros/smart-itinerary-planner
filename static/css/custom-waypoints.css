@@ -33,3 +33,8 @@
     padding: 8px;
     margin-top: 5px;
 }
+#waypoint-controls {
+    position: absolute;
+    bottom: 25px;
+    left: 15px;
+}

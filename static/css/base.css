@@ -6,13 +6,30 @@
 #map {
     flex-grow: 1;
     min-width: 200px;
+    width: 70%;
+}
+#zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 33%;
+    display: flex;
+    flex-direction: column;
+}
+#zoom-controls button {
+    background: white;
+    border: white;
+    padding: 10px;
+    margin: 2px;
+    cursor: pointer;
+    font-size: 16px;
 }
 #resizer {
     width: 10px;
     background: #ccc;
     cursor: ew-resize;
+    right: 30%;
 }
-#left-panel {
+#right-panel {
     width: 30%;
     min-width: 200px;
     padding: 20px;
@@ -65,9 +82,4 @@
     border: 1px solid #ccc;
     background-color: #f4f4f4;
     border-radius: 0 4px 4px 0;
-}
-#controls {
-    position: absolute;
-    bottom: 25px;
-    left: 15px;
 }

@@ -177,6 +177,7 @@ function fetchTemplate(url) {
 function populateTemplate(template, data) {
     return template.replace(/{{(\w+)}}/g, (match, key) => data[key] || '');
 }
+// Load POIs script
 document.addEventListener('DOMContentLoaded', function() {
     // Fetch the template
     fetchTemplate('static/html/info-card.html').then(template => {
@@ -200,4 +201,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading places:', error);
             });
     });
+});
+// Zoom button scripts
+document.getElementById('zoom-in').addEventListener('click', () => {
+    map.zoomIn();
+});
+
+document.getElementById('zoom-out').addEventListener('click', () => {
+    map.zoomOut();
 });
