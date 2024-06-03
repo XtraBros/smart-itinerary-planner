@@ -21,7 +21,7 @@ map.on('load', function() {
     // Add custom tiles
     map.addSource('custom-tiles', {
         type: 'raster',
-        // tiles not available.
+        // enable proxy server to get tiles
         //tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
         // using open source map to get tiles
         tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
@@ -185,9 +185,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(places => {
                 places.forEach(function(place) {
-                    var name = place['name'].replace(/\W/g, '')
-                    //place['thumbnail'] = `/static/thumbnails/${name}.png`
-                    place['thumbnail'] = "/static/thumbnails/dummy_thumbnail.png"
+                    var name = place['name'].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+                    place['thumbnail'] = `/static/thumbnails/${name}.jpg`
+                    //place['thumbnail'] = "/static/thumbnails/dummy_thumbnail.png"
                     var popupContent = populateTemplate(template, place);
 
                     new mapboxgl.Marker()
