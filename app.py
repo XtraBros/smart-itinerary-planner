@@ -17,7 +17,7 @@ place_info_df['name'] = place_info_df['name'].str.strip()
 place_info_df['coordinate'] = place_info_df['coordinate'].str.strip().str.replace('(', '').str.replace(')', '')
 
 zoo_name = "Singapore Zoo"
-zoo_places_list = "Entrance, Exit, Ah Meng Restaurant, KidzWorld, RepTopia, Giant Panda Forest, Animal Playground, White Rhinoceros, Pavilion By The Lake"
+zoo_places_list = str(place_info_df['name'].unique())
 
 sentosa_name = "Singapore Sentosa Island"
 sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Palawan Beach, Tanjong Beach, Sentosa Golf Club, W Singapore, Capella Singapore, Universal Studios Singapore"
@@ -55,7 +55,7 @@ def get_route():
 @app.route('/get_coordinates', methods=['POST'])
 def get_coordinates():
     places = request.json['places']
-    places = [place.strip('[] ') for place in places]
+    places = [place.strip('[] ').replace("'", "") for place in places]
     print("places: ", places)
     coordinates = []
     for place in places:
@@ -68,13 +68,17 @@ def get_coordinates():
     print("coordinates: ", coordinates)
     return jsonify(coordinates)
 
-# Route to load POIs from csv file onto map on launch
-@app.route('/places')
-def places():
+# Route to load POI info from csv file onto map
+@app.route('/place_info', methods=['POST'])
+def place_info():
+    places = request.json['places']
+    places = [place.strip('[] ').replace("'", "") for place in places]
     # Split the coordinates into separate columns
-    place_info_df[['longitude', 'latitude']] = place_info_df['coordinate'].str.strip('()').str.split(';', expand=True).astype(float)
+    filtered_df = place_info_df[place_info_df['name'].isin(places)]
     # Convert the dataframe to a list of dictionaries
-    places = place_info_df[['name', 'latitude', 'longitude','description']].to_dict(orient='records')
+    places = filtered_df[['name','description']].set_index('name')['description'].to_dict()
+    # return {'name':'description'} 
+    print(places)
     return jsonify(places)
 
 if __name__ == '__main__':

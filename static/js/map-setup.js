@@ -22,9 +22,9 @@ map.on('load', function() {
     map.addSource('custom-tiles', {
         type: 'raster',
         // enable proxy server to get tiles
-        //tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+        tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
         // using open source map to get tiles
-        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
         minzoom: 12,
         maxzoom: 22
@@ -36,14 +36,13 @@ map.on('load', function() {
     });
 });        
 
-function displayRoute(waypoints) {
+function displayRoute(placeNames,waypoints) {
     // Clear existing routes
     if (map.getSource('route')) {
         map.removeLayer('route');
         map.removeSource('route');
     }
-
-    addMarkers(waypoints)
+    addMarkers(placeNames,waypoints)
     var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
     var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
@@ -152,24 +151,46 @@ function get_coordinates(data) {
     .then(coordinates => {
         console.log("The coordinates of recommended places: ", coordinates)
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-        displayRoute(waypoints);
+        displayRoute(placeNames,waypoints);
     })
     .catch(error => console.error('Error fetching coordinates:', error));
 }
 
-function addMarkers(waypoints) {
+function addMarkers(placeNames,waypoints) {
     if (window.mapMarkers) {
         window.mapMarkers.forEach(marker => marker.remove());
     }
     window.mapMarkers = [];
+    // Fetch the template once
+    fetchPlacesData(placeNames).then(placesData => {
+        // Fetch the template once
+        fetchTemplate('static/html/info-card.html').then(template => {
+            // Iterate over placeNames and waypoints simultaneously
+            placeNames.forEach((placeName, index) => {
+                var coord = waypoints[index];
+                var place ={}
+                placeName = placeName.replace(/['\[\]]/g, '');
+                // Find the place data from the fetched places data
+                place['description'] = placesData[placeName];
+                if (place) {
+                    place['name'] = placeName
+                    var name = placeName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    place['thumbnail'] = `/static/thumbnails/${name}.jpg`;
 
-    waypoints.forEach(coord => {
-        var marker = new mapboxgl.Marker()
-            .setLngLat([coord[0], coord[1]])
-            .addTo(map);
-        window.mapMarkers.push(marker);
+                    var popupContent = populateTemplate(template, place);
+
+                    var marker = new mapboxgl.Marker()
+                        .setLngLat([coord[0], coord[1]])
+                        .setPopup(new mapboxgl.Popup().setHTML(popupContent))
+                        .addTo(map);
+
+                    window.mapMarkers.push(marker);
+                }
+            });
+        });
     });
 }
+
 function fetchTemplate(url) {
     return fetch(url).then(response => response.text());
 }
@@ -177,31 +198,45 @@ function fetchTemplate(url) {
 function populateTemplate(template, data) {
     return template.replace(/{{(\w+)}}/g, (match, key) => data[key] || '');
 }
-// Load POIs script
-document.addEventListener('DOMContentLoaded', function() {
-    // Fetch the template
-    fetchTemplate('static/html/info-card.html').then(template => {
-        // Fetch places data from your server
-        fetch('/places')
-            .then(response => response.json())
-            .then(places => {
-                places.forEach(function(place) {
-                    var name = place['name'].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-                    place['thumbnail'] = `/static/thumbnails/${name}.jpg`
-                    //place['thumbnail'] = "/static/thumbnails/dummy_thumbnail.png"
-                    var popupContent = populateTemplate(template, place);
-
-                    new mapboxgl.Marker()
-                        .setLngLat([place.longitude, place.latitude])
-                        .setPopup(new mapboxgl.Popup().setHTML(popupContent))
-                        .addTo(map);
-                });
-            })
-            .catch(error => {
-                console.error('Error loading places:', error);
-            });
+// function to get places data.
+function fetchPlacesData(places) {
+    return fetch('/place_info', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ places: places })
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Error fetching places data:', error);
     });
-});
+}
+// Load POIs script
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Fetch the template
+//     fetchTemplate('static/html/info-card.html').then(template => {
+//         // Fetch places data from your server
+//         fetch('/places')
+//             .then(response => response.json())
+//             .then(places => {
+//                 places.forEach(function(place) {
+//                     var name = place['name'].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+//                     place['thumbnail'] = `/static/thumbnails/${name}.jpg`
+//                     //place['thumbnail'] = "/static/thumbnails/dummy_thumbnail.png"
+//                     var popupContent = populateTemplate(template, place);
+
+//                     new mapboxgl.Marker()
+//                         .setLngLat([place.longitude, place.latitude])
+//                         .setPopup(new mapboxgl.Popup().setHTML(popupContent))
+//                         .addTo(map);
+//                 });
+//             })
+//             .catch(error => {
+//                 console.error('Error loading places:', error);
+//             });
+//     });
+// });
 // Zoom button scripts
 document.getElementById('zoom-in').addEventListener('click', () => {
     map.zoomIn();
