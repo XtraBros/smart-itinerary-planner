@@ -39,3 +39,31 @@ document.addEventListener('DOMContentLoaded', () => {
         document.removeEventListener('mouseup', onMouseUp);
     };
 });
+document.addEventListener('DOMContentLoaded', function() {
+    const rightPanel = document.getElementById('right-panel');
+    const zoomControls = document.getElementById('zoom-controls');
+    const resizer = document.getElementById('resizer');
+
+    function adjustZoomControls() {
+        const containerWidth = document.getElementById('container').offsetWidth;
+        const rightPanelWidth = rightPanel.offsetWidth;
+        const threePercentWidth = containerWidth * 0.02; // Calculate 3% of the container's width
+        const zoomControlRight = rightPanelWidth + threePercentWidth;
+
+        zoomControls.style.right = `${zoomControlRight}px`;
+    }
+
+    // Initial adjustment
+    adjustZoomControls();
+
+    // Adjust when the window is resized
+    window.addEventListener('resize', adjustZoomControls);
+
+    // Adjust when the resizer is moved
+    resizer.addEventListener('mousedown', function() {
+        document.addEventListener('mousemove', adjustZoomControls);
+        document.addEventListener('mouseup', function() {
+            document.removeEventListener('mousemove', adjustZoomControls);
+        }, { once: true });
+    });
+});

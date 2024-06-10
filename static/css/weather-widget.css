@@ -1,0 +1,7 @@
+.weatherwidget-io {
+    position: absolute;
+    top: 10px; /* Adjust the top position as needed */
+    left: 10px; /* Adjust the left position as needed */
+    z-index: 9999; /* Ensure the widget is on top */
+    width: 450px;
+}

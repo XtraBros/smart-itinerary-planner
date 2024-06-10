@@ -1,6 +1,7 @@
 //mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
 mapboxgl.accessToken = 'pk.eyJ1Ijoid2FuZ2Nob25neXU4NiIsImEiOiJjam5qd2FwMmcxNDRwM3FvMzc2aHVmNW5oIn0.4lYyhYClZxVWJXrbho_5hA'
 
+
 var waypoints = [];
 
 var map = new mapboxgl.Map({
@@ -11,6 +12,12 @@ var map = new mapboxgl.Map({
     center: [103.78839388, 1.4042306],
     zoom: 15
 });
+
+const directions = new MapboxDirections({
+    accessToken: mapboxgl.accessToken,
+    unit: 'metric',
+    profile: 'mapbox/walking'
+ });
 // variable to allow resizing function
 window.mapboxMap = map;
 map.on('load', function() {
@@ -22,9 +29,9 @@ map.on('load', function() {
     map.addSource('custom-tiles', {
         type: 'raster',
         // enable proxy server to get tiles
-        tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
-        // using open source map to get tiles
-        //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        //tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+        // using open source map to get tiles without proxy
+        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
         minzoom: 12,
         maxzoom: 22
@@ -40,9 +47,10 @@ function displayRoute(placeNames,waypoints) {
     // Clear existing routes
     if (map.getSource('route')) {
         map.removeLayer('route');
+        map.removeLayer('directions')
         map.removeSource('route');
     }
-    addMarkers(placeNames,waypoints)
+    addMarkers(placeNames,waypoints);
     var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
     var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
@@ -50,9 +58,21 @@ function displayRoute(placeNames,waypoints) {
     fetch(url)
         .then(response => response.json())
         .then(data => {
+            // chunk to download route json
+            // const detailedRoute = data.routes[0].legs.map((leg, index) => ({
+            //     legIndex: index,
+            //     legDistance: leg.distance,
+            //     legDuration: leg.duration,
+            // }));
+            // const blob = new Blob([JSON.stringify(detailedRoute, null, 2)], { type: 'application/json' });
+            // const link = document.createElement('a');
+            // link.href = URL.createObjectURL(blob);
+            // link.download = 'route.json';
+            // document.body.appendChild(link);
+            // link.click();
+            // document.body.removeChild(link);
             if (data.routes && data.routes.length > 0) {
                 var route = data.routes[0].geometry;
-
                 if (!map.getSource('route')) {
                     map.addSource('route', {
                         'type': 'geojson',
@@ -73,9 +93,38 @@ function displayRoute(placeNames,waypoints) {
                             'line-cap': 'round'
                         },
                         'paint': {
-                            'line-color': '#ff0000',
-                            'line-width': 6
+                            'line-color': '#0074D9',
+                            'line-width': 5,
+                            'line-opacity': 0.75
                         }
+                    });
+                    // Add arrows to the route using static png asset
+                    const url = 'static/thumbnails/arrow.png';
+                    map.loadImage(url, function(err, image) {
+                        if (err) {
+                            console.error('err image', err);
+                            return;
+                        }
+                        map.addImage('arrow', image);
+                        map.addLayer({
+                            'id': 'directions',
+                            'type': 'symbol',
+                            'source': 'route',
+                            'layout': {
+                                'symbol-placement': 'line',
+                                'symbol-spacing': 1,
+                                'icon-allow-overlap': true,
+                                // 'icon-ignore-placement': true,
+                                'icon-image': 'arrow',
+                                'icon-size': 0.06,
+                                'visibility': 'visible'
+                            },
+                            minzoom: 10,
+                        });
+                    });
+                    directions.on('route', function(e) {
+                        const route = e.route[0].geometry;
+                        map.getSource('route').setData(route);
                     });
                 }
             } else {
@@ -112,24 +161,26 @@ function postMessage(message, chatMessages) {
         },
         body: JSON.stringify({message: message})
     }).then(response => response.json())
+    // .then(data => {
+    //     // Append the response
+    //     appendMessage("Guide: " + data.response, "guide-message", chatMessages);
+    //     return fetch('/get_route', {
+    //         method: 'POST',
+    //         headers: {
+    //             'Content-Type': 'application/json'
+    //         },
+    //         body: JSON.stringify({message: data.response})
+    //     });
+    // }).then(response => response.json())
     .then(data => {
-        // Append the response
-        appendMessage("Guide: " + data.response, "guide-message", chatMessages);
-        return fetch('/get_route', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({message: data.response})
-        });
-    }).then(response => response.json())
-    .then(data => {
-        get_coordinates(data.response);
+        appendMessage("Guide: " + data.response[0], "guide-message", chatMessages);
+        get_coordinates(data.response[1]);
     }).catch(error => {
         console.error('Error:', error);
     });
 }
 
+// creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages) {
     var messageDiv = document.createElement("div");
     messageDiv.innerHTML = marked.parse(text);
@@ -137,6 +188,7 @@ function appendMessage(text, className, chatMessages) {
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
 
 function get_coordinates(data) {
     let placeNames = data.replace('(', '').replace(')', '').split(',').map(place => place.trim());
@@ -156,37 +208,46 @@ function get_coordinates(data) {
     .catch(error => console.error('Error fetching coordinates:', error));
 }
 
-function addMarkers(placeNames,waypoints) {
+function addMarkers(placeNames, waypoints) {
     if (window.mapMarkers) {
-        window.mapMarkers.forEach(marker => marker.remove());
+        for (const [key, value] of Object.entries(window.mapMarkers)) {
+            value.remove();
+        }
     }
-    window.mapMarkers = [];
-    // Fetch the template once
+    window.mapMarkers = {};
+
     fetchPlacesData(placeNames).then(placesData => {
-        // Fetch the template once
         fetchTemplate('static/html/info-card.html').then(template => {
-            // Iterate over placeNames and waypoints simultaneously
+            var parser = new DOMParser();
+
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
-                var place ={}
                 placeName = placeName.replace(/['\[\]]/g, '');
-                // Find the place data from the fetched places data
-                place['description'] = placesData[placeName];
-                if (place) {
-                    place['name'] = placeName
-                    var name = placeName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                    place['thumbnail'] = `/static/thumbnails/${name}.jpg`;
 
-                    var popupContent = populateTemplate(template, place);
+                var place = {
+                    description: placesData[placeName],
+                    name: placeName,
+                };
 
-                    var marker = new mapboxgl.Marker()
-                        .setLngLat([coord[0], coord[1]])
-                        .setPopup(new mapboxgl.Popup().setHTML(popupContent))
-                        .addTo(map);
+                var name = placeName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                place.thumbnail = `/static/thumbnails/${name}.jpg`;
 
-                    window.mapMarkers.push(marker);
-                }
+                var popupContentString = populateTemplate(template, place);
+                var doc = parser.parseFromString(popupContentString, 'text/html');
+                var popupContent = doc.querySelector('.info-card-content');
+                var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
+
+
+                var popup = new mapboxgl.Popup().setDOMContent(popupContent);
+
+                var marker = new mapboxgl.Marker()
+                    .setLngLat([coord[0], coord[1]])
+                    .setPopup(popup)
+                    .addTo(map);
+
+                window.mapMarkers[popupId] = marker;  // Store marker by ID
             });
+            attachEventListeners();
         });
     });
 }
@@ -245,3 +306,25 @@ document.getElementById('zoom-in').addEventListener('click', () => {
 document.getElementById('zoom-out').addEventListener('click', () => {
     map.zoomOut();
 });
+// Function to simulate click on marker to show popup
+function clickMarker(markerId) {
+    console.log(`Clicking marker for ${markerId}`);
+    if (window.mapMarkers[markerId]) {
+        window.mapMarkers[markerId].togglePopup();
+    }
+}
+
+// Add event listeners to the links
+function attachEventListeners() {
+    document.querySelectorAll('.location-link').forEach(function(link) {
+        link.addEventListener('mouseover', function() {
+            var markerId = this.getAttribute('data-marker-id');
+            clickMarker(markerId);
+        });
+
+        link.addEventListener('mouseout', function() {
+            var markerId = this.getAttribute('data-marker-id');
+            clickMarker(markerId);  // Toggling the popup off
+        });
+    });
+}
