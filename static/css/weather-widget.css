@@ -1,7 +1,77 @@
-.weatherwidget-io {
-    position: absolute;
-    top: 10px; /* Adjust the top position as needed */
-    left: 10px; /* Adjust the left position as needed */
-    z-index: 9999; /* Ensure the widget is on top */
-    width: 450px;
+.weather-widget {
+    position: fixed;
+    top: 9%;
+    left: 10px;
+    width: 420px;
+    z-index: 9999;
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: none;
 }
+
+.sub-forecast {
+    flex: 1;
+    padding: 10px;
+    border-right: 1px solid #000000;
+    display: fixed;
+    align-items: center;
+    flex-direction: column;
+}
+
+.weather-column:last-child {
+    border-right: none;
+}
+
+.main-forecast {
+    flex: 2;
+    border-right: 1px solid #000000;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+.weather-icon img {
+    width: 50px;
+    height: 50px;
+    display: inline-block;
+    align-items: center;
+}
+
+.forecast {
+    font-size: 14px;
+    font-weight: bold;
+    padding: 3px;
+}
+.forecast-details{
+    display: inline-block;
+}
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 5px;
+}
+.tempHigh {
+    font-size: 14px;
+    color: #ba2c2c;
+    margin-top: 5px;
+    font-weight: bold;
+    display: inline;
+    padding: 5px;
+}
+.tempLow {
+    font-size: 14px;
+    color: rgba(25, 80, 161, 0.43);
+    margin-top: 5px;
+    font-weight: bold;
+    display: inline;
+    padding: 5px;
+}
+.datetext {
+    font-size: 16px;
+    color: #333333;
+    margin-top: 10px;
+    font-weight: bold;
+    text-align: center;
+}
+/* styles for minimized display on webpage banner*/

@@ -9,11 +9,61 @@
     <link rel="stylesheet" href="static/css/base.css">
     <link rel="stylesheet" href="static/css/custom-waypoints.css">
     <link rel="stylesheet" href="static/css/info-card.css">
+    <link rel="stylesheet" href="static/css/weather-widget.css">
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/marked/marked.min.js'></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
 </head>
 <body>
+    <div class="banner">
+        <img src="static/icons/guide-genius.png" class="banner-icon">
+        <h1>Guide Genius</h1>
+        <div class="min-weather-widget">
+            <img alt="min weather icon" class="min-weather-icon" id="weather-icon0">
+            <div calss="min-forecast" id="forecast0"></div>
+            <div class="min-temp-details">
+                <div class="min-tempLow" id="tempLow0"></div>
+                <div class="min-tempHigh" id="tempHigh0"></div>
+            </div>           
+        </div>
+    </div>
+    <div class="weather-widget">
+        <div class="weather-column main-forecast" id="day-1">
+            <div class="datetext">Today</div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon1">
+            <div class="forecast-details">
+                <div class="forecast" id="forecast1"></div>
+                <div class="temp-details">
+                    <div class="tempLow" id="tempLow1"></div>
+                    <div class="tempHigh" id="tempHigh1"></div>
+                </div>
+            </div>
+        </div>
+        <div class="weather-column sub-forecast" id="day-2">
+            <div class="datetext" id="datetext2"></div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon2">
+            <div class="grid-container">
+                <div class="grid-child tempLow" id="tempLow2"></div>
+                <div class="grid-chid tempHigh" id="tempHigh2"></div>
+            </div>
+        </div>
+        <div class="weather-column sub-forecast" id="day-3">
+            <div class="datetext" id="datetext3"></div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon3">
+            <div class="grid-container">
+                <div class="grid-child tempLow" id="tempLow3"></div>
+                <div class="grid-chid tempHigh" id="tempHigh3"></div>
+            </div>
+        </div>
+        <div class="weather-column sub-forecast" id="day-4">
+            <div class="datetext" id="datetext4"></div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon4">
+            <div class="grid-container temp-details">
+                <div class="grid-chid tempLow" id="tempLow4"></div>
+                <div class="grid-chid tempHigh" id="tempHigh4"></div>
+            </div>
+        </div>
+    </div>
     <div id="container">
         <div id="map"></div>
         <div id="resizer"></div>
@@ -63,5 +113,7 @@
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
     <script src="{{url_for('static',filename='js/chatbox-resize.js')}}"></script>
     <script src="{{url_for('static',filename='js/custom-waypoints.js')}}"></script>
+    <script src="{{url_for('static',filename='js/weather-widget.js')}}"></script>
+
 </body>
 </html>

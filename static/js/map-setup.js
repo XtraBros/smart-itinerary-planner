@@ -99,7 +99,7 @@ function displayRoute(placeNames,waypoints) {
                         }
                     });
                     // Add arrows to the route using static png asset
-                    const url = 'static/thumbnails/arrow.png';
+                    const url = 'static/icons/arrow.png';
                     map.loadImage(url, function(err, image) {
                         if (err) {
                             console.error('err image', err);
