@@ -41,19 +41,11 @@
     flex-direction: column;
     overflow: hidden;
 }
-
-#panel-title {
-    font-size: 20px;
-    color: #333;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
 #chatbot-area {
     flex-grow: 1;
     border: 1px solid #ccc;
     padding: 10px;
-    margin-top: 10px;
+    margin-top: 5px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -117,18 +109,17 @@
     width:100%;
     display: flex;
     position: absolute;
-    background-color: #1eb756;
+    background-color: rgb(8,52,4);
     color: #cfe2ff;
     z-index: 9999;
     height: 6%;
-    align-items: flex-start;
+    align-items: center;
 }
 .banner-icon {
-    height: 100%; /* Adjust the size of the icon as needed */
-    margin-right: 10px; /* Add some space between the icon and the text */
+    height: 100%; 
+    margin-right: 10px; 
 }
 .banner h1{
-    margin-top: 0;
     color: #f4f4f4;
     padding: 1px;
 }

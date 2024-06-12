@@ -29,9 +29,9 @@ map.on('load', function() {
     map.addSource('custom-tiles', {
         type: 'raster',
         // enable proxy server to get tiles
-        //tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+        tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
         // using open source map to get tiles without proxy
-        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
         minzoom: 12,
         maxzoom: 22
