@@ -97,3 +97,41 @@ function getIcon(forecast){
         'Heavy Thundery Showers with Gusty Winds': '2'}
     return lib[forecast]
 };
+// click minimized widget to display full weather widget
+document.getElementById("minWeatherWidget").addEventListener("click", function() {
+    this.style.display = "none";
+    document.getElementById("weather-widget").style.display = "flex";
+});
+
+// click "x" to close weather widget, brings back minimized widget
+document.getElementById("close-button").addEventListener("click", function() {
+    document.getElementById("weather-widget").style.display = "none";
+    document.getElementById("minWeatherWidget").style.display = "flex"
+
+});
+
+// hover over minimized widget for tooltip
+document.getElementById("minWeatherWidget").addEventListener("mousemove", function(event) {
+    const tooltip = document.querySelector('.tooltip');
+    const widgetRect = this.getBoundingClientRect();
+    
+    // Calculate tooltip position
+    const tooltipX = event.clientX; // Center the tooltip horizontally
+    const tooltipY = event.clientY - 20; // Position directly under the cursor with some offset
+    
+    // Set the tooltip position
+    tooltip.style.left = `${tooltipX}px`;
+    tooltip.style.top = `${tooltipY}px`;
+});
+
+document.getElementById("minWeatherWidget").addEventListener("mouseenter", function() {
+    const tooltip = document.querySelector('.tooltip');
+    tooltip.style.visibility = 'visible';
+    tooltip.style.opacity = '1';
+});
+
+document.getElementById("minWeatherWidget").addEventListener("mouseleave", function() {
+    const tooltip = document.querySelector('.tooltip');
+    tooltip.style.visibility = 'hidden';
+    tooltip.style.opacity = '0';
+});
