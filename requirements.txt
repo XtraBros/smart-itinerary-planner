@@ -46,5 +46,4 @@ tzdata==2024.1
 urllib3==2.2.1
 Werkzeug==3.0.2
 xyzservices==2024.4.0
-transformers==4.41.1
-torch==2.3.0
+thefuzz==0.22.1
