@@ -1,0 +1,134 @@
+#container {
+    display: flex;
+    position: absolute;
+    top: 6%;
+    left: 0;
+    width: 100%;
+    height: 94%;
+}
+#map {
+    flex-grow: 1;
+    min-width: 500px;
+    height: 100%;
+    width: 70%;
+}
+#zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+}
+#zoom-controls button {
+    background: white;
+    border: white;
+    padding: 10px;
+    margin: 2px;
+    cursor: pointer;
+    font-size: 16px;
+}
+#resizer {
+    width: 10px;
+    background: #ccc;
+    cursor: ew-resize;
+    right: 30%;
+}
+#right-panel {
+    width: 30%;
+    min-width: 200px;
+    padding: 20px;
+    background-color: #f4f4f4;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#panel-title {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#chatbot-area {
+    flex-grow: 1;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    overflow-y: scroll;
+}
+
+#chatbot-messages {
+    max-height: 800px;
+    overflow-y: auto;
+    width: 100%;
+    flex-grow: 1;
+    margin-bottom: 10px;
+}
+
+#input-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding-right: 5px;
+}
+
+#chatbot-input {
+    flex-grow: 1;
+    padding: 12px 10px;
+    border: 1px solid #ccc;
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+    margin-right: 5px;
+}
+#voice-btn {
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    background-color: #f4f4f4;
+    border-radius: 0 4px 4px 0;
+}
+/* Styles for the chat container and messages */
+.chat-message {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    word-wrap: break-word;
+}
+
+/* Styles for the Visitor's messages */
+.visitor-message {
+    background-color: #d1e7dd;  /* Light green background */
+    color: #0f5132;             /* Dark green text */
+}
+
+/* Styles for the Guide's messages */
+.guide-message {
+    background-color: #cfe2ff;  /* Light blue background */
+    color: #084298;             /* Dark blue text */
+}
+
+/* styles for banner */
+.banner{
+    top: 0;
+    left: 0;
+    width:100%;
+    display: flex;
+    position: absolute;
+    background-color: #084298;
+    color: #cfe2ff;
+    z-index: 9999;
+    height: 6%;
+    align-items: flex-start;
+}
+.banner-icon {
+    height: 100%; /* Adjust the size of the icon as needed */
+    margin-right: 10px; /* Add some space between the icon and the text */
+}
+.banner h1{
+    margin-top: 0;
+    color: #f4f4f4;
+    padding: 1px;
+}

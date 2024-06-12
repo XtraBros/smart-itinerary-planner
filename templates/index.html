@@ -6,95 +6,68 @@
     <title>Smart Tour Guide</title>
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="static/css/base.css">
+    <link rel="stylesheet" href="static/css/custom-waypoints.css">
+    <link rel="stylesheet" href="static/css/info-card.css">
+    <link rel="stylesheet" href="static/css/weather-widget.css">
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/marked/marked.min.js'></script>
-    <style>
-        #container {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-        #left-panel {
-            width: 30%;
-            padding: 20px;
-            background-color: #f4f4f4;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        #panel-title {
-            font-size: 24px;
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        #map {
-            width: 70%;
-        }
-        #chatbot-area {
-            flex-grow: 1;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            overflow-y: scroll;
-        }
-        #chatbot-messages {
-            max-height: 800px;
-            overflow-y: auto;
-            width: 100%;
-            flex-grow: 1;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        #input-container {
-            display: flex;
-            align-items: center;
-            width: 100%;
-            padding-right: 5px;
-        }
-        #chatbot-input {
-            flex-grow: 1;
-            padding: 12px 10px;
-            border: 1px solid #ccc;
-            border-right: none;
-            border-radius: 4px 0 0 4px;
-            margin-right: 5px;
-        }
-        #voice-btn {
-            padding: 10px 12px;
-            border: 1px solid #ccc;
-            background-color: #f4f4f4;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
-        }
-        #voice-btn i {
-            color: #333;
-            font-size: 18px;
-            vertical-align: middle;
-        }
-        .chat-message {
-            padding: 5px;
-            margin-bottom: 2px;
-            font-size: 18px;
-        }
-        .visitor-message {
-            color: black;
-            font-size: 18px;
-        }
-        .guide-message {
-            color: blue;
-            margin-top: 5px;
-            font-size: 18px;
-        }
-    </style>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
 </head>
 <body>
+    <div class="banner">
+        <img src="static/icons/guide-genius.png" class="banner-icon">
+        <h1>Guide Genius</h1>
+        <div class="min-weather-widget">
+            <img alt="min weather icon" class="min-weather-icon" id="weather-icon0">
+            <div calss="min-forecast" id="forecast0"></div>
+            <div class="min-temp-details">
+                <div class="min-tempLow" id="tempLow0"></div>
+                <div class="min-tempHigh" id="tempHigh0"></div>
+            </div>           
+        </div>
+    </div>
+    <div class="weather-widget">
+        <div class="weather-column main-forecast" id="day-1">
+            <div class="datetext">Today</div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon1">
+            <div class="forecast-details">
+                <div class="forecast" id="forecast1"></div>
+                <div class="temp-details">
+                    <div class="tempLow" id="tempLow1"></div>
+                    <div class="tempHigh" id="tempHigh1"></div>
+                </div>
+            </div>
+        </div>
+        <div class="weather-column sub-forecast" id="day-2">
+            <div class="datetext" id="datetext2"></div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon2">
+            <div class="grid-container">
+                <div class="grid-child tempLow" id="tempLow2"></div>
+                <div class="grid-chid tempHigh" id="tempHigh2"></div>
+            </div>
+        </div>
+        <div class="weather-column sub-forecast" id="day-3">
+            <div class="datetext" id="datetext3"></div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon3">
+            <div class="grid-container">
+                <div class="grid-child tempLow" id="tempLow3"></div>
+                <div class="grid-chid tempHigh" id="tempHigh3"></div>
+            </div>
+        </div>
+        <div class="weather-column sub-forecast" id="day-4">
+            <div class="datetext" id="datetext4"></div>
+            <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon4">
+            <div class="grid-container temp-details">
+                <div class="grid-chid tempLow" id="tempLow4"></div>
+                <div class="grid-chid tempHigh" id="tempHigh4"></div>
+            </div>
+        </div>
+    </div>
     <div id="container">
-        <div id="left-panel">
+        <div id="map"></div>
+        <div id="resizer"></div>
+        <div id="right-panel">
             <h1 id="panel-title">Smart Tour Assistant</h1>
             <div id="chatbot-area">
                 <div id="chatbot-messages">
@@ -106,20 +79,41 @@
                     </button>
                 </div>
 
-<div id="voice">
-    <div class="mt-4" id="div_language" style="display:none">
-      <h2 class="mb-3 text-light">Select Language</h2>
-      <select class="form-select bg-secondary text-light" id="select_language" onchange="updateCountry()"></select>
-      <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
-    </div>
-</div>
+                <div id="voice">
+                    <div class="mt-4" id="div_language" style="display:none">
+                        <h2 class="mb-3 text-light">Select Language</h2>
+                        <select class="form-select bg-secondary text-light" id="select_language" onchange="updateCountry()"></select>
+                        <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
+                    </div>
+                </div>
 
             </div>
         </div>
-        <div id="map"></div>
+        <div id="waypoint-controls">
+            <button id="add-waypoint">Add Pin</button>
+            <button id="generate-route">Generate Route</button>
+        </div>        
+        <div id="zoom-controls">
+            <button id="zoom-in">+</button>
+            <button id="zoom-out">-</button>
     </div>
+    <div id="waypoint-form-container" style="display: none;">
+        <div id="waypoint-form">
+            <label for="waypoint-title">Title:</label>
+            <input type="text" id="waypoint-title" name="waypoint-title"><br>
+            <label for="waypoint-notes">Notes:</label>
+            <textarea id="waypoint-notes" name="waypoint-notes"></textarea><br>
+            <button id="save-waypoint">Save</button>
+            <button id="cancel-waypoint">Cancel</button>
+        </div>
+    </div>
+    
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
     <script src="{{ url_for('static', filename='js/language.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
+    <script src="{{url_for('static',filename='js/chatbox-resize.js')}}"></script>
+    <script src="{{url_for('static',filename='js/custom-waypoints.js')}}"></script>
+    <script src="{{url_for('static',filename='js/weather-widget.js')}}"></script>
+
 </body>
 </html>
