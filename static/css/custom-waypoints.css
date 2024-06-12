@@ -6,6 +6,7 @@
     cursor: pointer;
     border-radius: 5px;
     margin-left: 5px; 
+    display:hidden;
 }
 #waypoint-form-container {
     position: absolute;

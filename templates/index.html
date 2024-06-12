@@ -7,7 +7,6 @@
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="static/css/base.css">
-    <link rel="stylesheet" href="static/css/custom-waypoints.css">
     <link rel="stylesheet" href="static/css/info-card.css">
     <link rel="stylesheet" href="static/css/weather-widget.css">
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
@@ -18,7 +17,7 @@
     <div class="banner">
         <img src="static/icons/guide-genius.png" class="banner-icon">
         <h1>Guide Genius</h1>
-        <div class="min-weather-widget">
+        <div class="min-weather-widget" id="minWeatherWidget">
             <img alt="min weather icon" class="min-weather-icon" id="weather-icon0">
             <div calss="min-forecast" id="forecast0"></div>
             <div class="min-temp-details">
@@ -27,7 +26,8 @@
             </div>           
         </div>
     </div>
-    <div class="weather-widget">
+    <div class="weather-widget" id="weather-widget">
+        <button class="close-button" id="close-button">&times;</button>
         <div class="weather-column main-forecast" id="day-1">
             <div class="datetext">Today</div>
             <img src="" alt="Weather Icon" class="weather-icon" id="weather-icon1">
@@ -68,7 +68,6 @@
         <div id="map"></div>
         <div id="resizer"></div>
         <div id="right-panel">
-            <h1 id="panel-title">Smart Tour Assistant</h1>
             <div id="chatbot-area">
                 <div id="chatbot-messages">
                 </div>
@@ -88,11 +87,7 @@
                 </div>
 
             </div>
-        </div>
-        <div id="waypoint-controls">
-            <button id="add-waypoint">Add Pin</button>
-            <button id="generate-route">Generate Route</button>
-        </div>        
+        </div>       
         <div id="zoom-controls">
             <button id="zoom-in">+</button>
             <button id="zoom-out">-</button>
@@ -107,13 +102,11 @@
             <button id="cancel-waypoint">Cancel</button>
         </div>
     </div>
-    
+    <div class="tooltip">Click to display detailed forecast.</div>
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
     <script src="{{ url_for('static', filename='js/language.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
     <script src="{{url_for('static',filename='js/chatbox-resize.js')}}"></script>
-    <script src="{{url_for('static',filename='js/custom-waypoints.js')}}"></script>
     <script src="{{url_for('static',filename='js/weather-widget.js')}}"></script>
-
 </body>
 </html>
