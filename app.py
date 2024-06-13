@@ -36,22 +36,24 @@ def ask_plan():
     # do fuzzy search on terms
     matches = fuzzyMatch(user_input,zoo_places_list)
     if matches != None:
+        print("matches found, generating route with location as focus.")
         # User has specified some attractions to visit
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: ['Entrance/Exit',{matches}]. If not specified, the visitors will start from at the Entrance/Exit by default, and end at an attraction. Ensure the names are encased in single apostrophies, as given in the list."},
+                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: ['Entrance/Exit',{matches}]. If not specified, the visitors will start from at the Entrance/Exit by default, and the Entrance/Exit should not be considered an attraction. Ensure the names are encased in single apostrophies, as given in the list."},
                 {"role": "user", "content": user_input}
             ],
             temperature=0,
         )
         response_text = response.choices[0].message.content.strip()
     else:
+        print("no POI matches, using suggestion prompt.")
         # no attractions matched, recommend some POIs.
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: [{zoo_places_list}]. If not specified, the visitors will start from at the Entrance/Exit by default, and end at an attraction. Ensure the names are encased in single apostrophies, as given in the list."},
+                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: [{zoo_places_list}]. If not specified, the visitors will start from at the Entrance/Exit by default, but do not count this as an attraction. Avoid mentioning toilets/water points, tram stops, nursing rooms and shops. Ensure the names are encased in single apostrophies, as given in the list."},
                 {"role": "user", "content": user_input}
             ],
             temperature=0,
@@ -129,9 +131,9 @@ def weather_icon():
 def fuzzyMatch(message, choices):
     matches = process.extract(message,choices)
     print(matches)
-    if len(matches) > 0:
-        result = [t[0] for t in matches if t[1] > 70]
-        print(result)
+    result = [t[0] for t in matches if t[1] >= 60]
+    print(result)
+    if len(result) > 0:
         return result
     else:
         return None
