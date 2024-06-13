@@ -103,7 +103,7 @@
 }
 
 /* styles for banner */
-.banner{
+.header{
     top: 0;
     left: 0;
     width:100%;
@@ -112,14 +112,16 @@
     background-color: #143733;
     color: #cfe2ff;
     z-index: 9999;
-    height: 6%;
+    height: 6.5vh;
+    border-bottom: .5vh solid #0a5310;
     align-items: center;
 }
-.banner-icon {
+.header-icon {
+    left:2%;
     height: 100%; 
-    margin-right: 10px; 
+    margin-right: 3px; 
 }
-.banner h1{
+.header-text{
     color: #f4f4f4;
-    padding: 1px;
+    font-size: large;
 }
