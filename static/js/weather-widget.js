@@ -51,9 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('tempLow3').textContent = `${fourDayData.items[0].forecasts[1].temperature.low}\u00B0C`;
         document.getElementById('tempHigh4').textContent = `${fourDayData.items[0].forecasts[2].temperature.high}\u00B0C`;
         document.getElementById('tempLow4').textContent = `${fourDayData.items[0].forecasts[2].temperature.low}\u00B0C`;
-        document.getElementById('datetext2').textContent = weekday[day+1]
-        document.getElementById('datetext3').textContent = weekday[day+2]
-        document.getElementById('datetext4').textContent = weekday[day+3]
+        // set day of the week, if overflow, reset to 0 (Sun):
+        document.getElementById('datetext2').textContent = weekday[(day+1)%7]
+        document.getElementById('datetext3').textContent = weekday[(day+2)%7]
+        document.getElementById('datetext4').textContent = weekday[(day+3)%7]
         document.getElementById('weather-icon0').src = `static/icons/${getIcon(twoHourData.items[0].forecasts.find(f => f.area.toLowerCase() === 'mandai')['forecast'])}.png`
         document.getElementById('weather-icon1').src = `static/icons/${getIcon(twoHourData.items[0].forecasts.find(f => f.area.toLowerCase() === 'mandai')['forecast'])}.png`
         fetch('/weather_icon', {
@@ -97,6 +98,8 @@ function getIcon(forecast){
         'Heavy Thundery Showers with Gusty Winds': '2'}
     return lib[forecast]
 };
+
+// Event Listeners for widget functionalities
 // click minimized widget to display full weather widget
 document.getElementById("minWeatherWidget").addEventListener("click", function() {
     this.style.display = "none";
