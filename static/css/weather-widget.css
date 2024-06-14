@@ -90,8 +90,9 @@
 /* styles for minimized display on webpage banner*/
 /* CSS for the min-weather-widget div */
 .min-weather-widget {
-    margin-left:10%;
+    position: absolute;
     display: flex;
+    right: 32%;
     height:100%;
     align-items: center;
     background-color: #ffffff; /* White background */
