@@ -41,7 +41,7 @@ def ask_plan():
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: ['Entrance/Exit',{matches}]. If not specified, the visitors will start from at the Entrance/Exit by default, and the Entrance/Exit should not be considered an attraction. Ensure the names are encased in single apostrophies, as given in the list."},
+                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: [{zoo_places_list}], focusing on the attrations in this list :[{matches}]. If not specified, the visitors will start from at the Entrance/Exit by default, and the Entrance/Exit should not be considered an attraction. Ensure the names are encased in single apostrophies, as given in the list."},
                 {"role": "user", "content": user_input}
             ],
             temperature=0,
