@@ -1,7 +1,6 @@
 //mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
 mapboxgl.accessToken = 'pk.eyJ1Ijoid2FuZ2Nob25neXU4NiIsImEiOiJjam5qd2FwMmcxNDRwM3FvMzc2aHVmNW5oIn0.4lYyhYClZxVWJXrbho_5hA'
 
-
 var waypoints = [];
 
 var map = new mapboxgl.Map({
@@ -43,7 +42,7 @@ map.on('load', function() {
     });
 });        
 
-function displayRoute(placeNames,waypoints) {
+function displayRoute(placeNames,waypoints, chatMessages) {
     // Clear existing routes
     if (map.getSource('route')) {
         map.removeLayer('route');
@@ -52,26 +51,15 @@ function displayRoute(placeNames,waypoints) {
     }
     addMarkers(placeNames,waypoints);
     var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
-    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
 
     // Get the route data from Mapbox Directions API
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            // chunk to download route json
-            // const detailedRoute = data.routes[0].legs.map((leg, index) => ({
-            //     legIndex: index,
-            //     legDistance: leg.distance,
-            //     legDuration: leg.duration,
-            // }));
-            // const blob = new Blob([JSON.stringify(detailedRoute, null, 2)], { type: 'application/json' });
-            // const link = document.createElement('a');
-            // link.href = URL.createObjectURL(blob);
-            // link.download = 'route.json';
-            // document.body.appendChild(link);
-            // link.click();
-            // document.body.removeChild(link);
             if (data.routes && data.routes.length > 0) {
+                var legs = data.routes[0].legs[0].steps;
+                // create function to send legs to detailed display.
                 var route = data.routes[0].geometry;
                 if (!map.getSource('route')) {
                     map.addSource('route', {
@@ -93,9 +81,9 @@ function displayRoute(placeNames,waypoints) {
                             'line-cap': 'round'
                         },
                         'paint': {
-                            'line-color': '#0074D9',
+                            'line-color': '#E21B1B',
                             'line-width': 5,
-                            'line-opacity': 0.75
+                            'line-opacity': 0.9
                         }
                     });
                     // Add arrows to the route using static png asset
@@ -130,8 +118,29 @@ function displayRoute(placeNames,waypoints) {
             } else {
                 console.error('No route found: ', data);
             }
+            // // Create a Blob from the JSON string
+            // const blob = new Blob([JSON.stringify(legs,null,2)], { type: 'application/json' });
+
+            // // Create a link element
+            // const link = document.createElement('a');
+
+            // // Create a URL for the Blob and set it as the href attribute
+            // link.href = URL.createObjectURL(blob);
+
+            // // Set the download attribute to specify the file name
+            // link.download = 'output.json';
+
+            // // Append the link to the document body
+            // document.body.appendChild(link);
+
+            // // Programmatically click the link to trigger the download
+            // link.click();
+            var instr = extractRouteInstructions(legs)
+            // Post detailed route info in chat:
+            appendMessage(instr, "nav-button", chatMessages) 
         })
         .catch(err => console.error('Error fetching directions:', err));
+    
 }
 
 function submitChat(event) {
@@ -151,6 +160,7 @@ function submitChat(event) {
 
 function postMessage(message, chatMessages) {
     // Append the visitor's message
+    console.log('Visitor message log.')
     appendMessage("Visitor: " + message, "visitor-message", chatMessages);
 
     // Send message to Flask endpoint and get the response
@@ -173,8 +183,9 @@ function postMessage(message, chatMessages) {
     //     });
     // }).then(response => response.json())
     .then(data => {
+        console.log('Guide response log.')
         appendMessage("Guide: " + data.response[0], "guide-message", chatMessages);
-        get_coordinates(data.response[1]);
+        get_coordinates(data.response[1], chatMessages);
     }).catch(error => {
         console.error('Error:', error);
     });
@@ -183,14 +194,84 @@ function postMessage(message, chatMessages) {
 // creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages) {
     var messageDiv = document.createElement("div");
-    messageDiv.innerHTML = marked.parse(text);
-    messageDiv.className = "chat-message " + className;
+    if (className == "nav-button"){
+        loadButtonTemplate(messageDiv,text)
+    } else {
+        messageDiv.innerHTML = marked.parse(text);
+        messageDiv.className = "chat-message " + className;      
+    }
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+
 }
 
+async function loadButtonTemplate(messageDiv, text) {
+    try {
+        const response = await fetch('static/html/nav-button.html');
+        const template = await response.text();
+        const buttonDiv = document.createElement("div");
+        buttonDiv.innerHTML = template;
 
-function get_coordinates(data) {
+        const button = buttonDiv.querySelector("button");
+        button.addEventListener("click", function() {
+            showModal(text);
+        });
+
+        messageDiv.appendChild(buttonDiv);
+    } catch (error) {
+        console.error('Error loading button template:', error);
+    }
+}
+
+function extractRouteInstructions(data) {
+    let result = '';
+  
+    data.forEach((step, stepIndex) => {
+        const instruction = step.maneuver.instruction;
+        const distance = step.distance.toFixed(2); // format distance to 2 decimal places
+        result += `<p>Step ${stepIndex + 1}: ${instruction} (Distance: ${distance} meters)</p>`;
+    });
+  
+    return result;
+}
+
+function showModal(content) {
+    // Create modal structure
+    var modal = document.getElementById("modal");
+
+    var modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    var closeButton = document.createElement("span");
+    closeButton.className = "close";
+    closeButton.innerHTML = "&times;";
+    closeButton.onclick = function() {
+        modal.style.display = "none";
+    };
+
+    var modalText = document.createElement("div");
+    modalText.innerHTML = content;
+
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(modalText);
+    modal.replaceChildren(modalContent);
+
+    // Append modal to chat box
+    var chatBox = document.getElementById("chatbot-area");
+    chatBox.appendChild(modal);
+
+    // Display the modal
+    modal.style.display = "block";
+
+    // Close the modal when clicking outside of it
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    };
+}
+
+function get_coordinates(data,chatMessages) {
     let placeNames = data.replace('(', '').replace(')', '').split(',').map(place => place.trim());
     fetch('/get_coordinates', {
         method: 'POST',
@@ -203,7 +284,7 @@ function get_coordinates(data) {
     .then(coordinates => {
         console.log("The coordinates of recommended places: ", coordinates)
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-        displayRoute(placeNames,waypoints);
+        displayRoute(placeNames,waypoints,chatMessages);
     })
     .catch(error => console.error('Error fetching coordinates:', error));
 }
@@ -273,31 +354,7 @@ function fetchPlacesData(places) {
         console.error('Error fetching places data:', error);
     });
 }
-// Load POIs script
-// document.addEventListener('DOMContentLoaded', function() {
-//     // Fetch the template
-//     fetchTemplate('static/html/info-card.html').then(template => {
-//         // Fetch places data from your server
-//         fetch('/places')
-//             .then(response => response.json())
-//             .then(places => {
-//                 places.forEach(function(place) {
-//                     var name = place['name'].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-//                     place['thumbnail'] = `/static/thumbnails/${name}.jpg`
-//                     //place['thumbnail'] = "/static/thumbnails/dummy_thumbnail.png"
-//                     var popupContent = populateTemplate(template, place);
 
-//                     new mapboxgl.Marker()
-//                         .setLngLat([place.longitude, place.latitude])
-//                         .setPopup(new mapboxgl.Popup().setHTML(popupContent))
-//                         .addTo(map);
-//                 });
-//             })
-//             .catch(error => {
-//                 console.error('Error loading places:', error);
-//             });
-//     });
-// });
 // Zoom button scripts
 document.getElementById('zoom-in').addEventListener('click', () => {
     map.zoomIn();
