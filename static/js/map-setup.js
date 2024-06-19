@@ -28,7 +28,7 @@ map.on('load', function() {
     map.addSource('custom-tiles', {
         type: 'raster',
         // enable proxy server to get tiles
-        tiles: ['http://localhost:3000/tile?url=https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+        tiles: ['https://corsproxy.io/?https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
         // using open source map to get tiles without proxy
         //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
@@ -40,6 +40,18 @@ map.on('load', function() {
         type: 'raster',
         source: 'custom-tiles'
     });
+    // user location control
+    map.addControl(
+        new mapboxgl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: true
+            },
+            // When active the map will receive updates to the device's location as it changes.
+            trackUserLocation: true,
+            // Draw an arrow next to the location dot to indicate which direction the device is heading.
+            showUserHeading: true
+        })
+    );
 });        
 
 function displayRoute(placeNames,waypoints, chatMessages) {
@@ -51,7 +63,7 @@ function displayRoute(placeNames,waypoints, chatMessages) {
     }
     addMarkers(placeNames,waypoints);
     var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
-    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}&waypoints=`;
 
     // Get the route data from Mapbox Directions API
     fetch(url)
@@ -72,44 +84,34 @@ function displayRoute(placeNames,waypoints, chatMessages) {
                     });
                 }
                 if (!map.getLayer('route')) {
-                    map.addLayer({
-                        'id': 'route',
-                        'type': 'line',
-                        'source': 'route',
-                        'layout': {
-                            'line-join': 'round',
-                            'line-cap': 'round'
-                        },
-                        'paint': {
-                            'line-color': '#E21B1B',
-                            'line-width': 5,
-                            'line-opacity': 0.9
-                        }
-                    });
                     // Add arrows to the route using static png asset
-                    const url = 'static/icons/arrow.png';
+                    const url = 'static/icons/arrow2.png';
                     map.loadImage(url, function(err, image) {
                         if (err) {
                             console.error('err image', err);
                             return;
                         }
                         map.addImage('arrow', image);
-                        map.addLayer({
-                            'id': 'directions',
-                            'type': 'symbol',
-                            'source': 'route',
-                            'layout': {
-                                'symbol-placement': 'line',
-                                'symbol-spacing': 1,
-                                'icon-allow-overlap': true,
-                                // 'icon-ignore-placement': true,
-                                'icon-image': 'arrow',
-                                'icon-size': 0.06,
-                                'visibility': 'visible'
-                            },
-                            minzoom: 10,
-                        });
                     });
+                    
+                    // add arrow- line layer
+                    map.addLayer({
+                        'id': 'route',
+                        'type': 'line',
+                        'source': 'route',
+                        'layout': {
+                            'line-join': 'round',
+                            'line-cap': 'round',
+                        },
+                        'paint': {
+                            'line-color': '#E21B1B',
+                            'line-width': 10,
+                            'line-offset': 2,
+                            'line-opacity': 0.9,
+                            'line-pattern' : 'arrow'
+                        }
+                    });
+                   
                     directions.on('route', function(e) {
                         const route = e.route[0].geometry;
                         map.getSource('route').setData(route);
@@ -160,7 +162,6 @@ function submitChat(event) {
 
 function postMessage(message, chatMessages) {
     // Append the visitor's message
-    console.log('Visitor message log.')
     appendMessage("Visitor: " + message, "visitor-message", chatMessages);
 
     // Send message to Flask endpoint and get the response
@@ -183,7 +184,6 @@ function postMessage(message, chatMessages) {
     //     });
     // }).then(response => response.json())
     .then(data => {
-        console.log('Guide response log.')
         appendMessage("Guide: " + data.response[0], "guide-message", chatMessages);
         get_coordinates(data.response[1], chatMessages);
     }).catch(error => {
@@ -214,7 +214,8 @@ async function loadButtonTemplate(messageDiv, text) {
 
         const button = buttonDiv.querySelector("button");
         button.addEventListener("click", function() {
-            showModal(text);
+            showNavSteps(text, messageDiv);
+            button.style.display = 'None';
         });
 
         messageDiv.appendChild(buttonDiv);
@@ -235,9 +236,9 @@ function extractRouteInstructions(data) {
     return result;
 }
 
-function showModal(content) {
+function showNavSteps(content, messageDiv) {
     // Create modal structure
-    var modal = document.getElementById("modal");
+    var modal = document.getElementById("nav-steps");
 
     var modalContent = document.createElement("div");
     modalContent.className = "modal-content";
@@ -247,6 +248,9 @@ function showModal(content) {
     closeButton.innerHTML = "&times;";
     closeButton.onclick = function() {
         modal.style.display = "none";
+        var button = document.getElementById("nav-button");
+        button.style.display = "block";
+
     };
 
     var modalText = document.createElement("div");
@@ -257,8 +261,7 @@ function showModal(content) {
     modal.replaceChildren(modalContent);
 
     // Append modal to chat box
-    var chatBox = document.getElementById("chatbot-area");
-    chatBox.appendChild(modal);
+    messageDiv.appendChild(modal);
 
     // Display the modal
     modal.style.display = "block";
@@ -282,7 +285,6 @@ function get_coordinates(data,chatMessages) {
     })
     .then(response => response.json())
     .then(coordinates => {
-        console.log("The coordinates of recommended places: ", coordinates)
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
         displayRoute(placeNames,waypoints,chatMessages);
     })
@@ -365,7 +367,6 @@ document.getElementById('zoom-out').addEventListener('click', () => {
 });
 // Function to simulate click on marker to show popup
 function clickMarker(markerId) {
-    console.log(`Clicking marker for ${markerId}`);
     if (window.mapMarkers[markerId]) {
         window.mapMarkers[markerId].togglePopup();
     }
