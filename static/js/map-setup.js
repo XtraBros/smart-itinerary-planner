@@ -27,7 +27,9 @@ map.on('load', function() {
     // Add custom tiles
     map.addSource('custom-tiles', {
         type: 'raster',
-        // enable proxy server to get tiles
+        // base url for maptiles
+        // ‘tiles’: [‘https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png’],
+        // use proxy server to get tiles
         tiles: ['https://corsproxy.io/?https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
         // using open source map to get tiles without proxy
         //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
@@ -63,7 +65,7 @@ function displayRoute(placeNames,waypoints, chatMessages) {
     }
     addMarkers(placeNames,waypoints);
     var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
-    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}&waypoints=`;
+    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
 
     // Get the route data from Mapbox Directions API
     fetch(url)
