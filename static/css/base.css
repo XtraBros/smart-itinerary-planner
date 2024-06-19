@@ -103,11 +103,6 @@
     color: #084298;             /* Dark blue text */
 }
 
-.route-message{
-    background-color: #cfe2ff;  /* Light blue background */
-    color: #084298;             /* Dark blue text */
-}
-
 /* styles for banner */
 .header{
     top: 0;
@@ -150,31 +145,27 @@
     background-color: #0056b3; /* Darker background on hover */
 }
 /* Navigation details pop up modal*/
-.modal {
+.nav-steps {
     display: none; /* Hidden by default */
-    position: absolute; /* Positioned relative to chat box */
-    z-index: 2; /* Sit on top */
-    top: 0;
-    left: 0;
     width: 100%; /* Full width of chat box */
     height: 100%; /* Full height of chat box */
-    background-color: rgba(0,0,0,0.4); /* Black with opacity */
 }
 
 /* Modal Content/Box */
 .modal-content {
-    background-color: #fefefe;
-    margin: 10% auto; /* 10% from the top and centered */
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%; /* Could be more or less, depending on screen size */
-    max-height: 80%; /* Ensure it doesn't exceed the chat box height */
+    background-color: #cfe2ff;  /* Light blue background */
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    word-wrap: break-word;
     overflow-y: auto; /* Scroll within modal if content is too large */
 }
 
 /* The Close Button */
 .close {
     color: #aaa;
+    top: 0;
+    right: 0;
     float: right;
     font-size: 28px;
     font-weight: bold;
@@ -182,7 +173,7 @@
 
 .close:hover,
 .close:focus {
-    color: black;
+    color: #ff0000;
     text-decoration: none;
     cursor: pointer;
 }
