@@ -72,7 +72,7 @@ function displayRoute(placeNames,waypoints, chatMessages) {
         .then(response => response.json())
         .then(data => {
             if (data.routes && data.routes.length > 0) {
-                var legs = data.routes[0].legs[0].steps;
+                var legs = data.routes[0].legs;
                 // create function to send legs to detailed display.
                 var route = data.routes[0].geometry;
                 if (!map.getSource('route')) {
@@ -123,7 +123,7 @@ function displayRoute(placeNames,waypoints, chatMessages) {
                 console.error('No route found: ', data);
             }
             // // Create a Blob from the JSON string
-            // const blob = new Blob([JSON.stringify(legs,null,2)], { type: 'application/json' });
+            // const blob = new Blob([JSON.stringify(data.routes[0].legs,null,2)], { type: 'application/json' });
 
             // // Create a link element
             // const link = document.createElement('a');
@@ -139,7 +139,7 @@ function displayRoute(placeNames,waypoints, chatMessages) {
 
             // // Programmatically click the link to trigger the download
             // link.click();
-            var instr = extractRouteInstructions(legs)
+            var instr = extractRouteInstructions(legs, placeNames)
             // Post detailed route info in chat:
             appendMessage(instr, "nav-button", chatMessages) 
         })
@@ -226,17 +226,52 @@ async function loadButtonTemplate(messageDiv, text) {
     }
 }
 
-function extractRouteInstructions(data) {
+function extractRouteInstructions(data, placeNames) {
     let result = '';
   
-    data.forEach((step, stepIndex) => {
-        const instruction = step.maneuver.instruction;
-        const distance = step.distance.toFixed(2); // format distance to 2 decimal places
+    // Helper function to find steps in a nested object
+    function findSteps(obj) {
+      let steps = [];
+  
+      function recurse(currentObj) {
+        for (let key in currentObj) {
+          if (key === 'steps') {
+            steps = steps.concat(currentObj[key]);
+          } else if (typeof currentObj[key] === 'object' && currentObj[key] !== null) {
+            recurse(currentObj[key]);
+          }
+        }
+      }
+  
+      recurse(obj);
+      return steps;
+    }
+  
+    // Fetch all steps from the nested dictionary
+    const steps = findSteps(data);
+  
+    // Initialize a counter for placeNames
+    let placeIndex = 0;
+    let stepIndex = 0;
+  
+    // Iterate over each step to format the instruction
+    steps.forEach((step) => {
+      let instruction = step.maneuver.instruction;
+      const distance = step.distance.toFixed(0); // format distance to 2 decimal places
+  
+      // Check if the distance is 0.00, indicating arrival at a destination
+      if (parseFloat(distance) === 0 && placeIndex < placeNames.length) {
+        instruction = `You have arrived at ${placeNames[placeIndex].replace(/[\[\]']/g, '')}.`;
+        result += `<p>${instruction}</p>`;
+        placeIndex++; // Move to the next place name
+      } else {
         result += `<p>Step ${stepIndex + 1}: ${instruction} (Distance: ${distance} meters)</p>`;
+        stepIndex++;
+      }
     });
   
     return result;
-}
+  }
 
 function showNavSteps(content, messageDiv) {
     // Create modal structure
