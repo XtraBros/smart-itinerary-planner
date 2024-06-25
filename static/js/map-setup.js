@@ -64,39 +64,115 @@ function displayRoute(placeNames,waypoints, chatMessages) {
         map.removeSource('route');
     }
     addMarkers(placeNames,waypoints);
-    var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
-    var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-
-    // Get the route data from Mapbox Directions API
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            if (data.routes && data.routes.length > 0) {
-                var legs = data.routes[0].legs;
-                // create function to send legs to detailed display.
-                var route = data.routes[0].geometry;
+    // check number of waypoints. if less than 25, execute the usual. else, split checkpoints into batches and add more layers.\
+    console.log(waypoints.length)
+    if (waypoints.length <= 25){
+        var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
+        var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+    
+        // Get the route data from Mapbox Directions API
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.routes && data.routes.length > 0) {
+                    var legs = data.routes[0].legs;
+                    // create function to send legs to detailed display.
+                    var route = data.routes[0].geometry;
+                    if (!map.getSource('route')) {
+                        map.addSource('route', {
+                            'type': 'geojson',
+                            'data': {
+                                'type': 'Feature',
+                                'properties': {},
+                                'geometry': route
+                            }
+                        });
+                    }
+                    if (!map.getLayer('route')) {
+                        // Add arrows to the route using static png asset
+                        const url = 'static/icons/arrow2.png';
+                        map.loadImage(url, function(err, image) {
+                            if (err) {
+                                console.error('err image', err);
+                                return;
+                            }
+                            map.addImage('arrow', image);
+                        });
+                        
+                        // add arrow- line layer
+                        map.addLayer({
+                            'id': 'route',
+                            'type': 'line',
+                            'source': 'route',
+                            'layout': {
+                                'line-join': 'round',
+                                'line-cap': 'round',
+                            },
+                            'paint': {
+                                'line-color': '#E21B1B',
+                                'line-width': 10,
+                                'line-offset': 2,
+                                'line-opacity': 0.9,
+                                'line-pattern' : 'arrow'
+                            }
+                        });
+                       
+                        directions.on('route', function(e) {
+                            const route = e.route[0].geometry;
+                            map.getSource('route').setData(route);
+                        });
+                    }
+                } else {
+                    console.error('No route found: ', data);
+                }           
+                var instr = extractRouteInstructions(legs, placeNames)
+                // Post detailed route info in chat:
+                appendMessage(instr, "nav-button", chatMessages) 
+            })
+            .catch(err => console.error('Error fetching directions:', err));
+    } else{
+        // load img for route line pattern
+        const url = 'static/icons/arrow2.png';
+        map.loadImage(url, function(err, image) {
+            if (err) {
+                console.error('err image', err);
+                return;
+            }
+            map.addImage('arrow', image);
+        });
+        // break waypoints into batches, create route layers, create detailed steps div, return.
+        let batches = [];
+        const batchSize = 25;
+        for (let i = 0; i < waypoints.length; i += batchSize) {
+            batches.push(waypoints.slice(i, i + batchSize));
+        }
+        let routePromises = batches.map(batch => fetchRouteForBatch(batch));
+    
+        Promise.all(routePromises)
+            .then(routes => {
+                let combinedRoute = {
+                    type: 'FeatureCollection',
+                    features: []
+                };
+                let combinedLegs = [];
+    
+                routes.forEach(route => {
+                    combinedRoute.features.push({
+                        type: 'Feature',
+                        geometry: route.geometry
+                    });
+                    combinedLegs = combinedLegs.concat(route.legs);
+                });
+    
                 if (!map.getSource('route')) {
                     map.addSource('route', {
                         'type': 'geojson',
-                        'data': {
-                            'type': 'Feature',
-                            'properties': {},
-                            'geometry': route
-                        }
+                        'data': combinedRoute
                     });
+                } else {
+                    map.getSource('route').setData(combinedRoute);
                 }
                 if (!map.getLayer('route')) {
-                    // Add arrows to the route using static png asset
-                    const url = 'static/icons/arrow2.png';
-                    map.loadImage(url, function(err, image) {
-                        if (err) {
-                            console.error('err image', err);
-                            return;
-                        }
-                        map.addImage('arrow', image);
-                    });
-                    
-                    // add arrow- line layer
                     map.addLayer({
                         'id': 'route',
                         'type': 'line',
@@ -113,40 +189,32 @@ function displayRoute(placeNames,waypoints, chatMessages) {
                             'line-pattern' : 'arrow'
                         }
                     });
-                   
-                    directions.on('route', function(e) {
-                        const route = e.route[0].geometry;
-                        map.getSource('route').setData(route);
-                    });
                 }
-            } else {
-                console.error('No route found: ', data);
-            }
-            // // Create a Blob from the JSON string
-            // const blob = new Blob([JSON.stringify(data.routes[0].legs,null,2)], { type: 'application/json' });
-
-            // // Create a link element
-            // const link = document.createElement('a');
-
-            // // Create a URL for the Blob and set it as the href attribute
-            // link.href = URL.createObjectURL(blob);
-
-            // // Set the download attribute to specify the file name
-            // link.download = 'output.json';
-
-            // // Append the link to the document body
-            // document.body.appendChild(link);
-
-            // // Programmatically click the link to trigger the download
-            // link.click();
-            var instr = extractRouteInstructions(legs, placeNames)
-            // Post detailed route info in chat:
-            appendMessage(instr, "nav-button", chatMessages) 
-        })
-        .catch(err => console.error('Error fetching directions:', err));
     
+                var instr = extractRouteInstructions(combinedLegs, placeNames);
+                appendMessage(instr, "nav-button", chatMessages);
+            })
+            .catch(err => console.error('Error fetching routes:', err));
+    };
 }
-
+// Function to fetch the route for a batch of waypoints
+function fetchRouteForBatch(batch) {
+    return new Promise((resolve, reject) => {
+        var coordinates = batch.map(coord => `${coord[0]},${coord[1]}`).join(';');
+        var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.routes && data.routes.length > 0) {
+                    resolve(data.routes[0]);
+                } else {
+                    reject('No route found');
+                }
+            })
+            .catch(err => reject(err));
+    });
+}
 function submitChat(event) {
     if (event.key === "Enter") {
         event.preventDefault();
