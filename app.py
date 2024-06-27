@@ -4,14 +4,28 @@ from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 import pandas as pd
 import ast
-from thefuzz import fuzz, process
+import json
 from config import OPENAI_API_KEY
-import re
+import numpy as np
+from thefuzz import fuzz, process
+from pymongo import MongoClient
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 model_name = "gpt-4"
+
+######################### MONGO #########################
+# Connect to MongoDB
+mongo_client = MongoClient('localhost', 27017)
+db = mongo_client['file_db']
+collection = db['files']
+# LOAD Vector store into memory if needed. Currently kept in db as column.
+# Load the embedding model for semantic search
+model = SentenceTransformer('all-MiniLM-L6-v2')
+######################### MONGO #########################
 
 # Load data once when the server starts
 place_info_df = pd.read_csv('zoo-info.csv')
@@ -33,43 +47,33 @@ def home():
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
     user_input = request.json['message']
-    # do fuzzy search on terms
-    matches = fuzzyMatch(user_input,zoo_places_list)
-    if matches != None:
-        print("matches found, generating route with location as focus.")
-        # User has specified some attractions to visit
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: [{zoo_places_list}], focusing on the attrations in this list :[{matches}] unless otherwise requested. If not specified, the visitors will start from at the Entrance/Exit by default, but do not count this as an attraction. Avoid mentioning toilets/water points, tram stops, nursing rooms and shops unless requested. Ensure the names are encased in single apostrophies, as given in the list."},
-                {"role": "user", "content": user_input}
-            ],
-            temperature=0,
-        )
-        response_text = response.choices[0].message.content.strip()
-    else:
-        print("no POI matches, using suggestion prompt.")
-        # no attractions matched, recommend some POIs.
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": f"You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place. You must only give trip plan by using the names of attractions in this list: [{zoo_places_list}]. If not specified, the visitors will start from at the Entrance/Exit by default, but do not count this as an attraction. Avoid mentioning toilets/water points, tram stops, nursing rooms and shops unless requested. Ensure the names are encased in single apostrophies, as given in the list."},
-                {"role": "user", "content": user_input}
-            ],
-            temperature=0,
-        )
-        response_text = response.choices[0].message.content.strip()
+    # Perform RAG instead of fuzzy search:
+    # Vectorise message and search vector store to find matching document descriptions
+    file_matches = search_files(user_input, top_k=3)
+    print(file_matches)
+    filenames = [result[0] for result in file_matches]
+    data = retrieve_files(filenames)
+    print(data)
+    # Generate prompt and prompt LLM
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", 
+             "content": f"""You are a helpful tour guide who is working in {zoo_name}. Your task is to answer visitors' questions about how to plan their trip in this place.
+             If not specified, the visitors will start from at the Entrance/Exit by default. 
+             Avoid mentioning toilets/water points, tram stops, nursing rooms and shops unless requested. Ensure the names of attractions are encased in single apostrophies.
+             Here is some data to help you answer the query: [{str(data)}]"""},
+            {"role": "user", "content": user_input}
+        ],
+        temperature=0,
+    )
+    response_text = response.choices[0].message.content.strip()   
+    # Change get_route to return None if no route is available, and bypass hyperlink isnertion
     route = get_route(response_text)
-    try: 
+    if len(ast.literal_eval(route)) > 1:
         hyperlinks = create_hyperlinks(ast.literal_eval(route))
         response_text = insertHyperlinks(response_text,hyperlinks)
-        return jsonify({'response': [response_text,route]}) 
-    except Exception as e:
-        print(f'Error: {e}, creating hyperlinks with fuzzy matches.')
-        hyperlinks = create_hyperlinks(matches)
-        response_text = insertHyperlinks(response_text,hyperlinks)
-        matches.insert(0,'Entrance/Exit')
-        return jsonify({'response': [response_text,matches]}) 
+    return jsonify({'response': [response_text,route]}) 
 
 # end point to use LLM to structure route as response
 #@app.route('/get_route', methods=['POST'])
@@ -79,7 +83,12 @@ def get_route(user_input):
         model=model_name,
         # update content to be given a route, and explain GPT step by step.
         messages=[
-            {"role": "system", "content": f"You are given a trip plan of this place: {zoo_name}. Your task is to analyze the plan and output a list of names of all attractions/amenities into a pair of brackets, and separate them by commas. You must only list the names that exist in the given list: [{zoo_places_list}]. They should also be in the same order as they appear in the trip plan. Here is an example resulting list: [Entrance, Place A, Place B, Place C, Exit]. In the event no clear plan is given, simply create a list of the attractions mentioned."},
+            {"role": "system", "content": f"""You are given a trip plan of this place: {zoo_name}. 
+             Your task is to analyze the plan and output a list of names of all attractions/amenities into a pair of brackets, 
+             and separate them by commas. You must only list the names that exist in the given list: [{zoo_places_list}]. 
+             They should also be in the same order as they appear in the trip plan. Here is an example resulting list: 
+             [Entrance, Place A, Place B, Place C, Exit]. In the event no clear plan is given, 
+             simply create a list of the attractions in the order they are mentioned. If no attractions are detected, return an empty list."""},
             {"role": "user", "content": user_input}
         ],
         temperature=0,
@@ -149,7 +158,6 @@ def create_hyperlinks(place_list):
 
 
 def insertHyperlinks(message, replacements):
-
     # Split the message into chunks by single apostrophes
     chunks = message.split("'")
     
@@ -162,6 +170,42 @@ def insertHyperlinks(message, replacements):
     # Reconstruct the message
     return "'".join(chunks)
 
+# Function to perform vector search
+def search_files(query, top_k=5):
+    query_vector = model.encode(query).reshape(1, -1)
+
+    # Fetch all documents from the collection
+    all_documents = list(collection.find({}, {"file_name": 1, "description": 1, "vector": 1}))
+    
+    # Calculate cosine similarity
+    results = []
+    for doc in all_documents:
+        doc_vector = np.array(doc["vector"]).reshape(1, -1)
+        similarity = cosine_similarity(query_vector, doc_vector)[0][0]
+        results.append((doc["file_name"], doc["description"], similarity))
+    
+    # Sort results by similarity
+    results.sort(key=lambda x: x[2], reverse=True)
+    return results[:top_k]
+
+def retrieve_files(file_names):
+    documents = collection.find({"file_name": {"$in": file_names}})
+    retrieved_files = {}
+    
+    for doc in documents:
+        file_content = doc.get("content", {})
+        file_name = doc.get("file_name", "")
+        # Convert file content to a readable format for LLM
+        if isinstance(file_content, list):
+            content_str = json.dumps(file_content, indent=2)
+        elif isinstance(file_content, dict):
+            content_str = json.dumps(file_content, indent=2)
+        else:
+            content_str = str(file_content)
+        retrieved_files[file_name] = content_str
+    
+    return retrieved_files
+
 ###########################################################################################################
 if __name__ == '__main__':
-    app.run(debug=True, port=3106)
+    app.run(debug=True, port=5000)

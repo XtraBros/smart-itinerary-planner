@@ -47,3 +47,5 @@ urllib3==2.2.1
 Werkzeug==3.0.2
 xyzservices==2024.4.0
 thefuzz==0.22.1
+sentence-transformers==3.0.1
+pymongo==4.7.3
