@@ -3,22 +3,26 @@
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 import pandas as pd
-import ast
 from thefuzz import fuzz, process
 from config import OPENAI_API_KEY
-import re
+import numpy as np
 import json
+from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+
 
 app = Flask(__name__)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 model_name = "gpt-4"
-
 # Load data once when the server starts
 place_info_df = pd.read_csv('zoo-info.csv')
 place_info_df.columns = place_info_df.columns.str.strip()
 place_info_df['name'] = place_info_df['name'].str.strip()
 place_info_df['coordinate'] = place_info_df['coordinate'].str.strip().str.replace('(', '').str.replace(')', '')
+name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
+distance_matrix = pd.read_csv("./graph/distance_matrix.csv")
+# remove first column which contains names of locations.
+distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
 
 zoo_name = "Singapore Zoo"
 zoo_places_list = place_info_df['name'].tolist()
@@ -63,12 +67,12 @@ def get_text():
             messages=[
                 {"role": "system", "content": f"""You are a tour guide at {zoo_name}. 
                  Your task is to talk to a visitor, telling them the attractions they will visit in the sequence given in the following list.
-                 Keep you response succint, and ensure the names of the attractions are encsed in single apostrophies, as given in the list."""},
+                 Keep you response succint, and ensure the names of the attractions are encsed in single apostrophies, as given in the list.
+                 Structure your response as a bulleted list so that it is easily read."""},
                 {"role": "user", "content": str(route)}
             ],
             temperature=0,
         )
-        print(response.choices[0].message.content.strip())
         hyperlinks = create_hyperlinks(route)
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
         return jsonify({'response':response_text})
@@ -95,6 +99,17 @@ def get_coordinates():
             coordinates.append({'lng': lng, 'lat': lat})
     return jsonify(coordinates)
 
+# POST endpoint for optimizing route
+@app.route('/optimize_route', methods=['POST'])
+def optimize_route():
+    data = request.get_json()
+    place_names = data.get('placeNames')
+
+    # Assuming place_names is a list of names to optimize
+    ordered_place_indexes = solve_route(place_names)
+    print(ordered_place_indexes)
+    return jsonify(ordered_place_indexes)
+    
 # enpoint to load POI info from csv file: returns name:description pair
 @app.route('/place_info', methods=['POST'])
 def place_info():
@@ -120,6 +135,74 @@ def weather_icon():
 
 
 ###########################################################################################################
+# route optimisation function: 
+# input: list of place names from CSV. 
+# output: permutation of indexes based on input e.g. [0,2,3,5,1,4]
+def solve_route(place_names):
+    # get index of place from csv file
+    print(place_names)
+    indices = [name_to_index[name.replace("'","")] for name in place_names]
+    # Fetch distance matrix subset
+    subset_matrix = distance_matrix.iloc[indices, indices]
+    # Run TSP pacakge
+    permutation = solve_tsp(subset_matrix)
+    return permutation
+
+def solve_tsp(distance_matrix):
+    # Create the routing index manager
+    scaled_distance_matrix = (distance_matrix * 1000).round().astype(int)
+
+    manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0)
+
+    # Create the routing model
+    routing = pywrapcp.RoutingModel(manager)
+
+    def distance_callback(from_index, to_index):
+        """Returns the distance between the two nodes."""
+        # Convert from routing variable Index to distance matrix NodeIndex.
+        from_node = manager.IndexToNode(from_index)
+        to_node = manager.IndexToNode(to_index)
+        return scaled_distance_matrix.iloc[from_node, to_node]
+
+    transit_callback_index = routing.RegisterTransitCallback(distance_callback)
+
+    # Define cost of each arc
+    routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+    # Setting first solution heuristic
+    search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+    search_parameters.first_solution_strategy = (
+        routing_enums_pb2.FirstSolutionStrategy.FIRST_UNBOUND_MIN_VALUE)
+    def print_solution(manager, routing, solution):
+        """Prints solution on console."""
+        print(f"Objective: {solution.ObjectiveValue()/1000} m")
+        index = routing.Start(0)
+        plan_output = "Route for vehicle 0:\n"
+        route_distance = 0
+        while not routing.IsEnd(index):
+            plan_output += f" {manager.IndexToNode(index)} ->"
+            previous_index = index
+            index = solution.Value(routing.NextVar(index))
+            route_distance += routing.GetArcCostForVehicle(previous_index, index, 0)
+        plan_output += f" {manager.IndexToNode(index)}\n"
+        plan_output += f"Route distance: {route_distance/1000}m\n"
+        print(plan_output)
+    # Solve the problem
+    solution = routing.SolveWithParameters(search_parameters)
+    print_solution(manager,routing,solution)
+
+    # Get the solution and extract the optimal sequence
+    if solution:
+        index = routing.Start(0)
+        optimal_sequence = []
+        while not routing.IsEnd(index):
+            optimal_sequence.append(manager.IndexToNode(index))
+            index = solution.Value(routing.NextVar(index))
+        optimal_sequence.append(manager.IndexToNode(index))  # Add the start point to complete the loop
+        return optimal_sequence
+    else:
+        return None
+
 # No end point functions
 def fuzzyMatch(message, choices):
     matches = process.extract(message,choices)
@@ -143,7 +226,6 @@ def create_hyperlinks(place_list):
 
 
 def insertHyperlinks(message, replacements):
-    print(replacements)
     # Split the message into chunks by single apostrophes
     chunks = message.split("'")
     

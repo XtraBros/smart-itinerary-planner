@@ -64,7 +64,7 @@ function displayRoute(placeNames, waypoints, chatMessages, rawCoordinates) {
             map.removeLayer('directions');
             map.removeSource('route');
         }
-        addMarkers(placeNames, waypoints);
+        addMarkers(placeNames, rawCoordinates);
         const coordinates = rawCoordinates.map(coord => coord.join(',')).join(';');
 
         // Check number of waypoints. If less than 25, execute the usual. Else, split checkpoints into batches and add more layers.
@@ -232,19 +232,25 @@ async function optimizeRoute(placeNames, coordinates) {
         console.log(coordinates);
         throw new Error("Invalid inputs. Both inputs should be arrays of the same length.");
     }
-    // Create a mapping from coordinates to place names
-    const coordinateToPlaceName = new Map();
-    for (let i = 0; i < coordinates.length; i++) {
-        coordinateToPlaceName.set(JSON.stringify(coordinates[i]), placeNames[i]);
-    }
     // Get the optimized coordinates
-    const optimizedCoordinates = await optimizeCoordinates(coordinates);
+    const coordSequence = await optimizeCoordinates(placeNames,coordinates);
     // Check if optimization was successful
-    if (!optimizedCoordinates) {
+    if (!coordSequence) {
         throw new Error("Optimization failed");
     }
+    console.log(coordSequence)
+    console.log(placeNames)
     // Reorder place names according to the optimized coordinates
-    const optimizedPlaceNames = optimizedCoordinates.map(coord => coordinateToPlaceName.get(JSON.stringify(coord)));
+    // Create a new array to hold the reordered elements
+    let optimizedPlaceNames = new Array(coordSequence.length);
+    let optimizedCoordinates = new Array(coordSequence.length);
+
+    // Place each element at the position specified by the corresponding index
+    for (let i = 0; i < coordSequence.length; i++) {
+        optimizedPlaceNames[i] = placeNames[coordSequence[i]];
+        optimizedCoordinates[i] = coordinates[coordSequence[i]];
+    }
+    console.log(optimizedPlaceNames)
     //console.log(placeNames)
     //console.log(optimizedPlaceNames)
     // Return the result as a nested list
@@ -252,8 +258,27 @@ async function optimizeRoute(placeNames, coordinates) {
 }
 
 // Function to optimize coordinates. should reorder coordinates in optimised order.
-async function optimizeCoordinates(coordinates) {
-    return coordinates
+async function optimizeCoordinates(placeNames, coordinates) {
+    try {
+        //post data to server endpoint
+        const response = await fetch('/optimize_route', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({'placeNames': placeNames})
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const coordSequence = await response.json();
+        return coordSequence;
+    } catch (error) {
+        console.error('Error optimizing coordinates:', error);
+        return null;
+    }
 }
 
 function submitChat(event) {
@@ -472,6 +497,10 @@ function addMarkers(placeNames, waypoints) {
 
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
+                if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
+                    console.error(`Invalid coordinates for ${placeName}:`, coord);
+                    return; // Skip this iteration if coordinates are invalid
+                }
                 placeName = placeName.replace(/['\[\]]/g, '');
 
                 var place = {
