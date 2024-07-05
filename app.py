@@ -23,6 +23,7 @@ name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
 distance_matrix = pd.read_csv("./graph/distance_matrix.csv")
 # remove first column which contains names of locations.
 distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
+cluster_locations = pd.read_csv('./cluster-locations.csv')
 
 zoo_name = "Singapore Zoo"
 zoo_places_list = place_info_df['name'].tolist()
@@ -134,6 +135,14 @@ def weather_icon():
     return jsonify(process.extractOne(forecast,lib)[0])
 
 
+@app.route('/get_centroids', methods=['POST'])
+def get_centroids():
+    names = request.json['names']
+    if not names:
+        return jsonify({'error': 'No names provided'}), 400
+    coords_str = get_unique_clusters_coordinates(names, place_info_df, cluster_locations)
+    return jsonify({'centroids': coords_str})
+
 ###########################################################################################################
 # route optimisation function: 
 # input: list of place names from CSV. 
@@ -172,7 +181,7 @@ def solve_tsp(distance_matrix):
     # Setting first solution heuristic
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.FIRST_UNBOUND_MIN_VALUE)
+        routing_enums_pb2.FirstSolutionStrategy.SAVINGS)
     def print_solution(manager, routing, solution):
         """Prints solution on console."""
         print(f"Objective: {solution.ObjectiveValue()/1000} m")
@@ -237,6 +246,18 @@ def insertHyperlinks(message, replacements):
     
     # Reconstruct the message
     return "'".join(chunks)
+
+# function to get cluster centroid locations
+def get_unique_clusters_coordinates(names, df, centroids_df):
+    names = [name.replace("'", "") for name in names]
+    filtered_df = df[df['name'].isin(names)]
+    clusters = filtered_df['cluster']
+    centroids = centroids_df[centroids_df['cluster'].isin(clusters)]
+    coords_list = centroids.apply(
+        lambda row: f"[{row['centroid_longitude']},{row['centroid_latitude']}]", axis=1
+    ).tolist()
+    print(coords_list)
+    return coords_list
 
 ###########################################################################################################
 if __name__ == '__main__':
