@@ -56,50 +56,114 @@ map.on('load', function() {
     );
 });        
 
-function displayRoute(placeNames,waypoints, chatMessages) {
-    // Clear existing routes
-    if (map.getSource('route')) {
-        map.removeLayer('route');
-        map.removeLayer('directions')
-        map.removeSource('route');
-    }
-    addMarkers(placeNames,waypoints);
-    // check number of waypoints. if less than 25, execute the usual. else, split checkpoints into batches and add more layers.\
-    console.log(waypoints.length)
-    if (waypoints.length <= 25){
-        var coordinates = waypoints.map(coord => `${coord[0]},${coord[1]}`).join(';');
-        var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-    
-        // Get the route data from Mapbox Directions API
-        fetch(url)
-            .then(response => response.json())
+function displayRoute(placeNames, rawCoordinates) {
+    return new Promise((resolve, reject) => {
+        // Clear existing routes
+        if (map.getSource('route')) {
+            map.removeLayer('route');
+            map.removeLayer('directions');
+            map.removeSource('route');
+        }
+        addMarkers(placeNames, rawCoordinates);
+        console.log(rawCoordinates)
+
+        // Check number of waypoints. If less than 25, execute the usual. Else, fetch centroids.
+        let fetchDirectionsPromise;
+        if (rawCoordinates.length <= 21) {
+            const coordinates = rawCoordinates.map(coord => coord.join(',')).join(';');
+            var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+            console.log(url)
+            // Fetch directions data from Mapbox Directions API
+            fetchDirectionsPromise = fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch route data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.routes && data.routes.length > 0) {
+                        var legs = data.routes[0].legs;
+                        var route = data.routes[0].geometry;
+                        return { legs, route };
+                    } else {
+                        console.error('No route found: ', data);
+                        throw new Error('No route found');
+                    }
+                });
+        } else {
+            // Fetch centroids from Flask endpoint
+            fetchDirectionsPromise = fetch("/get_centroids", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ names: placeNames })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.routes && data.routes.length > 0) {
-                    var legs = data.routes[0].legs;
-                    // create function to send legs to detailed display.
-                    var route = data.routes[0].geometry;
+                const centroids = data.centroids.map(coord => JSON.parse(coord.replace(/\[(\d+\.\d+),(\d+\.\d+)\]/, '[$1,$2]'))).map(coord => coord.join(',')).join(';');
+                console.log(centroids)
+                // Create a new URL with the returned coordinates
+                var newUrl = `https://api.mapbox.com/directions/v5/mapbox/walking/${centroids}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+                console.log(newUrl);
+                return fetch(newUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch route data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.routes && data.routes.length > 0) {
+                        var legs = data.routes[0].legs;
+                        var route = data.routes[0].geometry;
+                        return { legs, route };
+                    } else {
+                        console.error('No route found: ', data);
+                        throw new Error('No route found');
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+                throw error;
+            });
+        }
+
+        // Process fetched directions data or centroids
+        fetchDirectionsPromise
+            .then(result => {
+                if (result.legs && result.route) {
+                    // Add route to map
                     if (!map.getSource('route')) {
                         map.addSource('route', {
                             'type': 'geojson',
                             'data': {
                                 'type': 'Feature',
                                 'properties': {},
-                                'geometry': route
+                                'geometry': result.route
                             }
                         });
                     }
+
                     if (!map.getLayer('route')) {
                         // Add arrows to the route using static png asset
                         const url = 'static/icons/arrow2.png';
                         map.loadImage(url, function(err, image) {
                             if (err) {
-                                console.error('err image', err);
-                                return;
+                                console.error('Error loading image:', err);
+                                reject(err);
                             }
                             map.addImage('arrow', image);
                         });
-                        
-                        // add arrow- line layer
+
+                        // Add arrow-line layer
                         map.addLayer({
                             'id': 'route',
                             'type': 'line',
@@ -113,90 +177,35 @@ function displayRoute(placeNames,waypoints, chatMessages) {
                                 'line-width': 10,
                                 'line-offset': 2,
                                 'line-opacity': 0.9,
-                                'line-pattern' : 'arrow'
+                                'line-pattern': 'arrow'
                             }
                         });
-                       
+
+                        // Update route data on map
                         directions.on('route', function(e) {
                             const route = e.route[0].geometry;
                             map.getSource('route').setData(route);
                         });
                     }
+
+                    // Extract route instructions
+                    var instructions = extractRouteInstructions(result.legs, placeNames);
+                    resolve(instructions);
+                } else if (result.newUrl) {
+                    // Handle URL for later use case
+                    resolve(result.newUrl);
                 } else {
-                    console.error('No route found: ', data);
-                }           
-                var instr = extractRouteInstructions(legs, placeNames)
-                // Post detailed route info in chat:
-                appendMessage(instr, "nav-button", chatMessages) 
-            })
-            .catch(err => console.error('Error fetching directions:', err));
-    } else{
-        // load img for route line pattern
-        const url = 'static/icons/arrow2.png';
-        map.loadImage(url, function(err, image) {
-            if (err) {
-                console.error('err image', err);
-                return;
-            }
-            map.addImage('arrow', image);
-        });
-        // break waypoints into batches, create route layers, create detailed steps div, return.
-        let batches = [];
-        const batchSize = 25;
-        for (let i = 0; i < waypoints.length; i += batchSize) {
-            batches.push(waypoints.slice(i, i + batchSize));
-        }
-        let routePromises = batches.map(batch => fetchRouteForBatch(batch));
-    
-        Promise.all(routePromises)
-            .then(routes => {
-                let combinedRoute = {
-                    type: 'FeatureCollection',
-                    features: []
-                };
-                let combinedLegs = [];
-    
-                routes.forEach(route => {
-                    combinedRoute.features.push({
-                        type: 'Feature',
-                        geometry: route.geometry
-                    });
-                    combinedLegs = combinedLegs.concat(route.legs);
-                });
-    
-                if (!map.getSource('route')) {
-                    map.addSource('route', {
-                        'type': 'geojson',
-                        'data': combinedRoute
-                    });
-                } else {
-                    map.getSource('route').setData(combinedRoute);
+                    throw new Error('Invalid data received');
                 }
-                if (!map.getLayer('route')) {
-                    map.addLayer({
-                        'id': 'route',
-                        'type': 'line',
-                        'source': 'route',
-                        'layout': {
-                            'line-join': 'round',
-                            'line-cap': 'round',
-                        },
-                        'paint': {
-                            'line-color': '#E21B1B',
-                            'line-width': 10,
-                            'line-offset': 2,
-                            'line-opacity': 0.9,
-                            'line-pattern' : 'arrow'
-                        }
-                    });
-                }
-    
-                var instr = extractRouteInstructions(combinedLegs, placeNames);
-                appendMessage(instr, "nav-button", chatMessages);
             })
-            .catch(err => console.error('Error fetching routes:', err));
-    };
+            .catch(error => {
+                console.error('Error processing route or centroids:', error);
+                reject(error);
+            });
+    });
 }
+
+
 // Function to fetch the route for a batch of waypoints
 function fetchRouteForBatch(batch) {
     return new Promise((resolve, reject) => {
@@ -215,6 +224,60 @@ function fetchRouteForBatch(batch) {
             .catch(err => reject(err));
     });
 }
+// Function to optimize route. Takes in list of places and coordinates, returns both ordered in sequence of visit
+async function optimizeRoute(placeNames, coordinates) {
+    // Check if inputs are valid
+    if (!Array.isArray(placeNames) || !Array.isArray(coordinates) || placeNames.length !== coordinates.length) {
+        console.log(placeNames);
+        console.log(coordinates);
+        throw new Error("Invalid inputs. Both inputs should be arrays of the same length.");
+    }
+    // Get the optimized coordinates
+    const coordSequence = await optimizeCoordinates(placeNames,coordinates);
+    // Check if optimization was successful
+    if (!coordSequence) {
+        throw new Error("Optimization failed");
+    }
+    // Reorder place names according to the optimized coordinates
+    // Create a new array to hold the reordered elements
+    let optimizedPlaceNames = new Array(coordSequence.length);
+    let optimizedCoordinates = new Array(coordSequence.length);
+
+    // Place each element at the position specified by the corresponding index
+    for (let i = 0; i < coordSequence.length; i++) {
+        optimizedPlaceNames[i] = placeNames[coordSequence[i]];
+        optimizedCoordinates[i] = coordinates[coordSequence[i]];
+    }
+    //console.log(placeNames)
+    //console.log(optimizedPlaceNames)
+    // Return the result as a nested list
+    return [optimizedPlaceNames, optimizedCoordinates];
+}
+
+// Function to optimize coordinates. should reorder coordinates in optimised order.
+async function optimizeCoordinates(placeNames, coordinates) {
+    try {
+        //post data to server endpoint
+        const response = await fetch('/optimize_route', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({'placeNames': placeNames})
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const coordSequence = await response.json();
+        return coordSequence;
+    } catch (error) {
+        console.error('Error optimizing coordinates:', error);
+        return null;
+    }
+}
+
 function submitChat(event) {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -230,35 +293,45 @@ function submitChat(event) {
     }
 }
 
-function postMessage(message, chatMessages) {
+async function postMessage(message, chatMessages) {
     // Append the visitor's message
     appendMessage("Visitor: " + message, "visitor-message", chatMessages);
-
-    // Send message to Flask endpoint and get the response
-    fetch('/ask_plan', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({message: message})
-    }).then(response => response.json())
-    // .then(data => {
-    //     // Append the response
-    //     appendMessage("Guide: " + data.response, "guide-message", chatMessages);
-    //     return fetch('/get_route', {
-    //         method: 'POST',
-    //         headers: {
-    //             'Content-Type': 'application/json'
-    //         },
-    //         body: JSON.stringify({message: data.response})
-    //     });
-    // }).then(response => response.json())
-    .then(data => {
-        appendMessage("Guide: " + data.response[0], "guide-message", chatMessages);
-        get_coordinates(data.response[1], chatMessages);
-    }).catch(error => {
+    try {
+        // Send message to Flask endpoint and get the response
+        let response = await fetch('/ask_plan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        });
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+        let data = await response.json();
+        // Get the route from the get_coordinates function
+        let orderOfVisit = await get_coordinates(data.response, chatMessages);
+        let route = orderOfVisit[0][0];
+        let instr = orderOfVisit[1];
+        // Send a request to the /get_text endpoint with the route
+        let textResponse = await fetch('/get_text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ route: route })
+        });
+        if (!textResponse.ok) {
+            throw new Error('Network response was not ok ' + textResponse.statusText);
+        }
+        let textData = await textResponse.json();
+        // Append the response from the /get_text endpoint to the chat
+        appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
+        attachEventListeners();
+        appendMessage(instr, "nav-button", chatMessages)
+    } catch (error) {
         console.error('Error:', error);
-    });
+    }
 }
 
 // creaate template and styles for each visitor/guide message.
@@ -329,7 +402,7 @@ function extractRouteInstructions(data, placeNames) {
   
       // Check if the distance is 0.00, indicating arrival at a destination
       if (parseFloat(distance) === 0 && placeIndex < placeNames.length) {
-        instruction = `You have arrived at ${placeNames[placeIndex].replace(/[\[\]']/g, '')}.`;
+        instruction = `You have arrived at destination number ${placeIndex}.`;
         result += `<p>${instruction}</p>`;
         placeIndex++; // Move to the next place name
       } else {
@@ -379,21 +452,33 @@ function showNavSteps(content, messageDiv) {
     };
 }
 
-function get_coordinates(data,chatMessages) {
-    let placeNames = data.replace('(', '').replace(')', '').split(',').map(place => place.trim());
-    fetch('/get_coordinates', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({places: placeNames})  // Send the list of places to get their coordinates
-    })
-    .then(response => response.json())
-    .then(coordinates => {
+async function get_coordinates(data, chatMessages) {
+    let placeNames = data.replace('[', '').replace(']', '').split(',').map(place => place.trim());
+
+    try {
+        let response = await fetch('/get_coordinates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ places: placeNames })  // Send the list of places to get their coordinates
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+
+        let coordinates = await response.json();
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-        displayRoute(placeNames,waypoints,chatMessages);
-    })
-    .catch(error => console.error('Error fetching coordinates:', error));
+
+        // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+
+        let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1]);
+        return [orderOfVisit, instr]
+    } catch (error) {
+        console.error('Error fetching coordinates:', error);
+    }
 }
 
 function addMarkers(placeNames, waypoints) {
@@ -403,13 +488,16 @@ function addMarkers(placeNames, waypoints) {
         }
     }
     window.mapMarkers = {};
-
     fetchPlacesData(placeNames).then(placesData => {
         fetchTemplate('static/html/info-card.html').then(template => {
             var parser = new DOMParser();
 
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
+                if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
+                    console.error(`Invalid coordinates for ${placeName}:`, coord);
+                    return; // Skip this iteration if coordinates are invalid
+                }
                 placeName = placeName.replace(/['\[\]]/g, '');
 
                 var place = {
@@ -435,7 +523,6 @@ function addMarkers(placeNames, waypoints) {
 
                 window.mapMarkers[popupId] = marker;  // Store marker by ID
             });
-            attachEventListeners();
         });
     });
 }
@@ -487,7 +574,7 @@ function attachEventListeners() {
 
         link.addEventListener('mouseout', function() {
             var markerId = this.getAttribute('data-marker-id');
-            clickMarker(markerId);  // Toggling the popup off
+            clickMarker(markerId);
         });
     });
 }
