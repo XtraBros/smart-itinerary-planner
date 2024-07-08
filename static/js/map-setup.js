@@ -309,7 +309,9 @@ async function postMessage(message, chatMessages) {
             throw new Error('Network response was not ok ' + response.statusText);
         }
         let data = await response.json();
-        // Get the route from the get_coordinates function
+        // check for operation type and run route functions if neccesarry.
+        if (data.operation == "route"){
+            // Get the route from the get_coordinates function
         let orderOfVisit = await get_coordinates(data.response, chatMessages);
         let route = orderOfVisit[0][0];
         let instr = orderOfVisit[1];
@@ -329,6 +331,9 @@ async function postMessage(message, chatMessages) {
         appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
         attachEventListeners();
         appendMessage(instr, "nav-button", chatMessages)
+        } else { // return message directly
+            appendMessage("Guide:" + data.response, 'guide-message', chatMessages)
+        }
     } catch (error) {
         console.error('Error:', error);
     }

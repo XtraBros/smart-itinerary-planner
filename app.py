@@ -32,7 +32,7 @@ collection = db['files']
 model = SentenceTransformer('all-MiniLM-L6-v2')
 ######################### MONGO #########################
 
-# Load data once when the server starts
+######################### CSV DATA #########################
 place_info_df = pd.read_csv('zoo-info.csv')
 place_info_df.columns = place_info_df.columns.str.strip()
 place_info_df['name'] = place_info_df['name'].str.strip()
@@ -42,6 +42,8 @@ distance_matrix = pd.read_csv("./graph/distance_matrix.csv")
 # remove first column which contains names of locations.
 distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
 cluster_locations = pd.read_csv('./cluster-locations.csv')
+######################### CSV DATA #########################
+
 
 zoo_name = "Singapore Zoo"
 zoo_places_list = place_info_df['name'].tolist()
@@ -57,22 +59,33 @@ def home():
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
     user_input = request.json['message']
+    # RAG
+    file_matches = search_files(user_input, top_k=3)
+    print(file_matches)
+    filenames = [result[0] for result in file_matches]
+    data = retrieve_files(filenames)
     # get route first:
     response = client.chat.completions.create(
         model=model_name,
         messages=[
             {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
-             Your task is to give a list of attractions that may interest a visitor.
-             You can only select attractions in this list: [{zoo_places_list}],  
-             Avoid selecting toilets/water points, tram stops, nursing rooms and shops unless requested. 
-             Ensure the names are encased in single apostrophies, as given in the list.
-             Reply with only the list."""},
+             Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
+             If the query requires you to suggest attractions at the zoo, follow the following instructions:
+             1) Avoid selecting toilets/water points, tram stops, nursing rooms and shops unless requested. 
+             2) Ensure the names are encased in single apostrophies, as given in the list.
+             3) Reply with only the list.
+             Otherwise, simply reply to the user's query.
+             Here is some data to help you: {str(data)}"""},
             {"role": "user", "content": user_input}
         ],
         temperature=0,
     )
-    route = response.choices[0].message.content.strip()
-    return jsonify({'response': route}) 
+    message = response.choices[0].message.content.strip()
+    if type(ast.literal_eval(message)) == 'list':
+        operation = 'route'
+    else:
+        operation = 'message'
+    return jsonify({'response': message, 'operation': operation}) 
 
 # end point to use LLM to structure route as response
 @app.route('/get_text', methods=['POST'])
