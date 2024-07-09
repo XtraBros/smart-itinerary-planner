@@ -321,7 +321,7 @@ async function postMessage(message, chatMessages) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ route: route })
+            body: JSON.stringify({ route: route, message: message })
         });
         if (!textResponse.ok) {
             throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -332,7 +332,7 @@ async function postMessage(message, chatMessages) {
         attachEventListeners();
         appendMessage(instr, "nav-button", chatMessages)
         } else { // return message directly
-            appendMessage("Guide:" + data.response, 'guide-message', chatMessages)
+            appendMessage("Guide: " + data.response, 'guide-message', chatMessages)
         }
     } catch (error) {
         console.error('Error:', error);

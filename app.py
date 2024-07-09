@@ -73,7 +73,7 @@ def ask_plan():
              If the query requires you to suggest attractions at the zoo, follow the following instructions:
              1) Avoid selecting toilets/water points, tram stops, nursing rooms and shops unless requested. 
              2) Ensure the names are encased in single apostrophies, as given in the list.
-             3) Reply with only the list.
+             3) Reply with only the list, that can be evaluated in python as a list.
              Otherwise, simply reply to the user's query.
              Here is some data to help you: {str(data)}"""},
             {"role": "user", "content": user_input}
@@ -81,11 +81,17 @@ def ask_plan():
         temperature=0,
     )
     message = response.choices[0].message.content.strip()
-    if type(ast.literal_eval(message)) == 'list':
-        operation = 'route'
-    else:
+    print(message)
+    try:
+        evaluated_message = ast.literal_eval(message)
+        if isinstance(evaluated_message, list):
+            operation = 'route'
+        else:
+            operation = 'message'
+    except (ValueError, SyntaxError):
         operation = 'message'
-    return jsonify({'response': message, 'operation': operation}) 
+    
+    return jsonify({'response': message, 'operation': operation})
 
 # end point to use LLM to structure route as response
 @app.route('/get_text', methods=['POST'])
@@ -93,6 +99,7 @@ def get_text():
     try:
         # Get the 'route' data from the request JSON
         route = request.json['route']
+        user_input = request.json['message']
         # Continue with your processing
         response = client.chat.completions.create(
             model=model_name,
@@ -101,7 +108,7 @@ def get_text():
                  Your task is to talk to a visitor, telling them the attractions they will visit in the sequence given in the following list.
                  Keep you response succint, and ensure the names of the attractions are encsed in single apostrophies, as given in the list.
                  Structure your response as a bulleted list so that it is easily read."""},
-                {"role": "user", "content": str(route)}
+                {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
         )
