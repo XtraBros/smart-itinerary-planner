@@ -206,24 +206,6 @@ function displayRoute(placeNames, rawCoordinates) {
 }
 
 
-// Function to fetch the route for a batch of waypoints
-function fetchRouteForBatch(batch) {
-    return new Promise((resolve, reject) => {
-        var coordinates = batch.map(coord => `${coord[0]},${coord[1]}`).join(';');
-        var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.routes && data.routes.length > 0) {
-                    resolve(data.routes[0]);
-                } else {
-                    reject('No route found');
-                }
-            })
-            .catch(err => reject(err));
-    });
-}
 // Function to optimize route. Takes in list of places and coordinates, returns both ordered in sequence of visit
 async function optimizeRoute(placeNames, coordinates) {
     // Check if inputs are valid
@@ -233,7 +215,7 @@ async function optimizeRoute(placeNames, coordinates) {
         throw new Error("Invalid inputs. Both inputs should be arrays of the same length.");
     }
     // Get the optimized coordinates
-    const coordSequence = await optimizeCoordinates(placeNames,coordinates);
+    const coordSequence = await getOptimizedSequence(placeNames);
     // Check if optimization was successful
     if (!coordSequence) {
         throw new Error("Optimization failed");
@@ -255,7 +237,7 @@ async function optimizeRoute(placeNames, coordinates) {
 }
 
 // Function to optimize coordinates. should reorder coordinates in optimised order.
-async function optimizeCoordinates(placeNames, coordinates) {
+async function getOptimizedSequence(placeNames) {
     try {
         //post data to server endpoint
         const response = await fetch('/optimize_route', {
@@ -312,25 +294,25 @@ async function postMessage(message, chatMessages) {
         // check for operation type and run route functions if neccesarry.
         if (data.operation == "route"){
             // Get the route from the get_coordinates function
-        let orderOfVisit = await get_coordinates(data.response, chatMessages);
-        let route = orderOfVisit[0][0];
-        let instr = orderOfVisit[1];
-        // Send a request to the /get_text endpoint with the route
-        let textResponse = await fetch('/get_text', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ route: route, message: message })
-        });
-        if (!textResponse.ok) {
-            throw new Error('Network response was not ok ' + textResponse.statusText);
-        }
-        let textData = await textResponse.json();
-        // Append the response from the /get_text endpoint to the chat
-        appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
-        attachEventListeners();
-        appendMessage(instr, "nav-button", chatMessages)
+            let orderOfVisit = await get_coordinates(data.response);
+            let route = orderOfVisit[0][0];
+            let instr = orderOfVisit[1];
+            // Send a request to the /get_text endpoint with the route
+            let textResponse = await fetch('/get_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ route: route, message: message })
+            });
+            if (!textResponse.ok) {
+                throw new Error('Network response was not ok ' + textResponse.statusText);
+            }
+            let textData = await textResponse.json();
+            // Append the response from the /get_text endpoint to the chat
+            appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
+            attachEventListeners();
+            appendMessage(instr, "nav-button", chatMessages)
         } else { // return message directly
             appendMessage("Guide: " + data.response, 'guide-message', chatMessages)
         }
@@ -457,7 +439,7 @@ function showNavSteps(content, messageDiv) {
     };
 }
 
-async function get_coordinates(data, chatMessages) {
+async function get_coordinates(data) {
     let placeNames = data.replace('[', '').replace(']', '').split(',').map(place => place.trim());
 
     try {

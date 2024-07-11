@@ -250,16 +250,6 @@ def solve_tsp(distance_matrix):
     else:
         return None
 
-# No end point functions
-def fuzzyMatch(message, choices):
-    matches = process.extract(message,choices)
-    print(matches)
-    result = [t[0] for t in matches if t[1] >= 60]
-    print(result)
-    if len(result) > 0:
-        return result
-    else:
-        return None
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
     hyperlinks = {}
