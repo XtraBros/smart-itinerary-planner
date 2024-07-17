@@ -24,13 +24,13 @@ def load_config():
 config = load_config()
 
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
-model_name = "gpt-4"
+model_name = config['GPT_MODEL']
 
 ######################### MONGO #########################
 # Connect to MongoDB
-mongo_client = MongoClient('localhost', 27017)
-db = mongo_client['file_db']
-collection = db['files']
+mongo_client = MongoClient(config['MONGO_CLIENT'], 27017)
+db = mongo_client[config['MONGO_DB_NAME']]
+collection = db[config['MONGO_FILE_COLLECTION']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
 # Load the embedding model for semantic search
 model = SentenceTransformer('all-MiniLM-L6-v2')
