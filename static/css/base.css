@@ -51,6 +51,7 @@
     justify-content: space-between;
     align-items: center;
     overflow-y: scroll;
+    position: relative;
 }
 
 #chatbot-messages {
@@ -125,4 +126,54 @@
     color: #f4f4f4;
     font-size: large;
     font-weight: 700;
+}
+
+.nav-button {
+    display: block;
+    margin: 10px auto; /* Centers the button horizontally */
+    padding: 10px 20px; /* Adds some padding to the button */
+    font-size: 16px; /* Adjust font size */
+    background-color: #007BFF; /* Button background color */
+    color: white; /* Button text color */
+    border: none; /* Removes border */
+    border-radius: 5px; /* Adds rounded corners */
+    cursor: pointer; /* Changes cursor to pointer on hover */
+    text-align: center; /* Centers the text inside the button */
+}
+
+.nav-button:hover {
+    background-color: #0056b3; /* Darker background on hover */
+}
+/* Navigation details pop up modal*/
+.nav-steps {
+    display: none; /* Hidden by default */
+    width: 100%; /* Full width of chat box */
+    height: 100%; /* Full height of chat box */
+}
+
+/* Modal Content/Box */
+.modal-content {
+    background-color: #cfe2ff;  /* Light blue background */
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    word-wrap: break-word;
+    overflow-y: auto; /* Scroll within modal if content is too large */
+}
+
+/* The Close Button */
+.close {
+    color: #aaa;
+    top: 0;
+    right: 0;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: #ff0000;
+    text-decoration: none;
+    cursor: pointer;
 }
