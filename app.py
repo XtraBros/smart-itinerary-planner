@@ -5,21 +5,25 @@ from openai import OpenAI
 import pandas as pd
 import ast
 import json
-from config import OPENAI_API_KEY
 import numpy as np
 from thefuzz import fuzz, process
 from pymongo import MongoClient
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from config import OPENAI_API_KEY
-import numpy as np
-import json
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
 
 app = Flask(__name__)
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+CONFIG_FILE = 'config.json'
+
+def load_config():
+    with open(CONFIG_FILE, 'r') as file:
+        return json.load(file)
+
+config = load_config()
+
+client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = "gpt-4"
 
 ######################### MONGO #########################
@@ -54,6 +58,10 @@ sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Pa
 @app.route('/')
 def home():
     return render_template('index.html', places=place_info_df)
+
+@app.route('/config', methods=["GET"])
+def get_config():
+    return jsonify({'config': config})
 
 # end point to send message to LLM to get POIs
 @app.route('/ask_plan', methods=['POST'])
