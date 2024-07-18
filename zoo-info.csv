@@ -1,155 +1,155 @@
-id,name,coordinate,category,for,description,operating_hours,cluster
-0, Entrance/Exit, (103.790457;1.404228), place, all,The Entrance and Exit of Singapore Zoo.,"8:30am – 6:00pm
-",9
-1, Ah Meng Restaurant, (103.79358;1.40416), food, all,"With a casual atmosphere and a variety of food to choose from, Ah Meng Restaurant is the perfect food stop. Enjoy local and western delights such as chicken rice, BBQ Half Spring Chicken, briyani and more!","8:30am – 6:00pm
-",0
-2, KidzWorld, (103.796225;1.403150), region, young,"Step into the new KidzWorld — Home of the Ranger Buddies! Spark a sense of wonder for our animals through up-close animal interactions and interactive play. With a myriad of play opportunities from water play to sensory play, there is something for every child.","8:30am – 6:00pm
-",1
-3, RepTopia, (103.794698;1.402405),region, young,"Home to over 60 species of reptiles and amphibians, a third of which have never been seen here before, RepTopia takes you on a tour of four unique geographical zones. Multi-species displays, keeper demos, interactive stations and play elements interface to make this a most ‘snake’-tacular zone.","8:30am – 6:00pm
-",5
-4, White Rhinoceros,(103.793461;1.402918),place,all,"A huge animal that feeds exclusively on grass, the white rhino has a wide mouth shaped for ‘mowing’ short grass. Its square lips set it apart from the hook-lipped black rhino.
+id,name,category,for,description,operating_hours,cluster,longitude,latitude
+0, Entrance/Exit, place, all,The Entrance and Exit of Singapore Zoo.,"8:30am – 6:00pm
+",9, 103.790457,1.404228
+1, Ah Meng Restaurant, food, all,"With a casual atmosphere and a variety of food to choose from, Ah Meng Restaurant is the perfect food stop. Enjoy local and western delights such as chicken rice, BBQ Half Spring Chicken, briyani and more!","8:30am – 6:00pm
+",0, 103.79358,1.40416
+2, KidzWorld, region, young,"Step into the new KidzWorld — Home of the Ranger Buddies! Spark a sense of wonder for our animals through up-close animal interactions and interactive play. With a myriad of play opportunities from water play to sensory play, there is something for every child.","8:30am – 6:00pm
+",1, 103.796225,1.403150
+3, RepTopia,region, young,"Home to over 60 species of reptiles and amphibians, a third of which have never been seen here before, RepTopia takes you on a tour of four unique geographical zones. Multi-species displays, keeper demos, interactive stations and play elements interface to make this a most ‘snake’-tacular zone.","8:30am – 6:00pm
+",5, 103.794698,1.402405
+4, White Rhinoceros,place,all,"A huge animal that feeds exclusively on grass, the white rhino has a wide mouth shaped for ‘mowing’ short grass. Its square lips set it apart from the hook-lipped black rhino.
 
 Like horses and tapirs, rhinos have a simple stomach. Bacteria in their digestive tract help them digest the 60-80kg of vegetation they eat a day.
 
 Our rhinos are fed pellets and leaves on top of grass. Keepers scatter these on the ground to suit their grazing habits. Fruits are given as treats.","8:30am – 6:00pm
-",11
-5, Pavilion By The Lake, (103.7944246950008;1.4058605112947549), place,old,"Be enthralled by the tranquil surroundings of Seletar Reservoir at Pavilion by the Lake, an exquisite space nestled in nature's embrace. With a picturesque lake as your backdrop and surrounded by lush greenery, this idyllic venue sets the stage for unforgettable events.","8:30am – 6:00pm
-",4
-6,Tram Stop 1,(103.793793;1.404269),transport,all,First Tram Stop. Last tram departs at 5.30pm.,"8:30am – 6:00pm
-",0
-7,Tram Stop 2,(103.794502;1.405867),transport,all,Second Tram Stop. Last tram departs at 6.05pm,"8:30am – 6:00pm
-",4
-8,Tram Stop 3,(103.793617;1.403124),transport,all,Third tram stop. Last tram departs at 6.10pm,"8:30am – 6:00pm
-",11
-9,Tram Stop 4,(103.795850;1.401819),transport,all,Fourth tram stop. Last tram departs at 6.15pm.,"8:30am – 6:00pm
-",15
-10,Shaw Foundation Ampitheatre Shop,(103.794933;1.404619),shop,all,Explore our wide range of memorabilia and bring one home to remind you of our spectacular animal presentations!,10:00am – 5:30pm,12
-11,Singapore Zoo Shop,(103.790934;1.404646),shop,all,"From an assortment of plush toys to an array of nature-inspired mementos, discover unique finds and bring home a piece of wildlife!","9:00am – 7:00pm (Mon – Fri), 8:30am – 7:00pm (Sat, Sun & PH)",16
-12,Asian Small-clawed Otter,(103.791977;1.404699),place,all,"Our otters’ two-tiered exhibit is spread across an outdoor upper deck and an indoor viewing gallery. The terrain of the top tier is rocky — they build their dens and nest chambers beneath the boulders. Here, you’ll see them doing their laps in the stream, engaged in a game of tag or playing ‘juggle-the-pebble’. To view their underwater acrobatics, follow the footpath to the lower exhibit. Zoom in on their tiny ears and nostrils — the otters can close them while they swim.","8:30am – 6:00pm
-",10
-13,Australasia,(103.793362;1.406006),region,all,"While most of the world’s marsupials are found in Australia, marsupials also occur naturally in New Guinea, Indonesia and surrounding islands and the Americas. Besides the grey kangaroos and agile wallabies from Australia, this exhibit also showcases the tree kangaroos from Papua New Guinea.","8:30am – 6:00pm
-",6
-14,Hamadryas Baboon,(103.793503;1.405566),animal,all,"Hardy monkeys with a strong build and a dog-like snout, both males and females of this baboon species sport greyish-brown fur. The males develop a long, silvery mantle-like mane when they reach puberty. They are twice as big as the females. Males and females look so dissimilar that they have been thought to be of different species.
+",11,103.793461,1.402918
+5, Pavilion By The Lake, place,old,"Be enthralled by the tranquil surroundings of Seletar Reservoir at Pavilion by the Lake, an exquisite space nestled in nature's embrace. With a picturesque lake as your backdrop and surrounded by lush greenery, this idyllic venue sets the stage for unforgettable events.","8:30am – 6:00pm
+",4, 103.7944246950008,1.4058605112947549
+6,Tram Stop 1,transport,all,First Tram Stop. Last tram departs at 5.30pm.,"8:30am – 6:00pm
+",0,103.793793,1.404269
+7,Tram Stop 2,transport,all,Second Tram Stop. Last tram departs at 6.05pm,"8:30am – 6:00pm
+",4,103.794502,1.405867
+8,Tram Stop 3,transport,all,Third tram stop. Last tram departs at 6.10pm,"8:30am – 6:00pm
+",11,103.793617,1.403124
+9,Tram Stop 4,transport,all,Fourth tram stop. Last tram departs at 6.15pm.,"8:30am – 6:00pm
+",15,103.795850,1.401819
+10,Shaw Foundation Ampitheatre Shop,shop,all,Explore our wide range of memorabilia and bring one home to remind you of our spectacular animal presentations!,10:00am – 5:30pm,12,103.794933,1.404619
+11,Singapore Zoo Shop,shop,all,"From an assortment of plush toys to an array of nature-inspired mementos, discover unique finds and bring home a piece of wildlife!","9:00am – 7:00pm (Mon – Fri), 8:30am – 7:00pm (Sat, Sun & PH)",16,103.790934,1.404646
+12,Asian Small-clawed Otter,place,all,"Our otters’ two-tiered exhibit is spread across an outdoor upper deck and an indoor viewing gallery. The terrain of the top tier is rocky — they build their dens and nest chambers beneath the boulders. Here, you’ll see them doing their laps in the stream, engaged in a game of tag or playing ‘juggle-the-pebble’. To view their underwater acrobatics, follow the footpath to the lower exhibit. Zoom in on their tiny ears and nostrils — the otters can close them while they swim.","8:30am – 6:00pm
+",10,103.791977,1.404699
+13,Australasia,region,all,"While most of the world’s marsupials are found in Australia, marsupials also occur naturally in New Guinea, Indonesia and surrounding islands and the Americas. Besides the grey kangaroos and agile wallabies from Australia, this exhibit also showcases the tree kangaroos from Papua New Guinea.","8:30am – 6:00pm
+",6,103.793362,1.406006
+14,Hamadryas Baboon,animal,all,"Hardy monkeys with a strong build and a dog-like snout, both males and females of this baboon species sport greyish-brown fur. The males develop a long, silvery mantle-like mane when they reach puberty. They are twice as big as the females. Males and females look so dissimilar that they have been thought to be of different species.
 
 Pay these intelligent primates a visit at the Great Rift Valley exhibit. ","8:30am – 6:00pm
-",6
-15,Pygmy Hippo,(103.793005;1.405227),animal,all,"To strip a tree of its young shoots, wild pygmy hippos would start at a twig’s base and pull it through the mouth like a leafy kebab, shaking the head throughout. They’d also stand on their hind legs to feed on ferns growing within palms. In Liberia, they are known to be partial to a small, vine-like herb known as ‘Deewinkon’. Sweet potato leaves, okra, cassava and rice seedlings from farms at the forest edge are eaten. In Sierra Leone, they also take fish from traps.","8:30am – 6:00pm
-",14
-16,Malayan Tiger,(103.793025;1.404750),animal,all,"Tigers are at the apex of the food chain. These solitary hunters can handle animal prey up to a ton in weight. A healthy adult has the strength of 30 men!
+",6,103.793503,1.405566
+15,Pygmy Hippo,animal,all,"To strip a tree of its young shoots, wild pygmy hippos would start at a twig’s base and pull it through the mouth like a leafy kebab, shaking the head throughout. They’d also stand on their hind legs to feed on ferns growing within palms. In Liberia, they are known to be partial to a small, vine-like herb known as ‘Deewinkon’. Sweet potato leaves, okra, cassava and rice seedlings from farms at the forest edge are eaten. In Sierra Leone, they also take fish from traps.","8:30am – 6:00pm
+",14,103.793005,1.405227
+16,Malayan Tiger,animal,all,"Tigers are at the apex of the food chain. These solitary hunters can handle animal prey up to a ton in weight. A healthy adult has the strength of 30 men!
 
 Sadly, man has turned the tables on them. Mercilessly poached to satisfy the insatiable demand for tiger parts, wild tigers are being hunted to extinction. In 2012 alone, tiger parts from at least 22 tigers were seized in Kedah. NGOs continue to report snares and illegal camp sites, even in protected areas.","8:30am – 6:00pm
-",14
-17,Tree Kangaroo,(103.793279;1.405960),animal,all,"A long time ago, kangaroos evolved from tree-dwelling marsupials, developing adaptations for living on the ground. Tree kangaroos broke off from their land cousins by going back to arboreal life.
+",14,103.793025,1.404750
+17,Tree Kangaroo,animal,all,"A long time ago, kangaroos evolved from tree-dwelling marsupials, developing adaptations for living on the ground. Tree kangaroos broke off from their land cousins by going back to arboreal life.
 
 Their forelimbs grew muscular, their feet broadened and their claws curved to help them climb. They usually take little hopping steps and are unable to move more than two ""kangaroo hops"" at a go. However, they can leap up to 15m from tree to ground and can even walk backwards!","8:30am – 6:00pm
-",6
-18,Lion,(103.794293;1.401672),animal,all,"Lions live in social groups known as prides, made up of one or more mature males, several closely-related females and their young. Males roar and spray urine to advertise their territory to rivals. Females work in teams to take down prey, encircling the prey and blocking escape routes. The lionesses do most of the hunting but the dominant male gets the lion’s share. Only after he’s had his fill do the females have their turn. The young can only pick at the remains.","8:30am – 6:00pm
-",3
-19,Leopard,(103.794641;1.401690),animal,all,"In the face of changing land-use, decreasing prey and human persecution, the leopard has persisted where other large predators have not. Found wherever there is food and cover, it quenches its thirst with moisture from ingested prey. Not a fussy eater, it tolerates human presence well. Keen of sight and hearing, the leopard is comfortable both in water and on trees. Yet, it is not invulnerable. In parts of its range, populations have plummeted by 80% or more.","8:30am – 6:00pm
-",3
-20,Orangutan,(103.794060;1.403552),animal,all,"Orangutans are apes. Unlike monkeys, they do not have a tail. Found in the rainforests of Borneo and Sumatra, they have special feet with long toes for grasping branches, and long limbs that can stretch out far so that they can move easily through the treetops.","8:30am – 6:00pm
-",11
-21,Wild Africa,(103.793744;1.403115),region,all,"Africa boasts a diverse range of habitats, from tropical rainforests to harsh deserts. The animals found there have adapted accordingly in no end of amazing ways. As a result, the continent counts among its endemic species the tallest, the fastest and the largest creatures on land.","8:30am – 6:00pm
-",11
-22,African Penguin,(103.794126;1.403991),animal,all,"Like our fingerprints, each penguin's feather pattern is unique. The flecks across their white chests are a way to distinguish one penguin from another.
+",6,103.793279,1.405960
+18,Lion,animal,all,"Lions live in social groups known as prides, made up of one or more mature males, several closely-related females and their young. Males roar and spray urine to advertise their territory to rivals. Females work in teams to take down prey, encircling the prey and blocking escape routes. The lionesses do most of the hunting but the dominant male gets the lion’s share. Only after he’s had his fill do the females have their turn. The young can only pick at the remains.","8:30am – 6:00pm
+",3,103.794293,1.401672
+19,Leopard,animal,all,"In the face of changing land-use, decreasing prey and human persecution, the leopard has persisted where other large predators have not. Found wherever there is food and cover, it quenches its thirst with moisture from ingested prey. Not a fussy eater, it tolerates human presence well. Keen of sight and hearing, the leopard is comfortable both in water and on trees. Yet, it is not invulnerable. In parts of its range, populations have plummeted by 80% or more.","8:30am – 6:00pm
+",3,103.794641,1.401690
+20,Orangutan,animal,all,"Orangutans are apes. Unlike monkeys, they do not have a tail. Found in the rainforests of Borneo and Sumatra, they have special feet with long toes for grasping branches, and long limbs that can stretch out far so that they can move easily through the treetops.","8:30am – 6:00pm
+",11,103.794060,1.403552
+21,Wild Africa,region,all,"Africa boasts a diverse range of habitats, from tropical rainforests to harsh deserts. The animals found there have adapted accordingly in no end of amazing ways. As a result, the continent counts among its endemic species the tallest, the fastest and the largest creatures on land.","8:30am – 6:00pm
+",11,103.793744,1.403115
+22,African Penguin,animal,all,"Like our fingerprints, each penguin's feather pattern is unique. The flecks across their white chests are a way to distinguish one penguin from another.
 
 Each individual also has its own distinct calls. There are three different types of calls: a bray to attract a mate; the yell to defend their territory; and the haw, used by mates to locate each other.
 
 You can tell if a penguin is angry by its body language too — chest puffed, wings back, beak forward and head bobbing.","8:30am – 6:00pm
-",0
-23,Elephants of Asia,(103.795552;1.405293),animal,all,"Built on the banks of the serene Seletar Reservoir, this exhibit is home to our herd of five female elephants. Nestled in this quiet nook of the Zoo, you can enjoy panoramic views of the reservoir while watching our elephants at play.
+",0,103.794126,1.403991
+23,Elephants of Asia,animal,all,"Built on the banks of the serene Seletar Reservoir, this exhibit is home to our herd of five female elephants. Nestled in this quiet nook of the Zoo, you can enjoy panoramic views of the reservoir while watching our elephants at play.
 
 Play is not only fun but helps our elephants develop skill and strength. Enrichment devices like play logs and rubber balls challenge our elephants physically and stimulate them mentally. Gambir especially enjoys a round with a rubber ball.","8:30am – 6:00pm
-",13
-24,Tortoise Shell-ter,(103.794978;1.403190),animal,all,"The seven rock-walled enclosures that make up Tortoise Shell-ter were designed to provide the highest standards of animal welfare for our chelonian collection. To recreate the animals’ natural habitats, much thought went into planning and sourcing for the specific plants needed. Each climate-controlled micro-habitat comes replete with special lighting, heating with temperature gradient and humidity control, creating the ideal home away from home for their inhabitants.","8:30am – 6:00pm
-",17
-25,Primate Kingdom,(103.794744;1.405259),region,all,"So why is this exhibit called Primate Kingdom? Each primate species is designated its own ‘island’. Add to that a landscaping of trees, a surrounding moat and you get ‘castles’ in which our furry rulers dwell. Here, our primates need not be king of the jungle to rule their own kingdom!","8:30am – 6:00pm
-",12
-26,Ring-tailed Lemur,(103.795256;1.402397),animal,all,"In the wild, ring-tails live in matriarchal social groups of up to 30 individuals. Females stay with their troop their whole lives. Hierarchy is typically established in their youth through play-fighting. Males are completely dominated by the females — even the lowliest female is superior to the highest-ranked male.","8:30am – 6:00pm
-",15
-27,Grey Kangaroo,(103.793209;1.406049),animal,all,"One of the largest kangaroo species, the eastern grey kangaroo swims well and evades predators, like dingoes, by diving. When cornered, it may turn the tables to hold the predators underwater and drown them.","8:30am – 6:00pm
-",6
-28,Treetop Trail,(103.791687;1.405110),region,all,"Replicating a rainforest habitat, Treetops Trail showcases animals at different layers of a forest.","8:30am – 6:00pm
-",10
-29,Cheetah,(103.794149;1.402494),animal,all,"A supple spine, long limbs, protruding claws and ridges on its footpads aid the cheetah in achieving a top speed of up to 115km/h. It can keep this up for all of 20 seconds and no more than 400m, so it approaches to within 30m of its quarry before its final attack. When it gets within striking distance, it trips its prey over with a sideways stroke of its forepaw or brings it down from the rear using its dewclaw (extra sharp claw on the inside of the foreleg).","8:30am – 6:00pm
-",5
-30,Zebra,(103.793875;1.401659),animal,all,"The largest of all zebras, the Grevy's zebra is named after former President of France, Jules Grévy, who received a zebra as a gift from the King of Abyssinia (present-day Ethiopia) in 1882. A French zoologist discovered it was distinct species in itself and named it after President Grevy.
+",13,103.795552,1.405293
+24,Tortoise Shell-ter,animal,all,"The seven rock-walled enclosures that make up Tortoise Shell-ter were designed to provide the highest standards of animal welfare for our chelonian collection. To recreate the animals’ natural habitats, much thought went into planning and sourcing for the specific plants needed. Each climate-controlled micro-habitat comes replete with special lighting, heating with temperature gradient and humidity control, creating the ideal home away from home for their inhabitants.","8:30am – 6:00pm
+",17,103.794978,1.403190
+25,Primate Kingdom,region,all,"So why is this exhibit called Primate Kingdom? Each primate species is designated its own ‘island’. Add to that a landscaping of trees, a surrounding moat and you get ‘castles’ in which our furry rulers dwell. Here, our primates need not be king of the jungle to rule their own kingdom!","8:30am – 6:00pm
+",12,103.794744,1.405259
+26,Ring-tailed Lemur,animal,all,"In the wild, ring-tails live in matriarchal social groups of up to 30 individuals. Females stay with their troop their whole lives. Hierarchy is typically established in their youth through play-fighting. Males are completely dominated by the females — even the lowliest female is superior to the highest-ranked male.","8:30am – 6:00pm
+",15,103.795256,1.402397
+27,Grey Kangaroo,animal,all,"One of the largest kangaroo species, the eastern grey kangaroo swims well and evades predators, like dingoes, by diving. When cornered, it may turn the tables to hold the predators underwater and drown them.","8:30am – 6:00pm
+",6,103.793209,1.406049
+28,Treetop Trail,region,all,"Replicating a rainforest habitat, Treetops Trail showcases animals at different layers of a forest.","8:30am – 6:00pm
+",10,103.791687,1.405110
+29,Cheetah,animal,all,"A supple spine, long limbs, protruding claws and ridges on its footpads aid the cheetah in achieving a top speed of up to 115km/h. It can keep this up for all of 20 seconds and no more than 400m, so it approaches to within 30m of its quarry before its final attack. When it gets within striking distance, it trips its prey over with a sideways stroke of its forepaw or brings it down from the rear using its dewclaw (extra sharp claw on the inside of the foreleg).","8:30am – 6:00pm
+",5,103.794149,1.402494
+30,Zebra,animal,all,"The largest of all zebras, the Grevy's zebra is named after former President of France, Jules Grévy, who received a zebra as a gift from the King of Abyssinia (present-day Ethiopia) in 1882. A French zoologist discovered it was distinct species in itself and named it after President Grevy.
 
 Stallions of this species mark and maintain territories using middens (dung piles). The Grevy's zebra is distinguished from other zebras by its round ears, white underbelly and the bullseye stripe pattern on its rump.","8:30am – 6:00pm
-",3
-31,Estuarine Crocodile,(103.795389;1.402756),animal,all,"With only the nostrils, eyes and part of the back exposed, it’s hard to spot these crocs when they’re on the hunt. Once in range of their prey, they lunge out of the water and slam their jaws shut on it. The force of this alone usually kills its prey instantaneously - these crocs have the strongest bite force of all animals. If the prey is too big, the crocs grips it with their jaws and tear chunks off by spinning and twisting - a behaviour also known as the ‘death roll’.","8:30am – 6:00pm
-",15
-32,Chimpanzee,(103.796081;1.402750),animal,all,"Our chimp exhibit models a hillside forest clearing and comes equipped with a jungle ‘gymnasium’ in the form of a multi-tiered timber platform structure. Fallen tree trunks and overhanging forest vines are purposefully placed around the area to enhance this primate ‘playground’.
+",3,103.793875,1.401659
+31,Estuarine Crocodile,animal,all,"With only the nostrils, eyes and part of the back exposed, it’s hard to spot these crocs when they’re on the hunt. Once in range of their prey, they lunge out of the water and slam their jaws shut on it. The force of this alone usually kills its prey instantaneously - these crocs have the strongest bite force of all animals. If the prey is too big, the crocs grips it with their jaws and tear chunks off by spinning and twisting - a behaviour also known as the ‘death roll’.","8:30am – 6:00pm
+",15,103.795389,1.402756
+32,Chimpanzee,animal,all,"Our chimp exhibit models a hillside forest clearing and comes equipped with a jungle ‘gymnasium’ in the form of a multi-tiered timber platform structure. Fallen tree trunks and overhanging forest vines are purposefully placed around the area to enhance this primate ‘playground’.
 
 Given the high intelligence of chimpanzees (they possess over 98% of the genetic blueprint of humans), we strive to provide ample opportunities for our chimps to exercise and enjoy themselves.","8:30am – 6:00pm
-",1
-33,KFC (KidzWorld),(103.796846;1.403474),food,all,"Everyone loves KFC’s fried chicken, which is why we have two outlets at the park.","10:30am – 5:30pm (Mon – Fri), 10:00am – 6:00pm (Sat, Sun & PH)",7
-34,Ah Meng Bistro,(103.793518;1.403871),food,all,"Aside from its fine selection of gourmet sandwiches, pastries and desserts, Ah Meng Bistro serves wildlife-friendly Owa Coffee. Every cup comes with Conservation Included!","9:00am – 5:00pm (Mon – Fri), 10:30am – 5:30pm (Sat, Sun & PH)",0
-35,KidzWorld Café,(103.796273;1.403341),food,all,Take a respite at this forest-inspired café featuring a playful ambience and a range of delightful bites. ,"10:30am – 5:30pm (Mon – Fri), 10:00am – 6:00pm (Sat, Sun & PH)",1
-36,Breakfast in the Wild, (103.79358;1.40416),food,all,Start your day well with this iconic dining experience designed to inspire a love for wildlife and delight your senses! Savour a hearty meal of local and international flavours in our charming rainforest zoo and meet our wildlife ambassadors and their keepers.,9:00am – 10:30am,0
-37,Shaw Foundation Ampitheatre ,(103.794933;1.404619),place,all,"Presentation Venue for ""Splash Safari"" and ""Into The Wild"".",10:30am & 5:00pm (Splash Safari);12:00pm & 2:30pm (Into The Wild),12
-38,Regal Horned Lizard,(103.794837;1.402853),animal,all,"This lizard wears a ‘crown’ of thorny horns made up of four large horns at the back of its head and six smaller ones on the temples. Another distinguishing characteristic is the row of keeled scales on its abdomen.
+",1,103.796081,1.402750
+33,KFC (KidzWorld),food,all,"Everyone loves KFC’s fried chicken, which is why we have two outlets at the park.","10:30am – 5:30pm (Mon – Fri), 10:00am – 6:00pm (Sat, Sun & PH)",7,103.796846,1.403474
+34,Ah Meng Bistro,food,all,"Aside from its fine selection of gourmet sandwiches, pastries and desserts, Ah Meng Bistro serves wildlife-friendly Owa Coffee. Every cup comes with Conservation Included!","9:00am – 5:00pm (Mon – Fri), 10:30am – 5:30pm (Sat, Sun & PH)",0,103.793518,1.403871
+35,KidzWorld Café,food,all,Take a respite at this forest-inspired café featuring a playful ambience and a range of delightful bites. ,"10:30am – 5:30pm (Mon – Fri), 10:00am – 6:00pm (Sat, Sun & PH)",1,103.796273,1.403341
+36,Breakfast in the Wild,food,all,Start your day well with this iconic dining experience designed to inspire a love for wildlife and delight your senses! Savour a hearty meal of local and international flavours in our charming rainforest zoo and meet our wildlife ambassadors and their keepers.,9:00am – 10:30am,0, 103.79358,1.40416
+37,Shaw Foundation Ampitheatre ,place,all,"Presentation Venue for ""Splash Safari"" and ""Into The Wild"".",10:30am & 5:00pm (Splash Safari);12:00pm & 2:30pm (Into The Wild),12,103.794933,1.404619
+38,Regal Horned Lizard,animal,all,"This lizard wears a ‘crown’ of thorny horns made up of four large horns at the back of its head and six smaller ones on the temples. Another distinguishing characteristic is the row of keeled scales on its abdomen.
 
 When threatened, the lizard may try to divert its enemy’s attention with head-bobbing, push-ups, and nodding. If these fail, it rolls over, displaying its pale belly and splaying its short, white legs out stiffly. Some believe it’s only playing dead. Others think this action focuses a predator’s attention on the lizard’s spiky fringes — which look rather like sharp, serrated teeth — and advertises its unappetising spininess.","8:30am – 6:00pm
-",17
-39,Gaboon Viper,(103.794735;1.402530),animal,all,"Like other vipers, the Gaboon viper has a thick body, keeled scales and triangular head. With hinged fangs at length of up to 5cm at the front of the mouth, these vipers have the longest fangs of any venomous snake. Weighing more than 20 kg and growing to lengths of more than 1.8 m, Gaboon vipers are also the largest vipers in Africa. The biggest individuals have heads that measure nearly 15 cm across at their widest point. Their symmetrical and striking pattern helps them blend seamlessly into the leaf litter on the forest floor. Its broad, whitish-cream head imitates a fallen leaf perfectly, right down to the dark central vein.","8:30am – 6:00pm
-",5
-40,Colobus Monkey,(103.794956;1.405267),animal,all,"Colobus monkeys are some of the most arboreal primates, capable of leaping up to 15 metres and rarely descending to the ground. ","8:30am – 6:00pm
-",13
-41,African Painted Dog,(103.793948;1.402944),animal,all,"Named for their colourful coat, the African painted dogs sport mottled patches of red, black, brown, white, and yellow fur all over their bodies. Each dog has its own unique ‘painted’ pattern.","8:30am – 6:00pm
-",11
-42,Aldabra Giant Tortoise,(103.794663;1.402932),animal,all,"This species is found naturally on three of the islets of the Aldabra Atoll, a small group of coral islands. Over 90% of the population is found on the largest islet of Grande-Terre and the tortoises here are highly sociable compared to those on the other islets.
+",17,103.794837,1.402853
+39,Gaboon Viper,animal,all,"Like other vipers, the Gaboon viper has a thick body, keeled scales and triangular head. With hinged fangs at length of up to 5cm at the front of the mouth, these vipers have the longest fangs of any venomous snake. Weighing more than 20 kg and growing to lengths of more than 1.8 m, Gaboon vipers are also the largest vipers in Africa. The biggest individuals have heads that measure nearly 15 cm across at their widest point. Their symmetrical and striking pattern helps them blend seamlessly into the leaf litter on the forest floor. Its broad, whitish-cream head imitates a fallen leaf perfectly, right down to the dark central vein.","8:30am – 6:00pm
+",5,103.794735,1.402530
+40,Colobus Monkey,animal,all,"Colobus monkeys are some of the most arboreal primates, capable of leaping up to 15 metres and rarely descending to the ground. ","8:30am – 6:00pm
+",13,103.794956,1.405267
+41,African Painted Dog,animal,all,"Named for their colourful coat, the African painted dogs sport mottled patches of red, black, brown, white, and yellow fur all over their bodies. Each dog has its own unique ‘painted’ pattern.","8:30am – 6:00pm
+",11,103.793948,1.402944
+42,Aldabra Giant Tortoise,animal,all,"This species is found naturally on three of the islets of the Aldabra Atoll, a small group of coral islands. Over 90% of the population is found on the largest islet of Grande-Terre and the tortoises here are highly sociable compared to those on the other islets.
 
 Water scarcity and inadequate food on Grande-Terre have inhibited the growth of individual tortoises. They should be ready to mate at 20 to 30 years of age but many do not reach sexual maturity.
 ","8:30am – 6:00pm
-",17
-43,Giraffe,(103.794206;1.401232),animal,all,"Two young Rothschild’s giraffes Adhil and Balaji arrived at Singapore Zoo in May 2021. Hailing from India’s Mysuru Zoo, they are now part of a globally managed breeding programme under the EAZA Ex-situ Programme.","8:30am – 6:00pm
-",3
-44,Rabbit,(103.796949;1.403243),animal,all,"Long movable ears and large eyes placed high on the head, providing near-360° vision, help rabbits detect predators from afar. Powerful hind-limbs help them make a quick getaway. The 80 or so breeds of domestic rabbits come in all colours and sizes. Well-loved for their gentle temperament, they make popular pets. They are social creatures that typically enjoy the company of other rabbits and even other pet animals like cats. Rabbits communicate using scent cues and touch. Though generally quiet, they may emit loud screams when alarmed or injured. They drum their hind limbs on the ground as a warning when they feel threatened.","8:30am – 6:00pm
-",7
-45,Great Rift Valley of Ehtiopia,(103.793371;1.405580),region,all,"Together with the nimble Nubian ibexes, the Hamadryas baboons rule the rugged rockscape. Explore further to meet the meerkats, black-backed jackals and rock hyraxes. Also stop by the rustic dwelling huts recreating life in the Konso and Amharic villages. ","8:30am – 6:00pm
-",6
-46,Giant Panda Forest,(103.792773;1.403603),region,all,"The largest panda exhibit built in Southeast Asia, this exhibit spans 1,500m2. Simulating the bears’ natural habitat with lush plantings, boulders and water features, the state-of-the-art biodome is also temperature- and humidity-controlled to ensure the pandas’ comfort.","8:30am – 6:00pm
-",8
-47,Giant Panda,(103.792466;1.403763),animal,all,"After few years of trying, our panda pair welcomed their first-born on the morning of 14 August 2021. The little one weighed about 200g.
+",17,103.794663,1.402932
+43,Giraffe,animal,all,"Two young Rothschild’s giraffes Adhil and Balaji arrived at Singapore Zoo in May 2021. Hailing from India’s Mysuru Zoo, they are now part of a globally managed breeding programme under the EAZA Ex-situ Programme.","8:30am – 6:00pm
+",3,103.794206,1.401232
+44,Rabbit,animal,all,"Long movable ears and large eyes placed high on the head, providing near-360° vision, help rabbits detect predators from afar. Powerful hind-limbs help them make a quick getaway. The 80 or so breeds of domestic rabbits come in all colours and sizes. Well-loved for their gentle temperament, they make popular pets. They are social creatures that typically enjoy the company of other rabbits and even other pet animals like cats. Rabbits communicate using scent cues and touch. Though generally quiet, they may emit loud screams when alarmed or injured. They drum their hind limbs on the ground as a warning when they feel threatened.","8:30am – 6:00pm
+",7,103.796949,1.403243
+45,Great Rift Valley of Ehtiopia,region,all,"Together with the nimble Nubian ibexes, the Hamadryas baboons rule the rugged rockscape. Explore further to meet the meerkats, black-backed jackals and rock hyraxes. Also stop by the rustic dwelling huts recreating life in the Konso and Amharic villages. ","8:30am – 6:00pm
+",6,103.793371,1.405580
+46,Giant Panda Forest,region,all,"The largest panda exhibit built in Southeast Asia, this exhibit spans 1,500m2. Simulating the bears’ natural habitat with lush plantings, boulders and water features, the state-of-the-art biodome is also temperature- and humidity-controlled to ensure the pandas’ comfort.","8:30am – 6:00pm
+",8,103.792773,1.403603
+47,Giant Panda,animal,all,"After few years of trying, our panda pair welcomed their first-born on the morning of 14 August 2021. The little one weighed about 200g.
 
 Conceived via a plan which involved natural mating techniques and assisted reproductive science based on advice from the China Conservation and Research Centre for Giant Panda, our newest little one marks an important milestone in the care of threatened giant pandas in Singapore.","8:30am – 6:00pm
-",8
-48,Red Panda,(103.792280;1.403788),animal,all,"Like the giant panda, the red panda has an extra digit on each paw that works as a ‘thumb’ to help grasp bamboo. This ‘thumb’ is actually a modified wrist bone covered by a fleshy pad.
+",8,103.792466,1.403763
+48,Red Panda,animal,all,"Like the giant panda, the red panda has an extra digit on each paw that works as a ‘thumb’ to help grasp bamboo. This ‘thumb’ is actually a modified wrist bone covered by a fleshy pad.
 
 Red pandas are solitary, just like giant pandas. Similarly, females are only fertile for a couple of days a year and males seek them out only around this time. Despite the difference in size in the adults, newborn red pandas weigh 100g, as heavy as panda cubs at birth.","8:30am – 6:00pm
-",8
-49,Mekong River,(103.792038;1.404017),region,all,"The Mekong Basin houses over 850 species of fish, making it second only to the Amazon. More species continue to be discovered. The Mekong is also home to some of the world’s largest freshwater animal species. No other river supports as many huge fish species. At this massive exhibit, which is the size of four double decker buses, you can get up-close to river giants like the Mekong giant catfish, giant freshwater stingray and Siamese carp.","8:30am – 6:00pm
-",8
-50,Nile River,(103.791302;1.403817),region,all,"Springing from East Africa’s Great Lakes and emptying into the Mediterranean Sea, the Nile has been bringing life and wealth into Egypt since the Stone Age. You’ll be transported back to ancient Egypt at this exhibit, which plays host to creatures as spectacular as they’re savage.","8:30am – 6:00pm
-",2
-51,River Gems,(103.790664;1.403922),region,all,"Although freshwater habitats make up less than one percent of the Earth’s surface area, they support 45% of all fish species. River Gems offers a glimpse of the amazing diversity of plant and animal life that thrive in rivers and along their banks.","8:30am – 6:00pm
-",9
-52,Mama Panda Kitchen,(103.792772;1.403465),food,all,"Dig in with your chopsticks to a feast of Chinese cuisine. With signature dishes such as panda pau, wok rice, noodles and more. Kids' Meals are available here too.
+",8,103.792280,1.403788
+49,Mekong River,region,all,"The Mekong Basin houses over 850 species of fish, making it second only to the Amazon. More species continue to be discovered. The Mekong is also home to some of the world’s largest freshwater animal species. No other river supports as many huge fish species. At this massive exhibit, which is the size of four double decker buses, you can get up-close to river giants like the Mekong giant catfish, giant freshwater stingray and Siamese carp.","8:30am – 6:00pm
+",8,103.792038,1.404017
+50,Nile River,region,all,"Springing from East Africa’s Great Lakes and emptying into the Mediterranean Sea, the Nile has been bringing life and wealth into Egypt since the Stone Age. You’ll be transported back to ancient Egypt at this exhibit, which plays host to creatures as spectacular as they’re savage.","8:30am – 6:00pm
+",2,103.791302,1.403817
+51,River Gems,region,all,"Although freshwater habitats make up less than one percent of the Earth’s surface area, they support 45% of all fish species. River Gems offers a glimpse of the amazing diversity of plant and animal life that thrive in rivers and along their banks.","8:30am – 6:00pm
+",9,103.790664,1.403922
+52,Mama Panda Kitchen,food,all,"Dig in with your chopsticks to a feast of Chinese cuisine. With signature dishes such as panda pau, wok rice, noodles and more. Kids' Meals are available here too.
 
-Mama Panda Kitchen promises to be a fun dining experience.",10:30am – 6:30pm,8
-53,Toilet / Water Refill Point,(103.793454;1.404376),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",0
-54,Toilet / Water Refill Point,(103.792825;1.403789),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",8
-55,Toilet / Water Refill Point,(103.791019;1.404403),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",16
-57,Starbucks,(103.790421;1.403658),food,all,"Besides being passionate purveyors of coffee, Starbucks offers a selection of premium teas, fine pastries and other delectable treats to please the taste buds.
-Drop by for a cuppa, to chat, meet up or connect with friends and loved ones.","9:30am – 6:30pm (Sun – Thu), 9:30am – 7:00pm (Fri, Sat, Eve of PH & PH)",9
-58,Toilet / Water Refill Point,(103.794657;1.402435),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",5
-59,Toilet / Water Refill Point,(103.796758;1.403553),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",7
-60,Toilet / Water Refill Point,(103.797424;1.403402),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",7
-61,Toilet / Water Refill Point,(103.794202;1.405319),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",4
-62,Toilet / Water Refill Point,(103.794438;1.405990),facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
-",4
-63,Nursing Room,(103.794671;1.402400),facility,"parents, baby",Nursing room,"8:30am – 6:00pm
-",5
-64,Nursing Room,(103.790287;1.404060),facility,"parents, baby",Nursing room,"8:30am – 6:00pm
-",9
-65,KidzWorld Shop,(103.796539;1.403264),shop,all,"Bring home a memento or two from the KidzWorld Shop. Choose from a range of sustainable products and look forward to exclusive Ranger Buddies merchandise.
-",9:30am – 6:00pm,7
-66,Singapore Zoo Photo Shop,(103.790459;1.404014),shop,all,Complete your Singapore Zoo journey with a customized photo memento!,9:00am – 6:30pm,9
+Mama Panda Kitchen promises to be a fun dining experience.",10:30am – 6:30pm,8,103.792772,1.403465
+53,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",0,103.793454,1.404376
+54,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",8,103.792825,1.403789
+55,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",16,103.791019,1.404403
+57,Starbucks,food,all,"Besides being passionate purveyors of coffee, Starbucks offers a selection of premium teas, fine pastries and other delectable treats to please the taste buds.
+Drop by for a cuppa, to chat, meet up or connect with friends and loved ones.","9:30am – 6:30pm (Sun – Thu), 9:30am – 7:00pm (Fri, Sat, Eve of PH & PH)",9,103.790421,1.403658
+58,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",5,103.794657,1.402435
+59,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",7,103.796758,1.403553
+60,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",7,103.797424,1.403402
+61,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",4,103.794202,1.405319
+62,Toilet / Water Refill Point,facility,all,Toilet and place to get drinking water,"8:30am – 6:00pm
+",4,103.794438,1.405990
+63,Nursing Room,facility,"parents, baby",Nursing room,"8:30am – 6:00pm
+",5,103.794671,1.402400
+64,Nursing Room,facility,"parents, baby",Nursing room,"8:30am – 6:00pm
+",9,103.790287,1.404060
+65,KidzWorld Shop,shop,all,"Bring home a memento or two from the KidzWorld Shop. Choose from a range of sustainable products and look forward to exclusive Ranger Buddies merchandise.
+",9:30am – 6:00pm,7,103.796539,1.403264
+66,Singapore Zoo Photo Shop,shop,all,Complete your Singapore Zoo journey with a customized photo memento!,9:00am – 6:30pm,9,103.790459,1.404014
