@@ -40,7 +40,6 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 place_info_df = pd.read_csv('zoo-info.csv')
 place_info_df.columns = place_info_df.columns.str.strip()
 place_info_df['name'] = place_info_df['name'].str.strip()
-place_info_df['coordinate'] = place_info_df['coordinate'].str.strip().str.replace('(', '').str.replace(')', '')
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
 distance_matrix = pd.read_csv("./graph/distance_matrix.csv")
 # remove first column which contains names of locations.
@@ -141,8 +140,8 @@ def get_coordinates():
         # Find the row in the DataFrame that matches the place name
         row = place_info_df[place_info_df['name'] == place]
         if not row.empty:
-            coord = row['coordinate'].values[0]
-            lng, lat = map(float, coord.split(';'))
+            lng = row["longitude"]
+            lat = row["latitude"]
             coordinates.append({'lng': lng, 'lat': lat})
     return jsonify(coordinates)
 
