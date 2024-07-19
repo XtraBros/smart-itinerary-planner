@@ -1,0 +1,44 @@
+body {
+    display: flex;
+    font-family: Arial, sans-serif;
+}
+
+.sidebar {
+    width: 200px;
+    background-color: #f4f4f4;
+    padding: 10px;
+    height: 100vh;
+}
+
+.sidebar .tab-button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.sidebar .tab-button:hover {
+    background-color: #ddd;
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+#poiTable {
+    width: 100%;
+    border-collapse: collapse;
+}

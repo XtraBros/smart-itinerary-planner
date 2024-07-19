@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <button class="tab-button" onclick="openTab('config')">Config</button>
+        <button class="tab-button" onclick="openTab('poi')">Manage POI Data</button>
+    </div>
+    <div class="content">
+        <div id="config" class="tab-content active">
+            <h1>Config Dashboard</h1>
+            <form id="configForm">
+                <!-- Config fields will be dynamically inserted here -->
+            </form>
+            <button type="button" id="updateButton">Update Config</button>
+        </div>
+        <div id="poi" class="tab-content">
+            <h1>Manage POI Data</h1>
+            <button type="button" id="loadPOIButton">Load POI Data</button>
+            <div id="poiTable"></div>
+            <button type="button" id="savePOIButton">Save POI Data</button>
+            <br><br>
+            <input type="file" id="uploadCSV" accept=".csv">
+            <button type="button" id="uploadCSVButton">Upload CSV</button>
+        </div>
+    </div>
+</body>
+</html>
