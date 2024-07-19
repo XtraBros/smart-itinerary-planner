@@ -11,11 +11,18 @@
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </head>
 <body>
-    <div class="sidebar">
-        <button class="tab-button" onclick="openTab('config')">Config</button>
-        <button class="tab-button" onclick="openTab('poi')">Manage POI Data</button>
+    <div class="hamburger-menu" id="hamburgerMenu">
+        &#9776; <!-- This is the hamburger icon -->
     </div>
-    <div class="content">
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+            <button class="closebtn" id="closeSidebar">&times;</button>
+            <a href="javascript:void(0)" onclick="openTab('config')">Config</a>
+            <a href="javascript:void(0)" onclick="openTab('poi')">Manage POI Data</a>
+        </div>
+    </div>
+    <div class="main-content" id="mainContent">
         <div id="config" class="tab-content active">
             <h1>Config Dashboard</h1>
             <form id="configForm">

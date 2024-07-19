@@ -1,33 +1,79 @@
+/* styles.css */
 body {
-    display: flex;
     font-family: Arial, sans-serif;
+    transition: margin-left 0.5s; /* Smooth transition for content movement */
+    margin: 0; /* Remove default margin */
+}
+
+.hamburger-menu {
+    font-size: 30px;
+    cursor: pointer;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+    color: #111; /* Color for visibility */
+    background-color: #fff; /* Background for visibility */
+    padding: 10px; /* Padding for a larger clickable area */
+    border-radius: 5px; /* Rounded corners */
 }
 
 .sidebar {
-    width: 200px;
-    background-color: #f4f4f4;
-    padding: 10px;
-    height: 100vh;
+    height: 100%;
+    width: 250px; /* Sidebar width */
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    left: -250px; /* Initially hide the sidebar off-screen */
+    background-color: #111;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
 }
 
-.sidebar .tab-button {
+.sidebar.show {
+    left: 0; /* Move sidebar into view */
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.sidebar a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 25px;
+    color: #818181;
     display: block;
-    width: 100%;
-    padding: 10px;
-    border: none;
+    transition: 0.3s;
+}
+
+.sidebar a:hover {
+    color: #f1f1f1;
+}
+
+.sidebar .closebtn {
+    position: absolute;
+    top: 10px;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
     background: none;
-    text-align: left;
+    border: none;
+    color: #818181;
     cursor: pointer;
-    transition: background-color 0.3s;
 }
 
-.sidebar .tab-button:hover {
-    background-color: #ddd;
+.main-content {
+    transition: margin-left 0.5s; /* Smooth transition for content movement */
+    padding: 16px;
+    margin-left: 50px; /* Default margin-left */
 }
 
-.content {
-    flex: 1;
-    padding: 20px;
+.main-content.shift-right {
+    margin-left: 250px; /* Align with the sidebar */
 }
 
 .tab-content {
@@ -36,9 +82,4 @@ body {
 
 .tab-content.active {
     display: block;
-}
-
-#poiTable {
-    width: 100%;
-    border-collapse: collapse;
 }

@@ -115,5 +115,15 @@ $(document).ready(function() {
             alert('Please select a CSV file to upload');
         }
     });
-    
+   // Hamburger menu functionality
+   $('#hamburgerMenu').on('click', function() {
+        $('.sidebar').addClass('show');
+        document.getElementById("sidebar").style.width = "250px";
+        document.getElementById("mainContent").classList.add('shift-right');
+    });
+
+    $('#closeSidebar').on('click', function() {
+        $('.sidebar').removeClass('show');
+        document.getElementById("mainContent").classList.remove('shift-right');
+    });
 });
