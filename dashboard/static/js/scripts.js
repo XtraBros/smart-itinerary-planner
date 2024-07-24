@@ -32,7 +32,6 @@ $(document).ready(function() {
             }
         });
     });
-
     // Open tabs
     window.openTab = function(tabName) {
         $('.tab-content').removeClass('active');
@@ -52,15 +51,20 @@ $(document).ready(function() {
                 hot.destroy();
             }
     
-            // Extract column headers and column configuration from the data
-            const colHeaders = Object.keys(data[0]);
+            // Drop the 'id' column from data
+            const filteredData = data.map(row => {
+                const { id, ...rest } = row;
+                return rest;
+            });
+
+            // Extract column headers and column configuration from the filtered data
+            const colHeaders = Object.keys(filteredData[0]);
             const columns = colHeaders.map(header => ({
-                data: header,
-                readOnly: header === 'id'  // Assuming 'id' should be read-only
+                data: header
             }));
     
             hot = new Handsontable(container, {
-                data: data,
+                data: filteredData,
                 colHeaders: colHeaders,
                 columns: columns,
                 rowHeaders: true,
@@ -68,25 +72,87 @@ $(document).ready(function() {
                 minSpareRows: 1,
                 licenseKey: 'non-commercial-and-evaluation' // For non-commercial use
             });
+
+            // Add afterChange hook to edit POI
+            hot.addHook('afterChange', function(changes, source) {
+                if (source === 'loadData') {
+                    return; // Don't send request when loading data
+                }
+                changes.forEach(function(change) {
+                    const [row, prop, oldValue, newValue] = change;
+                    if (oldValue !== newValue) {
+                        const rowData = hot.getDataAtRow(row);
+                        const poi = {
+                            id: data[row].id,
+                            ...rowData.reduce((obj, value, index) => {
+                                obj[colHeaders[index]] = value;
+                                return obj;
+                            }, {})
+                        };
+                        $.ajax({
+                            url: '/edit-poi',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(poi),
+                            success: function(response) {
+                                console.log(response.message);
+                            },
+                            error: function(error) {
+                                console.error(error);
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Add afterCreateRow hook to add POI
+            hot.addHook('afterCreateRow', function(index, amount) {
+                for (let i = 0; i < amount; i++) {
+                    const rowData = hot.getDataAtRow(index + i);
+                    const poi = {
+                        name: rowData[1],
+                        longitude: rowData[2],
+                        latitude: rowData[3],
+                        description: rowData[4]
+                    };
+                    $.ajax({
+                        url: '/add-poi',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(poi),
+                        success: function(response) {
+                            console.log(response.message);
+                            loadPOIData(); // Reload the POI data
+                        },
+                        error: function(error) {
+                            console.error(error);
+                        }
+                    });
+                }
+            });
+
+            // Add afterRemoveRow hook to delete POI
+            hot.addHook('afterRemoveRow', function(index, amount) {
+                for (let i = 0; i < amount; i++) {
+                    const rowData = hot.getDataAtRow(index + i);
+                    const poiId = data[index + i].id;
+                    $.ajax({
+                        url: '/delete-poi',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({id: poiId}),
+                        success: function(response) {
+                            console.log(response.message);
+                        },
+                        error: function(error) {
+                            console.error(error);
+                        }
+                    });
+                }
+            });
         }, 'json');
     }
-    
-    // Save POI Data
-    $('#savePOIButton').on('click', function() {
-        const data = hot.getData();
-        $.ajax({
-            url: '/save-poi',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: function(response) {
-                alert(response.message);
-            },
-            error: function(error) {
-                alert('Error saving POI data');
-            }
-        });
-    });
+
     // Handle CSV file upload
     $('#uploadCSVButton').on('click', function() {
         const fileInput = document.getElementById('uploadCSV');
@@ -115,8 +181,9 @@ $(document).ready(function() {
             alert('Please select a CSV file to upload');
         }
     });
-   // Hamburger menu functionality
-   $('#hamburgerMenu').on('click', function() {
+
+    // Hamburger menu functionality
+    $('#hamburgerMenu').on('click', function() {
         $('.sidebar').addClass('show');
         document.getElementById("sidebar").style.width = "250px";
         document.getElementById("mainContent").classList.add('shift-right');

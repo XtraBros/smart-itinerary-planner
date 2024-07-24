@@ -83,3 +83,11 @@ body {
 .tab-content.active {
     display: block;
 }
+
+/* Styles to contain Handsontable within a smaller window */
+#poiTable {
+    width: 100%; /* Adjust width as needed */
+    height: 400px; /* Adjust height as needed */
+    overflow: auto; /* Add scrollbars if content overflows */
+    border: 1px solid #ccc; /* Optional: Adds a border around the table */
+}
