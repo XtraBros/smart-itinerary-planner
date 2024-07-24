@@ -17,34 +17,34 @@ app = Flask(__name__)
 
 CONFIG_FILE = 'config.json'
 
-def load_config():
-    with open(CONFIG_FILE, 'r') as file:
-        return json.load(file)
-
-config = load_config()
+with open(CONFIG_FILE, 'r') as file:
+    config = json.load(file)
 
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
 
 ######################### MONGO #########################
 # Connect to MongoDB
-mongo_client = MongoClient(config['MONGO_CLIENT'], 27017)
+mongo_client = MongoClient(config['MONGO_CLUSTER_URI'])
 db = mongo_client[config['MONGO_DB_NAME']]
-collection = db[config['MONGO_FILE_COLLECTION']]
+poi_db = db[config['POI_DB_NAME']]
+dist_mat = db[config["DISTANCE_MATRIX"]]
+cluster_loc = db[config['CLUSTER_LOCATIONS']]
+collection = db[config['RAG_DB_NAME']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
 # Load the embedding model for semantic search
 model = SentenceTransformer('all-MiniLM-L6-v2')
 ######################### MONGO #########################
 
 ######################### CSV DATA #########################
-place_info_df = pd.read_csv('zoo-info.csv')
+place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
 place_info_df.columns = place_info_df.columns.str.strip()
 place_info_df['name'] = place_info_df['name'].str.strip()
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
-distance_matrix = pd.read_csv("./graph/distance_matrix.csv")
+distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
 # remove first column which contains names of locations.
 distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
-cluster_locations = pd.read_csv('./cluster-locations.csv')
+cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 ######################### CSV DATA #########################
 
 
@@ -80,7 +80,7 @@ def ask_plan():
              If the query requires you to suggest attractions at the zoo, follow the following instructions:
              1) Avoid selecting toilets/water points, tram stops, nursing rooms and shops unless requested. 
              2) Ensure the names are encased in single apostrophies, as given in the list.
-             3) Reply with only the list, that can be evaluated in python as a list.
+             3) Reply with only the list, that can be evaluated in python as a list. Adhere to this strictly.
              Otherwise, simply reply to the user's query.
              Here is some data to help you: {str(data)}"""},
             {"role": "user", "content": user_input}
@@ -140,9 +140,10 @@ def get_coordinates():
         # Find the row in the DataFrame that matches the place name
         row = place_info_df[place_info_df['name'] == place]
         if not row.empty:
-            lng = row["longitude"]
-            lat = row["latitude"]
+            lng = float(row["longitude"].iloc[0])
+            lat = float(row["latitude"].iloc[0])
             coordinates.append({'lng': lng, 'lat': lat})
+    print(coordinates)
     return jsonify(coordinates)
 
 # POST endpoint for optimizing route
@@ -282,7 +283,6 @@ def insertHyperlinks(message, replacements):
     # Reconstruct the message
     return "'".join(chunks)
 
-# Function to perform vector search
 def search_files(query, top_k=5):
     query_vector = model.encode(query).reshape(1, -1)
 
@@ -294,7 +294,8 @@ def search_files(query, top_k=5):
     for doc in all_documents:
         doc_vector = np.array(doc["vector"]).reshape(1, -1)
         similarity = cosine_similarity(query_vector, doc_vector)[0][0]
-        results.append((doc["file_name"], doc["description"], similarity))
+        if similarity >= 0.3:
+            results.append((doc["file_name"], doc["description"], similarity))
     
     # Sort results by similarity
     results.sort(key=lambda x: x[2], reverse=True)

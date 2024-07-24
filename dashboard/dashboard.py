@@ -2,13 +2,18 @@ from flask import Flask, request, jsonify, render_template
 import json
 import pandas as pd
 import io
+import pymongo
 
 app = Flask(__name__)
 
 CONFIG_FILE = '../config.json'
-POI_DATA = "../zoo-info.csv"
-df = pd.read_csv(POI_DATA)
-df = df.drop(columns=['id'])
+with open(CONFIG_FILE) as json_file:
+    config = json.load(json_file)
+mongo = pymongo.MongoClient(config['MONGO_CLUSTER_URI'])
+DB = mongo[config['MONGO_DB_NAME']]
+poi_db = DB[config['POI_DB_NAME']]
+df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
+df = df.drop(columns=["id"])
 required_columns = ['name', 'longitude', 'latitude', 'description']
 
 @app.route('/')
@@ -40,7 +45,7 @@ def add_poi():
     global df
     new_poi['id'] = max(df['id']) + 1 if not df.empty else 1
     df = df.append(new_poi, ignore_index=True)
-    df.to_csv(POI_DATA, index=False)
+    poi_db.insert_one(new_poi)
     return jsonify({"message": "POI added successfully"})
 
 # Endpoint to edit an existing POI
@@ -48,21 +53,23 @@ def add_poi():
 def edit_poi():
     updated_poi = request.json
     global df
-    df.loc[df['id'] == updated_poi['id'], ['name', 'longitude', 'latitude']] = updated_poi['name'], updated_poi['longitude'], updated_poi['latitude']
-    df.to_csv(POI_DATA, index=False)
+    df.loc[df['id'] == updated_poi['id'], ['name', 'longitude', 'latitude', 'description']] = updated_poi['name'], updated_poi['longitude'], updated_poi['latitude'], updated_poi['description']
+    poi_db.update_one({"id": updated_poi['id']}, {"$set": updated_poi})
     return jsonify({"message": "POI updated successfully"})
 
 # Endpoint to delete a POI
 @app.route('/delete-poi', methods=['POST'])
 def delete_poi():
     poi_id = request.json['id']
+    global df
     df = df[df['id'] != poi_id]
-    df.to_csv(POI_DATA, index=False)
+    poi_db.delete_one({"id": poi_id})
     return jsonify({"message": "POI deleted successfully"})
 
-# Endpoint to upload CSV data
+
 @app.route('/upload-csv', methods=['POST'])
 def upload_csv():
+    count = 0
     csv_data = request.json.get('csv')
     new_data = pd.read_csv(io.StringIO(csv_data))
 
@@ -71,23 +78,22 @@ def upload_csv():
     if missing_columns:
         return jsonify({"message": f"Uploaded CSV is missing required columns: {', '.join(missing_columns)}"}), 400
 
-    # Identify extra columns
-    extra_columns = [col for col in new_data.columns if col not in required_columns]
+    # Convert DataFrame to dictionary
+    new_data_dict = new_data.to_dict(orient='records')
 
-    # Filter out extra columns that are not present in the existing DataFrame
-    existing_columns = list(df.columns)
-    valid_extra_columns = [col for col in extra_columns if col in existing_columns]
-    ignored_columns = [col for col in extra_columns if col not in existing_columns]
+    # Check for duplicates and collect IDs and names of duplicates
+    skipped_entries = []
+    for poi in new_data_dict:
+        if poi_db.find_one({"name": poi['name']}):
+            count += 1
+            skipped_entries.append({count: poi['name']})
+        else:
+            poi_db.insert_one(poi)
 
-    # Ensure the new data has at least the required columns and valid extra columns
-    new_data = new_data[required_columns + valid_extra_columns]
-
-    df = pd.concat([df, new_data], ignore_index=True).drop_duplicates().reset_index(drop=True)
-    df.to_csv(POI_DATA, index=False)
-
-    message = "CSV data uploaded and merged successfully."
-    if ignored_columns:
-        message += f" Ignored columns: {', '.join(ignored_columns)}"
+    if skipped_entries:
+        message = f"CSV data uploaded successfully. Skipped entries due to duplicates: {skipped_entries}"
+    else:
+        message = "CSV data uploaded and merged successfully."
 
     return jsonify({"message": message})
 
