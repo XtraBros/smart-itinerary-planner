@@ -35,7 +35,7 @@ fetch('/config')
                 // base url for maptiles
                 // ‘tiles’: [‘https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png’],
                 // use proxy server to get tiles
-                tiles: ['https://corsproxy.io/?https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
+                tiles: [data.config.MAPBOX_MAPTILES],
                 // using open source map to get tiles without proxy
                 //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
                 tileSize: 256,
