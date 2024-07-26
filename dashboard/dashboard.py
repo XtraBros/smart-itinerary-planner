@@ -22,8 +22,9 @@ cluster_loc = DB[config['CLUSTER_LOCATIONS']]
 mapbox_access_token = config['MAPBOX_ACCESS_TOKEN']
 
 distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
-# remove first column which contains names of locations.
-distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
+distance_matrix.set_index('name', inplace=True)
+print(distance_matrix)
+print(distance_matrix.shape)
 cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 
 @app.route('/')
@@ -51,12 +52,14 @@ def get_poi():
 @app.route('/add-poi', methods=['POST'])
 def add_poi():
     new_poi = request.json
+    print(f"Adding {new_poi['name']}")
     global df
-    new_poi['id'] = max(df['id']) + 1 if not df.empty else 1
     df = pd.concat([df, pd.DataFrame([new_poi])], ignore_index=True)
-    poi_db.insert_one(new_poi)
     add_poi_to_distance_matrix(new_poi)
     update_cluster_graph()
+    document = df.loc[df['name'] == new_poi['name']].to_dict(orient='records')[0]
+    # Insert the document into MongoDB
+    poi_db.insert_one(document) 
     return jsonify({"message": "POI added successfully"})
 
 @app.route('/edit-poi', methods=['POST'])
@@ -72,13 +75,12 @@ def edit_poi():
 
     # Update the DataFrame
     df.loc[df['id'] == updated_poi['id'], ['name', 'longitude', 'latitude', 'description']] = updated_poi['name'], updated_poi['longitude'], updated_poi['latitude'], updated_poi['description']
-    poi_db.update_one({"id": updated_poi['id']}, {"$set": updated_poi})
 
-    # If location has changed, update the distance matrix
+    # If location has changed, update the distance matrix and cluster graph, then update the cloud db with the full data entry.
     if location_changed:
         edit_poi_in_distance_matrix(updated_poi)
         update_cluster_graph()
-
+    poi_db.update_one({"id": updated_poi['id']}, {"$set": updated_poi})
     return jsonify({"message": "POI updated successfully"})
 
 @app.route('/delete-poi', methods=['POST'])
@@ -89,7 +91,6 @@ def delete_poi():
     df = df[df['id'] != poi_id]
     poi_db.delete_one({"id": poi_id})
     delete_poi_from_distance_matrix(poi_name)
-    update_cluster_graph()
     return jsonify({"message": "POI deleted successfully"})
 
 
@@ -137,14 +138,24 @@ def update_cluster_graph():
 
 def add_poi_to_distance_matrix(new_poi):
     global df, distance_matrix
-    new_distances = generate_distances(new_poi, df)  # Function to calculate distances to all other POIs
-    new_row = pd.DataFrame([new_distances], columns=df['name'], index=[new_poi['name']])
-    distance_matrix = pd.concat([distance_matrix, new_row], axis=0)
-    new_col = pd.DataFrame(new_distances, columns=[new_poi['name']], index=df['name'])
-    distance_matrix = pd.concat([distance_matrix, new_col.T], axis=1)
+    
+    # Generate distances for the new POI
+    new_distances = generate_distances(new_poi, df)  # This should return a list of distances
+    print(f"number of distances: {len(new_distances)}")
+    
+    # Create new row DataFrame with correct columns
+    new_row = pd.Series(new_distances, index=distance_matrix.columns, name=new_poi['name'])
+    # Add new column to the existing distance matrix
+    distance_matrix.loc[len(distance_matrix)] = new_row
+    # Add new column
+    new_column = pd.Series(new_distances + [0], index=df.index.append(pd.Index([new_poi['name']])), name=new_poi['name'])
+    df[new_poi['name']] = new_column
+    print(distance_matrix.shape)
+        
     # Update the database
     dist_mat.delete_many({})
-    dist_mat.insert_many(distance_matrix.to_dict(orient='records'))
+    dist_mat.insert_many(distance_matrix.reset_index().to_dict(orient='records'))
+
 
 def delete_poi_from_distance_matrix(poi_name):
     global distance_matrix
@@ -177,7 +188,7 @@ def generate_distances(new_poi, poi_df):
         poi_coord = f"{poi['longitude']},{poi['latitude']}"
         distance = get_distance(new_coord, poi_coord, mapbox_access_token)
         if distance is None:
-            distance = float('inf')  # Use a large number or handle it as per your requirements
+            distance = 9999  # Use a large number or handle it as per your requirements
         distances.append(distance)
     print(distances)
     return distances

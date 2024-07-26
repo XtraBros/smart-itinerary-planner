@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.8.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.8.1/mapbox-gl.css" rel="stylesheet" />
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </head>
 <body>
@@ -38,7 +39,41 @@
             <br><br>
             <input type="file" id="uploadCSV" accept=".csv">
             <button type="button" id="uploadCSVButton">Upload CSV</button>
+            <br><br>
+            <button type="button" id="addLocationButton" onclick="openTab('addLocation')">Add New Location</button>
         </div>
+        <div id="addLocation" class="tab-content">
+            <h1>Add a New Location</h1>
+            <div id="map"></div>
+            <br><br>
+            <form id="location-form" autocomplete="off">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required autocomplete="name"><br><br>
+            
+                <label for="longitude">Longitude:</label>
+                <input type="text" id="longitude" name="longitude" required autocomplete="longitude"><br><br>
+            
+                <label for="latitude">Latitude:</label>
+                <input type="text" id="latitude" name="latitude" required autocomplete="latitude"><br><br>
+            
+                <label for="description">Description:</label>
+                <textarea id="description" name="description" required autocomplete="description"></textarea><br><br>
+            
+                <label for="category">Category:</label>
+                <input type="text" id="category" name="category" required autocomplete="category"><br><br>
+            
+                <label for="target_audience">Target Audience:</label>
+                <input type="text" id="target_audience" name="target_audience" required autocomplete="target_audience"><br><br>
+            
+                <label for="operating_hours">Operating Hours:</label>
+                <input type="text" id="operating_hours" name="operating_hours" required autocomplete="operating_hours"><br><br>
+            
+                <button type="submit" id="addLocationButton">Add Location</button>
+            </form>             
+        </div>    
+    </div>
+    <div id="loading-overlay" style="display: none;">
+        <div class="loading-message">Adding POI and updating graphs...</div>
     </div>
 </body>
 </html>

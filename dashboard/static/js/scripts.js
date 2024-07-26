@@ -1,43 +1,69 @@
-$(document).ready(function() {
+document.addEventListener("DOMContentLoaded", function() {
+    let config;
+    let map;
+    let marker;
+
     // Fetch the current config
-    $.get('/get-config', function(data) {
-        for (const key in data) {
-            if (data.hasOwnProperty(key)) {
-                $('#configForm').append(
-                    `<label for="${key}">${key}:</label>
-                    <input type="text" id="${key}" name="${key}" value="${data[key]}" required><br><br>`
-                );
+    fetch('/get-config')
+        .then(response => response.json())
+        .then(data => {
+            config = data;
+            mapboxgl.accessToken = data.MAPBOX_ACCESS_TOKEN;
+
+            for (const key in data) {
+                if (data.hasOwnProperty(key)) {
+                    const label = document.createElement('label');
+                    label.setAttribute('for', key);
+                    label.textContent = `${key}:`;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = key;
+                    input.name = key;
+                    input.value = data[key];
+                    input.required = true;
+                    document.getElementById('configForm').appendChild(label);
+                    document.getElementById('configForm').appendChild(input);
+                    document.getElementById('configForm').appendChild(document.createElement('br'));
+                    document.getElementById('configForm').appendChild(document.createElement('br'));
+                }
             }
-        }
-    });
+        });
 
     // Update the config
-    $('#updateButton').on('click', function(e) {
+    document.getElementById('updateButton').addEventListener('click', function(e) {
         e.preventDefault();
         const formData = {};
-        $('#configForm').find('input').each(function() {
-            formData[$(this).attr('name')] = $(this).val();
+        const inputs = document.querySelectorAll('#configForm input');
+        inputs.forEach(function(input) {
+            formData[input.name] = input.value;
         });
 
-        $.ajax({
-            url: '/update-config',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(formData),
-            success: function(response) {
-                alert(response.message);
+        fetch('/update-config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            error: function(error) {
-                alert('Error updating config');
-            }
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(response => {
+            alert(response.message);
+        })
+        .catch(error => {
+            alert('Error updating config');
         });
     });
+
     // Open tabs
     window.openTab = function(tabName) {
-        $('.tab-content').removeClass('active');
-        $('#' + tabName).addClass('active');
+        document.querySelectorAll('.tab-content').forEach(function(tab) {
+            tab.classList.remove('active');
+        });
+        document.getElementById(tabName).classList.add('active');
         if (tabName === 'poi') {
             loadPOIData();
+        } else if (tabName === 'addLocation') {
+            initializeMap();
         }
     };
 
@@ -45,135 +71,117 @@ $(document).ready(function() {
 
     // Load POI Data
     function loadPOIData() {
-        $.get('/get-poi', function(data) {
-            const container = document.getElementById('poiTable');
-            if (hot) {
-                hot.destroy();
-            }
-    
-            // Drop the 'id' column from data
-            const filteredData = data.map(row => {
-                const { id, ...rest } = row;
-                return rest;
-            });
-
-            // Extract column headers and column configuration from the filtered data
-            const colHeaders = Object.keys(filteredData[0]);
-            const columns = colHeaders.map(header => ({
-                data: header
-            }));
-    
-            hot = new Handsontable(container, {
-                data: filteredData,
-                colHeaders: colHeaders,
-                columns: columns,
-                rowHeaders: true,
-                contextMenu: true,
-                minSpareRows: 1,
-                licenseKey: 'non-commercial-and-evaluation' // For non-commercial use
-            });
-
-            // Add afterChange hook to edit POI
-            hot.addHook('afterChange', function(changes, source) {
-                if (source === 'loadData') {
-                    return; // Don't send request when loading data
+        fetch('/get-poi')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('poiTable');
+                if (hot) {
+                    hot.destroy();
                 }
-                changes.forEach(function(change) {
-                    const [row, prop, oldValue, newValue] = change;
-                    if (oldValue !== newValue) {
-                        const rowData = hot.getDataAtRow(row);
-                        const poi = {
-                            id: data[row].id,
-                            ...rowData.reduce((obj, value, index) => {
-                                obj[colHeaders[index]] = value;
-                                return obj;
-                            }, {})
-                        };
-                        $.ajax({
-                            url: '/edit-poi',
-                            method: 'POST',
-                            contentType: 'application/json',
-                            data: JSON.stringify(poi),
-                            success: function(response) {
+
+                // Drop the 'id' column from data
+                const filteredData = data.map(row => {
+                    const { id, ...rest } = row;
+                    return rest;
+                });
+
+                // Extract column headers and column configuration from the filtered data
+                const colHeaders = Object.keys(filteredData[0]);
+                const columns = colHeaders.map(header => ({
+                    data: header
+                }));
+
+                hot = new Handsontable(container, {
+                    data: filteredData,
+                    colHeaders: colHeaders,
+                    columns: columns,
+                    rowHeaders: true,
+                    contextMenu: true,
+                    minSpareRows: 1,
+                    licenseKey: 'non-commercial-and-evaluation' // For non-commercial use
+                });
+
+                // Add afterChange hook to edit POI
+                hot.addHook('afterChange', function(changes, source) {
+                    if (source === 'loadData') {
+                        return; // Don't send request when loading data
+                    }
+                    changes.forEach(function(change) {
+                        const [row, prop, oldValue, newValue] = change;
+                        if (oldValue !== newValue) {
+                            const rowData = hot.getDataAtRow(row);
+                            const poi = {
+                                id: data[row].id,
+                                ...rowData.reduce((obj, value, index) => {
+                                    obj[colHeaders[index]] = value;
+                                    return obj;
+                                }, {})
+                            };
+                            fetch('/edit-poi', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(poi)
+                            })
+                            .then(response => response.json())
+                            .then(response => {
                                 console.log(response.message);
-                            },
-                            error: function(error) {
+                            })
+                            .catch(error => {
                                 console.error(error);
-                            }
+                            });
+                        }
+                    });
+                });
+
+                // Add afterRemoveRow hook to delete POI
+                hot.addHook('afterRemoveRow', function(index, amount) {
+                    for (let i = 0; i < amount; i++) {
+                        const rowData = hot.getDataAtRow(index + i);
+                        const poiId = data[index + i].id;
+                        fetch('/delete-poi', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({id: poiId})
+                        })
+                        .then(response => response.json())
+                        .then(response => {
+                            console.log(response.message);
+                        })
+                        .catch(error => {
+                            console.error(error);
                         });
                     }
                 });
             });
-
-            // Add afterCreateRow hook to add POI
-            hot.addHook('afterCreateRow', function(index, amount) {
-                for (let i = 0; i < amount; i++) {
-                    const rowData = hot.getDataAtRow(index + i);
-                    const poi = {
-                        name: rowData[1],
-                        longitude: rowData[2],
-                        latitude: rowData[3],
-                        description: rowData[4]
-                    };
-                    $.ajax({
-                        url: '/add-poi',
-                        method: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify(poi),
-                        success: function(response) {
-                            console.log(response.message);
-                            loadPOIData(); // Reload the POI data
-                        },
-                        error: function(error) {
-                            console.error(error);
-                        }
-                    });
-                }
-            });
-
-            // Add afterRemoveRow hook to delete POI
-            hot.addHook('afterRemoveRow', function(index, amount) {
-                for (let i = 0; i < amount; i++) {
-                    const rowData = hot.getDataAtRow(index + i);
-                    const poiId = data[index + i].id;
-                    $.ajax({
-                        url: '/delete-poi',
-                        method: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({id: poiId}),
-                        success: function(response) {
-                            console.log(response.message);
-                        },
-                        error: function(error) {
-                            console.error(error);
-                        }
-                    });
-                }
-            });
-        }, 'json');
     }
 
     // Handle CSV file upload
-    $('#uploadCSVButton').on('click', function() {
+    document.getElementById('uploadCSVButton').addEventListener('click', function() {
         const fileInput = document.getElementById('uploadCSV');
         const file = fileInput.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 const csvData = e.target.result;
-                $.ajax({
-                    url: '/upload-csv',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ csv: csvData }),
-                    success: function(response) {
-                        alert(response.message);
-                        loadPOIData(); // Reload the POI data
+                fetch('/upload-csv', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
                     },
-                    error: function(xhr) {
-                        const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Error uploading CSV';
-                        alert(errorMessage);
-                    }
+                    body: JSON.stringify({ csv: csvData })
+                })
+                .then(response => response.json())
+                .then(response => {
+                    alert(response.message);
+                    loadPOIData(); // Reload the POI data
+                })
+                .catch(xhr => {
+                    const errorMessage = xhr.responseJSON ? xhr.responseJSON.message : 'Error uploading CSV';
+                    alert(errorMessage);
                 });
             };
             reader.readAsText(file);
@@ -183,14 +191,148 @@ $(document).ready(function() {
     });
 
     // Hamburger menu functionality
-    $('#hamburgerMenu').on('click', function() {
-        $('.sidebar').addClass('show');
+    document.getElementById('hamburgerMenu').addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.add('show');
         document.getElementById("sidebar").style.width = "250px";
         document.getElementById("mainContent").classList.add('shift-right');
     });
 
-    $('#closeSidebar').on('click', function() {
-        $('.sidebar').removeClass('show');
+    document.getElementById('closeSidebar').addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.remove('show');
         document.getElementById("mainContent").classList.remove('shift-right');
     });
+
+    // Initialize Mapbox map
+    function initializeMap() {
+        map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [103.78839388, 1.4042306],
+            zoom: 15
+        });
+
+        map.on('load', function() {
+            // Define and set bounds for the map
+            var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
+            map.setMaxBounds(bounds);
+
+            // Add custom tiles
+            map.addSource('custom-tiles', {
+                type: 'raster',
+                tiles: [config.MAPBOX_MAPTILES],
+                tileSize: 256,
+                minzoom: 12,
+                maxzoom: 22
+            });
+            map.addLayer({
+                id: 'custom-tiles-layer',
+                type: 'raster',
+                source: 'custom-tiles'
+            });
+        });
+        map.on('click', function(e) {
+            const coordinates = e.lngLat;
+            document.getElementById('latitude').value = coordinates.lat.toFixed(6);
+            document.getElementById('longitude').value = coordinates.lng.toFixed(6);
+
+            // Remove the existing marker if there is one
+            if (marker) {
+                marker.remove();
+            }
+            // Add a new marker
+            marker = new mapboxgl.Marker()
+                .setLngLat(coordinates)
+                .addTo(map);
+
+        });
+
+        map.addControl(new mapboxgl.NavigationControl());
+    }
+
+    // Update the marker when latitude or longitude fields are changed
+    document.getElementById('latitude').addEventListener('change', updateMarker);
+    document.getElementById('longitude').addEventListener('change', updateMarker);
+
+    function updateMarker() {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
+        const coordinates = new mapboxgl.LngLat(lng, lat);
+
+        if (isNaN(lat) || isNaN(lng)) {
+            alert('Please enter valid coordinates.');
+            return;
+        }
+
+        if (isWithinBounds(coordinates)) {
+            // Set the map center to the new coordinates
+            map.setCenter(coordinates);
+
+            // Remove the existing marker if there is one
+            if (marker) {
+                marker.remove();
+            }
+
+            // Add a new marker
+            marker = new mapboxgl.Marker()
+                .setLngLat(coordinates)
+                .addTo(map);
+        } else {
+            alert(`Coordinates are out of bounds. Please enter within the bounds:
+                Longitude: ${bounds[0][0]} to ${bounds[1][0]}, 
+                Latitude: ${bounds[0][1]} to ${bounds[1][1]}`);
+        }
+    }
+
+    function isWithinBounds(coordinates) {
+        const [minLng, minLat] = [103.77861059, 1.39813758];
+        const [maxLng, maxLat] = [103.79817716, 1.41032361];
+        return coordinates.lng >= minLng && coordinates.lng <= maxLng &&
+               coordinates.lat >= minLat && coordinates.lat <= maxLat;
+    }
+    // handle add poi
+    document.getElementById("location-form").addEventListener('submit', function(e) {
+        e.preventDefault();
+    
+        // Show the loading overlay
+        document.getElementById('loading-overlay').style.display = 'flex';
+    
+        // Collect form data
+        const formData = {
+            name: document.getElementById('name').value,
+            longitude: parseFloat(document.getElementById('longitude').value),
+            latitude: parseFloat(document.getElementById('latitude').value),
+            description: document.getElementById('description').value,
+            category: document.getElementById('category').value,
+            targetAudience: document.getElementById('target_audience').value,
+            operatingHours: document.getElementById('operating_hours').value
+        };
+    
+        console.log('Form Data:', formData); // Debug form data
+    
+        // Send data using fetch
+        fetch('/add-poi', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(response => {
+            // Hide the loading overlay
+            document.getElementById('loading-overlay').style.display = 'none';
+    
+            alert(response.message);
+            document.getElementById('location-form').reset(); // Clear the form
+            openTab('poi'); // Reload POI data or navigate if needed
+            loadPOIData();
+        })
+        .catch(error => {
+            // Hide the loading overlay
+            document.getElementById('loading-overlay').style.display = 'none';
+    
+            console.error('Error adding POI:', error);
+            alert('Error adding location');
+        });
+    });     
 });
