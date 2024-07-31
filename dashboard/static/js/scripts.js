@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", function() {
     let config;
     let map;
     let marker;
+    let hot; // Handsontable instance
+    let colHeaders;
 
     // Fetch the current config
     fetch('/get-config')
@@ -28,6 +30,16 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         });
+    // Show loading overlay
+    // Show loading overlay
+    function showLoading() {
+        document.getElementById('loading-overlay').classList.add('visible');
+    }
+
+    // Hide loading overlay
+    function hideLoading() {
+        document.getElementById('loading-overlay').classList.remove('visible');
+    }
 
     // Update the config
     document.getElementById('updateButton').addEventListener('click', function(e) {
@@ -67,8 +79,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
 
-    let hot; // Handsontable instance
-
     // Load POI Data
     function loadPOIData() {
         fetch('/get-poi')
@@ -86,7 +96,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 });
 
                 // Extract column headers and column configuration from the filtered data
-                const colHeaders = Object.keys(filteredData[0]);
+                colHeaders = Object.keys(filteredData[0]);
                 const columns = colHeaders.map(header => ({
                     data: header
                 }));
@@ -97,55 +107,21 @@ document.addEventListener("DOMContentLoaded", function() {
                     columns: columns,
                     rowHeaders: true,
                     contextMenu: true,
-                    minSpareRows: 1,
+                    minSpareRows: 0, // Remove the empty last row
+                    allowInsertRow: false, // Disable adding new rows
                     licenseKey: 'non-commercial-and-evaluation' // For non-commercial use
-                });
-
-                // Add afterChange hook to edit POI
-                hot.addHook('afterChange', function(changes, source) {
-                    if (source === 'loadData') {
-                        return; // Don't send request when loading data
-                    }
-                    changes.forEach(function(change) {
-                        const [row, prop, oldValue, newValue] = change;
-                        if (oldValue !== newValue) {
-                            const rowData = hot.getDataAtRow(row);
-                            const poi = {
-                                id: data[row].id,
-                                ...rowData.reduce((obj, value, index) => {
-                                    obj[colHeaders[index]] = value;
-                                    return obj;
-                                }, {})
-                            };
-                            fetch('/edit-poi', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(poi)
-                            })
-                            .then(response => response.json())
-                            .then(response => {
-                                console.log(response.message);
-                            })
-                            .catch(error => {
-                                console.error(error);
-                            });
-                        }
-                    });
                 });
 
                 // Add afterRemoveRow hook to delete POI
                 hot.addHook('afterRemoveRow', function(index, amount) {
                     for (let i = 0; i < amount; i++) {
-                        const rowData = hot.getDataAtRow(index + i);
-                        const poiId = data[index + i].id;
+                        const rowIndex = index + i; // Get the row index of the deleted row
                         fetch('/delete-poi', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({id: poiId})
+                            body: JSON.stringify({ id: rowIndex }) // Send the row index as id
                         })
                         .then(response => response.json())
                         .then(response => {
@@ -158,6 +134,42 @@ document.addEventListener("DOMContentLoaded", function() {
                 });
             });
     }
+
+    // Add event listener for the save button
+    document.getElementById('savePOIButton').addEventListener('click', function() {
+        const data = hot.getData();
+        const updatedPOIs = data.map((row, index) => {
+            const poi = {
+                id: index,
+                ...row.reduce((obj, value, colIndex) => {
+                    obj[colHeaders[colIndex]] = value;
+                    return obj;
+                }, {})
+            };
+            return poi;
+        });
+
+        showLoading();
+
+        fetch('/edit-poi', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updatedPOIs)
+        })
+        .then(response => response.json())
+        .then(response => {
+            alert(response.message);
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Error updating POIs');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    });
 
     // Handle CSV file upload
     document.getElementById('uploadCSVButton').addEventListener('click', function() {
@@ -289,50 +301,39 @@ document.addEventListener("DOMContentLoaded", function() {
         return coordinates.lng >= minLng && coordinates.lng <= maxLng &&
                coordinates.lat >= minLat && coordinates.lat <= maxLat;
     }
-    // handle add poi
-    document.getElementById("location-form").addEventListener('submit', function(e) {
+    
+    // Handle add poi
+    // Handle add POI
+    document.getElementById("location-form").addEventListener("submit", function(e) {
         e.preventDefault();
-    
-        // Show the loading overlay
-        document.getElementById('loading-overlay').style.display = 'flex';
-    
-        // Collect form data
-        const formData = {
-            name: document.getElementById('name').value,
-            longitude: parseFloat(document.getElementById('longitude').value),
-            latitude: parseFloat(document.getElementById('latitude').value),
-            description: document.getElementById('description').value,
-            category: document.getElementById('category').value,
-            targetAudience: document.getElementById('target_audience').value,
-            operatingHours: document.getElementById('operating_hours').value
-        };
-    
-        console.log('Form Data:', formData); // Debug form data
-    
-        // Send data using fetch
+        showLoading();
+
+        const formData = new FormData(this);
+        const poiData = {};
+        formData.forEach((value, key) => poiData[key] = value);
+
         fetch('/add-poi', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(poiData)
         })
         .then(response => response.json())
         .then(response => {
-            // Hide the loading overlay
-            document.getElementById('loading-overlay').style.display = 'none';
-    
             alert(response.message);
-            document.getElementById('location-form').reset(); // Clear the form
-            openTab('poi'); // Reload POI data or navigate if needed
-            loadPOIData();
+            this.reset();
+            if (marker) {
+                marker.remove();
+                marker = null;
+            }
         })
         .catch(error => {
-            // Hide the loading overlay
-            document.getElementById('loading-overlay').style.display = 'none';
-    
             console.error('Error adding POI:', error);
-            alert('Error adding location');
+            alert('Error adding POI');
+        })
+        .finally(() => {
+            hideLoading();
         });
-    });     
+    });
 });

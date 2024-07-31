@@ -16,6 +16,7 @@ mongo = pymongo.MongoClient(config['MONGO_CLUSTER_URI'])
 DB = mongo[config['MONGO_DB_NAME']]
 poi_db = DB[config['POI_DB_NAME']]
 df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
+print(df)
 required_columns = ['name', 'longitude', 'latitude', 'description']
 dist_mat = DB[config["DISTANCE_MATRIX"]]
 cluster_loc = DB[config['CLUSTER_LOCATIONS']]
@@ -23,8 +24,6 @@ mapbox_access_token = config['MAPBOX_ACCESS_TOKEN']
 
 distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
 distance_matrix.set_index('name', inplace=True)
-print(distance_matrix)
-print(distance_matrix.shape)
 cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 
 @app.route('/')
@@ -64,32 +63,51 @@ def add_poi():
 
 @app.route('/edit-poi', methods=['POST'])
 def edit_poi():
-    updated_poi = request.json
-    global df
-    # Find the existing POI data
-    existing_poi = df[df['id'] == updated_poi['id']].iloc[0]
-    print(updated_poi['name'])
+    updated_pois = request.json
+    global df, distance_matrix
 
-    # Check if longitude or latitude has changed
-    location_changed = (existing_poi['longitude'] != updated_poi['longitude']) or (existing_poi['latitude'] != updated_poi['latitude'])
+    # Convert the updated POIs list to a DataFrame
+    updated_df = pd.DataFrame(updated_pois)[:len(df)]
+    updated_df.index = range(len(updated_df))
+    
+    # Ensure the indices and columns of the updated_df match those of df
+    updated_df = updated_df.reindex(columns=df.columns)
 
+    # Find the POIs that have changed
+    changed_pois = updated_df.compare(df)
+    
     # Update the DataFrame
-    df.loc[df['id'] == updated_poi['id'], ['name', 'longitude', 'latitude', 'description']] = updated_poi['name'], updated_poi['longitude'], updated_poi['latitude'], updated_poi['description']
+    for index in changed_pois.index:
+        updated_values = updated_df.loc[index].to_dict()
+        
+        # Check if longitude or latitude has changed
+        existing_poi = df.loc[index]
+        location_changed = (existing_poi['longitude'] != updated_values['longitude']) or (existing_poi['latitude'] != updated_values['latitude'])
+        name_changed = (existing_poi['name'] != updated_values['name'])
+        # Update the DataFrame row
+        for col, val in updated_values.items():
+            df.at[index, col] = val
+        if name_changed:
+            old_name = existing_poi['name']
+            new_name = updated_values['name']
+        
+            distance_matrix = distance_matrix.rename(index={old_name: new_name}, columns={old_name: new_name})        # If location has changed, update the distance matrix and cluster graph
+        if location_changed:
+            edit_poi_in_distance_matrix(updated_values, existing_poi)
+            update_cluster_graph()
 
-    # If location has changed, update the distance matrix and cluster graph, then update the cloud db with the full data entry.
-    if location_changed:
-        edit_poi_in_distance_matrix(updated_poi)
-        update_cluster_graph()
-    poi_db.update_one({"id": updated_poi['id']}, {"$set": updated_poi})
-    return jsonify({"message": "POI updated successfully"})
+        # Update the cloud database with the full data entry
+        poi_db.update_one({"id": index}, {"$set": updated_values})
+    
+    return jsonify({"message": "POIs updated successfully"})
 
 @app.route('/delete-poi', methods=['POST'])
 def delete_poi():
     poi_id = request.json['id']
     global df
-    poi_name = df.loc[df['id'] == poi_id, 'name'].values[0]
-    df = df[df['id'] != poi_id]
-    poi_db.delete_one({"id": poi_id})
+    poi_name = df.loc[poi_id]['name']
+    df = df.drop(poi_id)
+    poi_db.delete_one({"name": poi_name})
     delete_poi_from_distance_matrix(poi_name)
     return jsonify({"message": "POI deleted successfully"})
 
@@ -139,44 +157,69 @@ def update_cluster_graph():
 def add_poi_to_distance_matrix(new_poi):
     global df, distance_matrix
     
+    poi_name = new_poi['name'].replace('[', '').replace(']', '').replace("'", '')
     # Generate distances for the new POI
-    new_distances = generate_distances(new_poi, df)  # This should return a list of distances
-    print(f"number of distances: {len(new_distances)}")
-    
+    new_distances = generate_distances(new_poi, df)  # This should return a list of distances including the distance to itself
+
+    # Ensure the length of new_distances matches the expected length
+    if len(new_distances) != len(distance_matrix) + 1:
+        raise ValueError("The length of new_distances must be one more than the number of rows/columns in distance_matrix.")
+
+    # Append the new POI's name to the index
+    new_index = distance_matrix.columns.tolist() + [poi_name]
+
     # Create new row DataFrame with correct columns
-    new_row = pd.Series(new_distances, index=distance_matrix.columns, name=new_poi['name'])
-    # Add new column to the existing distance matrix
-    distance_matrix.loc[len(distance_matrix)] = new_row
-    # Add new column
-    new_column = pd.Series(new_distances + [0], index=df.index.append(pd.Index([new_poi['name']])), name=new_poi['name'])
-    df[new_poi['name']] = new_column
-    print(distance_matrix.shape)
-        
+    new_row = pd.Series(new_distances, index=new_index, name=poi_name)
+
+    # Add new row to the distance matrix
+    distance_matrix.loc[poi_name] = new_distances[:-1]
+
+    # Add new column to the distance matrix
+    new_column = pd.Series(new_distances, index=new_index, name=poi_name)
+    distance_matrix[poi_name] = new_column
     # Update the database
     dist_mat.delete_many({})
     dist_mat.insert_many(distance_matrix.reset_index().to_dict(orient='records'))
 
 
 def delete_poi_from_distance_matrix(poi_name):
+    poi_name = poi_name.replace('[', '').replace(']', '').replace("'", '')
     global distance_matrix
-    distance_matrix = distance_matrix.drop(index=poi_name, columns=poi_name)
+    distance_matrix = distance_matrix.drop(index=poi_name, columns=poi_name).reset_index()
     # Update the database
     dist_mat.delete_many({})
-    dist_mat.insert_many(distance_matrix.to_dict(orient='records'))
+    dist_mat.insert_many(distance_matrix.reset_index().to_dict(orient='records'))
 
-def edit_poi_in_distance_matrix(updated_poi):
+
+def edit_poi_in_distance_matrix(updated_poi, existing_poi):
     global df, distance_matrix
-    poi_name = df.loc[df['id'] == updated_poi['id'], 'name'].values[0]
-
+    curr_poi_name = existing_poi['name']
+    new_poi_name = updated_poi['name']
+    
     # Generate new distances
     new_distances = generate_distances(updated_poi, df)  # Function to calculate distances to all other POIs
-
+    print(new_distances)
+    
     # Ensure the new distances align with the distance matrix format
+    if len(new_distances) != len(distance_matrix):
+        print(new_distances)
+        print(f'length: {len(new_distances)}')
+        print(f'needed: {len(distance_matrix)}')
+
+        raise ValueError("The length of new_distances must match the number of rows/columns in distance_matrix.")
+    
     new_distances_series = pd.Series(new_distances, index=distance_matrix.columns)
+    
+    # Rename the POI in the index if necessary
+    if curr_poi_name != new_poi_name:
+        distance_matrix.rename(index={curr_poi_name: new_poi_name}, columns={curr_poi_name: new_poi_name}, inplace=True)
+    
     # Update the distance matrix row
-    distance_matrix.loc[poi_name] = new_distances_series.drop(labels=[poi_name])
+    distance_matrix.loc[new_poi_name] = new_distances_series
+    
     # Update the distance matrix column
-    distance_matrix[poi_name] = new_distances_series.drop(labels=[poi_name])
+    distance_matrix[new_poi_name] = new_distances_series
+    print(distance_matrix)
     # Update the database
     dist_mat.delete_many({})
     dist_mat.insert_many(distance_matrix.to_dict(orient='records'))
@@ -190,7 +233,6 @@ def generate_distances(new_poi, poi_df):
         if distance is None:
             distance = 9999  # Use a large number or handle it as per your requirements
         distances.append(distance)
-    print(distances)
     return distances
 
 def get_distance(coord1, coord2, access_token, retries=3):
