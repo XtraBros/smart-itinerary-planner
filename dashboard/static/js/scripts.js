@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let marker;
     let hot; // Handsontable instance
     let colHeaders;
+    let deletedRows = [];
 
     // Fetch the current config
     fetch('/get-config')
@@ -113,23 +114,33 @@ document.addEventListener("DOMContentLoaded", function() {
                 });
 
                 // Add afterRemoveRow hook to delete POI
-                hot.addHook('afterRemoveRow', function(index, amount) {
+                hot.addHook('beforeRemoveRow', function(index, amount) {
                     for (let i = 0; i < amount; i++) {
                         const rowIndex = index + i; // Get the row index of the deleted row
-                        fetch('/delete-poi', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ id: rowIndex }) // Send the row index as id
-                        })
-                        .then(response => response.json())
-                        .then(response => {
-                            console.log(response.message);
-                        })
-                        .catch(error => {
-                            console.error(error);
+                        let rowData = this.getSourceDataAtRow(rowIndex);
+                        if (rowData) {
+                          deletedRows.push({ name: rowData.name, id: rowIndex });
+                        }
+                      }
+                });
+                hot.addHook('afterUndo', function(action){
+                    if (action.actionType === 'remove_row') {
+                        action.data.forEach(row => {
+                          let name = row[0]; // Assuming name is in the first column
+                          let rowIndex = action.index;
+                          deletedRows = deletedRows.filter(deletedRow => deletedRow.name !== name && deletedRow.id !== rowIndex);
                         });
+                      }
+                });
+                hot.addHook('afterRedo', function(action){
+                    if (action.actionType === 'remove_row') {
+                        for (let i = 0; i < action.amount; i++) {
+                          let rowIndex = action.index + i;
+                          let rowData = this.getSourceDataAtRow(rowIndex);
+                          if (rowData) {
+                            deletedRows.push({ name: rowData.name, id: rowIndex });
+                          }
+                        }
                     }
                 });
             });
@@ -148,29 +159,75 @@ document.addEventListener("DOMContentLoaded", function() {
             };
             return poi;
         });
-
+    
+        const hasDeletions = deletedRows.length > 0;
+        const hasChanges = hot.getPlugin('undoRedo').isUndoAvailable();
+    
+        if (!hasDeletions && !hasChanges) {
+            alert('No changes to save');
+            return;
+        }
+    
         showLoading();
-
-        fetch('/edit-poi', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updatedPOIs)
-        })
-        .then(response => response.json())
-        .then(response => {
-            alert(response.message);
+    
+        // Function to handle deletions
+        function handleDeletions() {
+            if (hasDeletions) {
+                return fetch('/delete-poi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(deletedRows)
+                })
+                .then(response => response.json())
+                .then(deleteResponse => {
+                    if (!deleteResponse.success) {
+                        throw new Error(deleteResponse.message || 'Error deleting POIs');
+                    }
+                });
+            } else {
+                return Promise.resolve();
+            }
+        }
+    
+        // Function to handle edits
+        function handleEdits() {
+            if (hasChanges) {
+                return fetch('/edit-poi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedPOIs)
+                })
+                .then(response => response.json())
+                .then(editResponse => {
+                    if (!editResponse.success) {
+                        throw new Error(editResponse.message || 'Error updating POIs');
+                    }
+                });
+            } else {
+                return Promise.resolve();
+            }
+        }
+    
+        // First handle deletions, then handle edits
+        handleDeletions()
+        .then(handleEdits)
+        .then(() => {
+            alert('Changes saved successfully');
         })
         .catch(error => {
             console.error(error);
-            alert('Error updating POIs');
+            alert(error.message);
         })
         .finally(() => {
             hideLoading();
+            deletedRows = []; // Clear the deletedRows list after processing
         });
-    });
-
+    });    
+    
     // Handle CSV file upload
     document.getElementById('uploadCSVButton').addEventListener('click', function() {
         const fileInput = document.getElementById('uploadCSV');

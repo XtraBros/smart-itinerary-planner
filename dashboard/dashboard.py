@@ -13,10 +13,10 @@ CONFIG_FILE = '../config.json'
 with open(CONFIG_FILE) as json_file:
     config = json.load(json_file)
 mongo = pymongo.MongoClient(config['MONGO_CLUSTER_URI'])
+print("Successfully cononected to Database.")
 DB = mongo[config['MONGO_DB_NAME']]
 poi_db = DB[config['POI_DB_NAME']]
 df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
-print(df)
 required_columns = ['name', 'longitude', 'latitude', 'description']
 dist_mat = DB[config["DISTANCE_MATRIX"]]
 cluster_loc = DB[config['CLUSTER_LOCATIONS']]
@@ -69,7 +69,8 @@ def edit_poi():
     # Convert the updated POIs list to a DataFrame
     updated_df = pd.DataFrame(updated_pois)[:len(df)]
     updated_df.index = range(len(updated_df))
-    
+    print(df)
+    print(updated_df)
     # Ensure the indices and columns of the updated_df match those of df
     updated_df = updated_df.reindex(columns=df.columns)
 
@@ -101,21 +102,26 @@ def edit_poi():
     
     return jsonify({"message": "POIs updated successfully"})
 
+# delete pois
 @app.route('/delete-poi', methods=['POST'])
 def delete_poi():
-    poi_id = request.json['id']
+    deleted_rows = request.json
+    print(deleted_rows)
     global df
-    poi_name = df.loc[poi_id]['name']
-    df = df.drop(poi_id)
-    poi_db.delete_one({"name": poi_name})
-    delete_poi_from_distance_matrix(poi_name)
-    return jsonify({"message": "POI deleted successfully"})
 
+    for row in deleted_rows:
+        poi_id = row['id']
+        poi_name = row['name']
+        print(poi_name)
+        df = df.drop(poi_id, axis=0)
+        poi_db.delete_one({"name": poi_name})
+        delete_poi_from_distance_matrix(poi_name)
+    df = df.reset_index()
+    return jsonify({"success": True}), 200
 
 
 @app.route('/upload-csv', methods=['POST'])
 def upload_csv():
-    count = 0
     csv_data = request.json.get('csv')
     new_data = pd.read_csv(io.StringIO(csv_data))
 
@@ -131,10 +137,12 @@ def upload_csv():
     skipped_entries = []
     for poi in new_data_dict:
         if poi_db.find_one({"name": poi['name']}):
-            count += 1
-            skipped_entries.append({count: poi['name']})
+            skipped_entries.append(poi['name'])
         else:
             poi_db.insert_one(poi)
+
+    # Add new POIs to the global DataFrame and update distance matrix and cluster graph
+    add_multiple_pois(new_data[~new_data['name'].isin(skipped_entries)])
 
     if skipped_entries:
         message = f"CSV data uploaded successfully. Skipped entries due to duplicates: {skipped_entries}"
@@ -168,9 +176,6 @@ def add_poi_to_distance_matrix(new_poi):
     # Append the new POI's name to the index
     new_index = distance_matrix.columns.tolist() + [poi_name]
 
-    # Create new row DataFrame with correct columns
-    new_row = pd.Series(new_distances, index=new_index, name=poi_name)
-
     # Add new row to the distance matrix
     distance_matrix.loc[poi_name] = new_distances[:-1]
 
@@ -185,7 +190,7 @@ def add_poi_to_distance_matrix(new_poi):
 def delete_poi_from_distance_matrix(poi_name):
     poi_name = poi_name.replace('[', '').replace(']', '').replace("'", '')
     global distance_matrix
-    distance_matrix = distance_matrix.drop(index=poi_name, columns=poi_name).reset_index()
+    distance_matrix = distance_matrix.drop(index=poi_name, columns=poi_name)
     # Update the database
     dist_mat.delete_many({})
     dist_mat.insert_many(distance_matrix.reset_index().to_dict(orient='records'))
@@ -246,6 +251,23 @@ def get_distance(coord1, coord2, access_token, retries=3):
                 return distance
         time.sleep(2 ** attempt)  # Exponential backoff
     return None
+
+def add_multiple_pois(df_new_pois):
+    global df
+    new_documents = []
+    for index, new_poi in df_new_pois.iterrows():
+        print(f"Adding {new_poi['name']}")
+        df = pd.concat([df, pd.DataFrame([new_poi])], ignore_index=True)
+        add_poi_to_distance_matrix(new_poi)
+        document = df.loc[df['name'] == new_poi['name']].to_dict(orient='records')[0]
+        new_documents.append(document)
+    
+    # Update the cluster graph after adding all POIs
+    update_cluster_graph()
+    
+    # Perform a single batch upload to MongoDB
+    if new_documents:
+        poi_db.insert_many(new_documents)
 
 if __name__ == '__main__':
     app.run(debug=True, port=3000)
