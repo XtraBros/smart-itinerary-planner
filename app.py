@@ -80,14 +80,12 @@ def ask_plan():
             Otherwise, simply reply to the user's query."""},
         {"role": "user", "content": user_input}
     ]
-    print(messages)
     # Handle function calls and get the final response
     state = {
         "called_functions": set(),
         "function_results": {}
     }
     message = handle_function_calls(messages, state)
-    print(message)
     
     try:
         evaluated_message = ast.literal_eval(message)
@@ -339,6 +337,24 @@ functions are suitable and relevant, and call these functions if needed.
 '''
 function_schemas = [
     {
+        "name": "query_expansion",
+        "description": "Asks the user for more information to better understand their needs and provide a more personalized experience.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "type": "string",
+                    "description": "The current conversation context or user input that needs clarification."
+                },
+                "clarifying_question": {
+                    "type": "string",
+                    "description": "The question to ask the user to gather more details."
+                }
+            },
+            "required": ["context"]
+        }
+    },
+    {
         "name": "fetch_weather_data",
         "description": "Fetches the 24-hour weather forecast from data.gov.sg",
         "parameters": {}
@@ -394,9 +410,20 @@ def handle_function_calls(messages, state):
                     "name": function_name, 
                     "content": json.dumps({"error": "Function not implemented"})
                 })
+                print(state)
                 return handle_function_calls(messages, state)
     else:
         return message.content
+    
+def query_expansion(context, clarifying_question=None):
+    # Generate a clarifying question if none is provided
+    if not clarifying_question:
+        clarifying_question = "Could you provide more details about your preferences or what you're looking for?"
+
+    # Return the question to ask the user
+    return {
+        "clarifying_question": clarifying_question
+    }
 
 def chat_with_gpt(user_query):
     messages = [
