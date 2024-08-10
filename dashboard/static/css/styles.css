@@ -1,0 +1,123 @@
+/* styles.css */
+body {
+    font-family: Arial, sans-serif;
+    transition: margin-left 0.5s; /* Smooth transition for content movement */
+    margin: 0; /* Remove default margin */
+}
+
+.hamburger-menu {
+    font-size: 30px;
+    cursor: pointer;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+    color: #111; /* Color for visibility */
+    background-color: #fff; /* Background for visibility */
+    padding: 10px; /* Padding for a larger clickable area */
+    border-radius: 5px; /* Rounded corners */
+}
+
+.sidebar {
+    height: 100%;
+    width: 250px; /* Sidebar width */
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    left: -250px; /* Initially hide the sidebar off-screen */
+    background-color: #111;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+}
+
+.sidebar.show {
+    left: 0; /* Move sidebar into view */
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.sidebar a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 25px;
+    color: #818181;
+    display: block;
+    transition: 0.3s;
+}
+
+.sidebar a:hover {
+    color: #f1f1f1;
+}
+
+.sidebar .closebtn {
+    position: absolute;
+    top: 10px;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+    background: none;
+    border: none;
+    color: #818181;
+    cursor: pointer;
+}
+
+.main-content {
+    transition: margin-left 0.5s; /* Smooth transition for content movement */
+    padding: 16px;
+    margin-left: 50px; /* Default margin-left */
+}
+
+.main-content.shift-right {
+    margin-left: 250px; /* Align with the sidebar */
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Styles to contain Handsontable within a smaller window */
+#poiTable {
+    width: 100%; /* Adjust width as needed */
+    height: 400px; /* Adjust height as needed */
+    overflow: auto; /* Add scrollbars if content overflows */
+    border: 1px solid #ccc; /* Optional: Adds a border around the table */
+}
+
+#map{
+    width: 100%;
+    height: 400px;
+}
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s, opacity 0.5s linear;
+}
+
+.loading-overlay.visible {
+    visibility: visible;
+    opacity: 1;
+}
+
+.loading-message {
+    color: #fff;
+    font-size: 1.5em;
+}

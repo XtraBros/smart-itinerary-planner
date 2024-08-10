@@ -1,60 +1,69 @@
-//mapboxgl.accessToken = 'pk.eyJ1IjoiYWNla2lsbGVyc2ciLCJhIjoiY2x2MmM5ZXBwMGc3dTJrbGhwemRrNnI0cSJ9.lpqoF8ij6uU3yqWBLKipUA'
-mapboxgl.accessToken = 'pk.eyJ1Ijoid2FuZ2Nob25neXU4NiIsImEiOiJjam5qd2FwMmcxNDRwM3FvMzc2aHVmNW5oIn0.4lYyhYClZxVWJXrbho_5hA'
-
+// Fetch the access token from the Flask endpoint and initialize the map
 var waypoints = [];
+var map;
+var directions;
+fetch('/config')
+    .then(response => response.json())
+    .then(data => {
+        // Assuming the response contains a JSON object with an 'accessToken' property
+        mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
 
-var map = new mapboxgl.Map({
-    container: 'map',
-    //style: 'mapbox://styles/mapbox/streets-v12',
-    style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
-    //center: [103.8285654153839, 1.24791502223719],
-    center: [103.78839388, 1.4042306],
-    zoom: 15
-});
+        map = new mapboxgl.Map({
+            container: 'map',
+            //style: 'mapbox://styles/mapbox/streets-v12',
+            style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
+            //center: [103.8285654153839, 1.24791502223719],
+            center: [103.78839388, 1.4042306],
+            zoom: 15
+        });
 
-const directions = new MapboxDirections({
-    accessToken: mapboxgl.accessToken,
-    unit: 'metric',
-    profile: 'mapbox/walking'
- });
-// variable to allow resizing function
-window.mapboxMap = map;
-map.on('load', function() {
-    // Define and set bounds for the map
-    var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
-    map.setMaxBounds(bounds);
+        directions = new MapboxDirections({
+            accessToken: mapboxgl.accessToken,
+            unit: 'metric',
+            profile: 'mapbox/walking'
+        });
+        // variable to allow resizing function
+        window.mapboxMap = map;
+        map.on('load', function() {
+            // Define and set bounds for the map
+            var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
+            map.setMaxBounds(bounds);
 
-    // Add custom tiles
-    map.addSource('custom-tiles', {
-        type: 'raster',
-        // base url for maptiles
-        // ‘tiles’: [‘https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png’],
-        // use proxy server to get tiles
-        tiles: ['https://corsproxy.io/?https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png'],
-        // using open source map to get tiles without proxy
-        //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        minzoom: 12,
-        maxzoom: 22
+            // Add custom tiles
+            map.addSource('custom-tiles', {
+                type: 'raster',
+                // base url for maptiles
+                // ‘tiles’: [‘https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png’],
+                // use proxy server to get tiles
+                tiles: [data.config.MAPBOX_MAPTILES],
+                // using open source map to get tiles without proxy
+                //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                minzoom: 12,
+                maxzoom: 22
+            });
+            map.addLayer({
+                id: 'custom-tiles-layer',
+                type: 'raster',
+                source: 'custom-tiles'
+            });
+            // user location control
+            map.addControl(
+                new mapboxgl.GeolocateControl({
+                    positionOptions: {
+                        enableHighAccuracy: true
+                    },
+                    // When active the map will receive updates to the device's location as it changes.
+                    trackUserLocation: true,
+                    // Draw an arrow next to the location dot to indicate which direction the device is heading.
+                    showUserHeading: true
+                })
+            );
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching the access token:', error);
     });
-    map.addLayer({
-        id: 'custom-tiles-layer',
-        type: 'raster',
-        source: 'custom-tiles'
-    });
-    // user location control
-    map.addControl(
-        new mapboxgl.GeolocateControl({
-            positionOptions: {
-                enableHighAccuracy: true
-            },
-            // When active the map will receive updates to the device's location as it changes.
-            trackUserLocation: true,
-            // Draw an arrow next to the location dot to indicate which direction the device is heading.
-            showUserHeading: true
-        })
-    );
-});        
 
 function displayRoute(placeNames, rawCoordinates) {
     return new Promise((resolve, reject) => {
@@ -206,24 +215,6 @@ function displayRoute(placeNames, rawCoordinates) {
 }
 
 
-// Function to fetch the route for a batch of waypoints
-function fetchRouteForBatch(batch) {
-    return new Promise((resolve, reject) => {
-        var coordinates = batch.map(coord => `${coord[0]},${coord[1]}`).join(';');
-        var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.routes && data.routes.length > 0) {
-                    resolve(data.routes[0]);
-                } else {
-                    reject('No route found');
-                }
-            })
-            .catch(err => reject(err));
-    });
-}
 // Function to optimize route. Takes in list of places and coordinates, returns both ordered in sequence of visit
 async function optimizeRoute(placeNames, coordinates) {
     // Check if inputs are valid
@@ -233,7 +224,7 @@ async function optimizeRoute(placeNames, coordinates) {
         throw new Error("Invalid inputs. Both inputs should be arrays of the same length.");
     }
     // Get the optimized coordinates
-    const coordSequence = await optimizeCoordinates(placeNames,coordinates);
+    const coordSequence = await getOptimizedSequence(placeNames);
     // Check if optimization was successful
     if (!coordSequence) {
         throw new Error("Optimization failed");
@@ -255,7 +246,7 @@ async function optimizeRoute(placeNames, coordinates) {
 }
 
 // Function to optimize coordinates. should reorder coordinates in optimised order.
-async function optimizeCoordinates(placeNames, coordinates) {
+async function getOptimizedSequence(placeNames) {
     try {
         //post data to server endpoint
         const response = await fetch('/optimize_route', {
@@ -309,26 +300,31 @@ async function postMessage(message, chatMessages) {
             throw new Error('Network response was not ok ' + response.statusText);
         }
         let data = await response.json();
-        // Get the route from the get_coordinates function
-        let orderOfVisit = await get_coordinates(data.response, chatMessages);
-        let route = orderOfVisit[0][0];
-        let instr = orderOfVisit[1];
-        // Send a request to the /get_text endpoint with the route
-        let textResponse = await fetch('/get_text', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ route: route })
-        });
-        if (!textResponse.ok) {
-            throw new Error('Network response was not ok ' + textResponse.statusText);
+        // check for operation type and run route functions if neccesarry.
+        if (data.operation == "route"){
+            // Get the route from the get_coordinates function
+            let orderOfVisit = await get_coordinates(data.response);
+            let route = orderOfVisit[0][0];
+            let instr = orderOfVisit[1];
+            // Send a request to the /get_text endpoint with the route
+            let textResponse = await fetch('/get_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ route: route, message: message })
+            });
+            if (!textResponse.ok) {
+                throw new Error('Network response was not ok ' + textResponse.statusText);
+            }
+            let textData = await textResponse.json();
+            // Append the response from the /get_text endpoint to the chat
+            appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
+            attachEventListeners();
+            appendMessage(instr, "nav-button", chatMessages)
+        } else { // return message directly
+            appendMessage("Guide: " + data.response, 'guide-message', chatMessages)
         }
-        let textData = await textResponse.json();
-        // Append the response from the /get_text endpoint to the chat
-        appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
-        attachEventListeners();
-        appendMessage(instr, "nav-button", chatMessages)
     } catch (error) {
         console.error('Error:', error);
     }
@@ -452,7 +448,7 @@ function showNavSteps(content, messageDiv) {
     };
 }
 
-async function get_coordinates(data, chatMessages) {
+async function get_coordinates(data) {
     let placeNames = data.replace('[', '').replace(']', '').split(',').map(place => place.trim());
 
     try {

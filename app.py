@@ -3,27 +3,50 @@
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 import pandas as pd
-from thefuzz import fuzz, process
-from config import OPENAI_API_KEY
-import numpy as np
+import ast
 import json
+import numpy as np
+from thefuzz import fuzz, process
+from pymongo import MongoClient
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
 
 app = Flask(__name__)
 
-client = OpenAI(api_key=OPENAI_API_KEY)
-model_name = "gpt-4"
-# Load data once when the server starts
-place_info_df = pd.read_csv('zoo-info.csv')
+CONFIG_FILE = 'config.json'
+
+with open(CONFIG_FILE, 'r') as file:
+    config = json.load(file)
+
+client = OpenAI(api_key=config["OPENAI_API_KEY"])
+model_name = config['GPT_MODEL']
+
+######################### MONGO #########################
+# Connect to MongoDB
+mongo_client = MongoClient(config['MONGO_CLUSTER_URI'])
+db = mongo_client[config['MONGO_DB_NAME']]
+poi_db = db[config['POI_DB_NAME']]
+dist_mat = db[config["DISTANCE_MATRIX"]]
+cluster_loc = db[config['CLUSTER_LOCATIONS']]
+collection = db[config['RAG_DB_NAME']]
+# LOAD Vector store into memory if needed. Currently kept in db as column.
+# Load the embedding model for semantic search
+model = SentenceTransformer('all-MiniLM-L6-v2')
+######################### MONGO #########################
+
+######################### CSV DATA #########################
+place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
 place_info_df.columns = place_info_df.columns.str.strip()
 place_info_df['name'] = place_info_df['name'].str.strip()
-place_info_df['coordinate'] = place_info_df['coordinate'].str.strip().str.replace('(', '').str.replace(')', '')
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
-distance_matrix = pd.read_csv("./graph/distance_matrix.csv")
+distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
 # remove first column which contains names of locations.
 distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
-cluster_locations = pd.read_csv('./cluster-locations.csv')
+cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
+######################### CSV DATA #########################
+
 
 zoo_name = "Singapore Zoo"
 zoo_places_list = place_info_df['name'].tolist()
@@ -35,26 +58,47 @@ sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Pa
 def home():
     return render_template('index.html', places=place_info_df)
 
+@app.route('/config', methods=["GET"])
+def get_config():
+    return jsonify({'config': config})
+
 # end point to send message to LLM to get POIs
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
     user_input = request.json['message']
+    # RAG
+    file_matches = search_files(user_input, top_k=3)
+    print(file_matches)
+    filenames = [result[0] for result in file_matches]
+    data = retrieve_files(filenames)
     # get route first:
     response = client.chat.completions.create(
         model=model_name,
         messages=[
             {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
-             Your task is to give a list of attractions that may interest a visitor.
-             You can only select attractions in this list: [{zoo_places_list}],  
-             Avoid selecting toilets/water points, tram stops, nursing rooms and shops unless requested. 
-             Ensure the names are encased in single apostrophies, as given in the list.
-             Reply with only the list."""},
+             Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
+             If the query requires you to suggest attractions at the zoo, follow the following instructions:
+             1) Avoid selecting toilets/water points, tram stops, nursing rooms and shops unless requested. 
+             2) Ensure the names are encased in single apostrophies, as given in the list.
+             3) Reply with only the list, that can be evaluated in python as a list. Adhere to this strictly.
+             Otherwise, simply reply to the user's query.
+             Here is some data to help you: {str(data)}"""},
             {"role": "user", "content": user_input}
         ],
         temperature=0,
     )
-    route = response.choices[0].message.content.strip()
-    return jsonify({'response': route}) 
+    message = response.choices[0].message.content.strip()
+    print(message)
+    try:
+        evaluated_message = ast.literal_eval(message)
+        if isinstance(evaluated_message, list):
+            operation = 'route'
+        else:
+            operation = 'message'
+    except (ValueError, SyntaxError):
+        operation = 'message'
+    
+    return jsonify({'response': message, 'operation': operation})
 
 # end point to use LLM to structure route as response
 @app.route('/get_text', methods=['POST'])
@@ -62,6 +106,7 @@ def get_text():
     try:
         # Get the 'route' data from the request JSON
         route = request.json['route']
+        user_input = request.json['message']
         # Continue with your processing
         response = client.chat.completions.create(
             model=model_name,
@@ -70,7 +115,7 @@ def get_text():
                  Your task is to talk to a visitor, telling them the attractions they will visit in the sequence given in the following list.
                  Keep you response succint, and ensure the names of the attractions are encsed in single apostrophies, as given in the list.
                  Structure your response as a bulleted list so that it is easily read."""},
-                {"role": "user", "content": str(route)}
+                {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
         )
@@ -95,9 +140,10 @@ def get_coordinates():
         # Find the row in the DataFrame that matches the place name
         row = place_info_df[place_info_df['name'] == place]
         if not row.empty:
-            coord = row['coordinate'].values[0]
-            lng, lat = map(float, coord.split(';'))
+            lng = float(row["longitude"].iloc[0])
+            lat = float(row["latitude"].iloc[0])
             coordinates.append({'lng': lng, 'lat': lat})
+    print(coordinates)
     return jsonify(coordinates)
 
 # POST endpoint for optimizing route
@@ -212,16 +258,6 @@ def solve_tsp(distance_matrix):
     else:
         return None
 
-# No end point functions
-def fuzzyMatch(message, choices):
-    matches = process.extract(message,choices)
-    print(matches)
-    result = [t[0] for t in matches if t[1] >= 60]
-    print(result)
-    if len(result) > 0:
-        return result
-    else:
-        return None
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
     hyperlinks = {}
@@ -246,6 +282,42 @@ def insertHyperlinks(message, replacements):
     
     # Reconstruct the message
     return "'".join(chunks)
+
+def search_files(query, top_k=5):
+    query_vector = model.encode(query).reshape(1, -1)
+
+    # Fetch all documents from the collection
+    all_documents = list(collection.find({}, {"file_name": 1, "description": 1, "vector": 1}))
+    
+    # Calculate cosine similarity
+    results = []
+    for doc in all_documents:
+        doc_vector = np.array(doc["vector"]).reshape(1, -1)
+        similarity = cosine_similarity(query_vector, doc_vector)[0][0]
+        if similarity >= 0.3:
+            results.append((doc["file_name"], doc["description"], similarity))
+    
+    # Sort results by similarity
+    results.sort(key=lambda x: x[2], reverse=True)
+    return results[:top_k]
+
+def retrieve_files(file_names):
+    documents = collection.find({"file_name": {"$in": file_names}})
+    retrieved_files = {}
+    
+    for doc in documents:
+        file_content = doc.get("content", {})
+        file_name = doc.get("file_name", "")
+        # Convert file content to a readable format for LLM
+        if isinstance(file_content, list):
+            content_str = json.dumps(file_content, indent=2)
+        elif isinstance(file_content, dict):
+            content_str = json.dumps(file_content, indent=2)
+        else:
+            content_str = str(file_content)
+        retrieved_files[file_name] = content_str
+    
+    return retrieved_files
 
 # function to get cluster centroid locations
 def get_unique_clusters_coordinates(names, df, centroids_df):
