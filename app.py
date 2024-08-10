@@ -11,6 +11,7 @@ from pymongo import MongoClient
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+import requests
 
 
 app = Flask(__name__)
@@ -66,29 +67,26 @@ def get_config():
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
     user_input = request.json['message']
-    # RAG
-    file_matches = search_files(user_input, top_k=3)
-    print(file_matches)
-    filenames = [result[0] for result in file_matches]
-    data = retrieve_files(filenames)
-    # get route first:
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
-             Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
-             If the query requires you to suggest attractions at the zoo, follow the following instructions:
-             1) Avoid selecting toilets/water points, tram stops, nursing rooms and shops unless requested. 
-             2) Ensure the names are encased in single apostrophies, as given in the list.
-             3) Reply with only the list, that can be evaluated in python as a list. Adhere to this strictly.
-             Otherwise, simply reply to the user's query.
-             Here is some data to help you: {str(data)}"""},
-            {"role": "user", "content": user_input}
-        ],
-        temperature=0,
-    )
-    message = response.choices[0].message.content.strip()
-    print(message)
+    
+    # Initial messages with RAG data
+    messages = [
+        {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
+            Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
+            If the query requires you to suggest attractions at the zoo, follow the following instructions:
+            1) Avoid selecting toilets/water points, tram stops, nursing rooms, and shops unless requested. 
+            2) Ensure the names are encased in single apostrophes, as given in the list.
+            3) Reply with only the list that can be evaluated in python as a list. Adhere to this strictly.
+            4) Do NOT recommend more than 15 attractions at once.
+            Otherwise, simply reply to the user's query."""},
+        {"role": "user", "content": user_input}
+    ]
+    # Handle function calls and get the final response
+    state = {
+        "called_functions": set(),
+        "function_results": {}
+    }
+    message = handle_function_calls(messages, state)
+    
     try:
         evaluated_message = ast.literal_eval(message)
         if isinstance(evaluated_message, list):
@@ -144,6 +142,7 @@ def get_coordinates():
             lat = float(row["latitude"].iloc[0])
             coordinates.append({'lng': lng, 'lat': lat})
     print(coordinates)
+    print(len(coordinates))
     return jsonify(coordinates)
 
 # POST endpoint for optimizing route
@@ -283,42 +282,6 @@ def insertHyperlinks(message, replacements):
     # Reconstruct the message
     return "'".join(chunks)
 
-def search_files(query, top_k=5):
-    query_vector = model.encode(query).reshape(1, -1)
-
-    # Fetch all documents from the collection
-    all_documents = list(collection.find({}, {"file_name": 1, "description": 1, "vector": 1}))
-    
-    # Calculate cosine similarity
-    results = []
-    for doc in all_documents:
-        doc_vector = np.array(doc["vector"]).reshape(1, -1)
-        similarity = cosine_similarity(query_vector, doc_vector)[0][0]
-        if similarity >= 0.3:
-            results.append((doc["file_name"], doc["description"], similarity))
-    
-    # Sort results by similarity
-    results.sort(key=lambda x: x[2], reverse=True)
-    return results[:top_k]
-
-def retrieve_files(file_names):
-    documents = collection.find({"file_name": {"$in": file_names}})
-    retrieved_files = {}
-    
-    for doc in documents:
-        file_content = doc.get("content", {})
-        file_name = doc.get("file_name", "")
-        # Convert file content to a readable format for LLM
-        if isinstance(file_content, list):
-            content_str = json.dumps(file_content, indent=2)
-        elif isinstance(file_content, dict):
-            content_str = json.dumps(file_content, indent=2)
-        else:
-            content_str = str(file_content)
-        retrieved_files[file_name] = content_str
-    
-    return retrieved_files
-
 # function to get cluster centroid locations
 def get_unique_clusters_coordinates(names, df, centroids_df):
     names = [name.replace("'", "") for name in names]
@@ -330,6 +293,149 @@ def get_unique_clusters_coordinates(names, df, centroids_df):
     ).tolist()
     print(coords_list)
     return coords_list
+
+###########################################################################################################
+####################################  FUNCTION CALLING METHODS    #########################################
+###########################################################################################################
+'''
+Functions:
+'''
+# Your function mappings
+def fetch_weather_data():
+    url = "https://api.data.gov.sg/v1/environment/24-hour-weather-forecast"
+    response = requests.get(url)
+    return response.json() if response.status_code == 200 else {"error": "Unable to fetch weather data"}
+
+def fetch_poi_data():
+    # Connect to MongoDB and fetch all documents with the required fields
+    documents = poi_db.find({}, {"name": 1, "operating_hours": 1, "description": 1})
+
+    poi_data = []
+    
+    for doc in documents:
+        # Collect the required fields from each document
+        poi = {
+            "name": doc.get("name", ""),
+            "operating_hours": doc.get("operating_hours", ""),
+            "description": doc.get("description", "")
+        }
+        poi_data.append(poi)
+    
+    return poi_data
+
+'''
+Function Mapping: map the function names to the function, so that it can be identified and called in handle_function_calls()
+'''
+function_mapping = {
+    "fetch_weather_data": fetch_weather_data,
+    "fetch_poi_data": fetch_poi_data
+}
+'''
+Function Schema:
+defines a list of all available functions and their descriptions. GPT will use this schema to decide which
+functions are suitable and relevant, and call these functions if needed.
+'''
+function_schemas = [
+    {
+        "name": "query_expansion",
+        "description": "Asks the user for more information to better understand their needs and provide a more personalized experience.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "type": "string",
+                    "description": "The current conversation context or user input that needs clarification."
+                },
+                "clarifying_question": {
+                    "type": "string",
+                    "description": "The question to ask the user to gather more details."
+                }
+            },
+            "required": ["context"]
+        }
+    },
+    {
+        "name": "fetch_weather_data",
+        "description": "Fetches the 24-hour weather forecast from data.gov.sg",
+        "parameters": {}
+    },
+    {
+    "name": "fetch_poi_data",
+    "description": "Fetches the name, operating hours, and description of all attractions and animals in Singapore Zoo from the MongoDB database.",
+    "parameters": {}
+    }
+]
+
+def handle_function_calls(messages, state):
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        functions=function_schemas,
+        function_call="auto"
+    )
+    
+    message = response.choices[0].message
+    if hasattr(message, 'function_call') and message.function_call:
+        function_name = message.function_call.name
+        function_args_str = message.function_call.arguments
+
+        # Convert function_args from string to dictionary
+        function_args = {}
+        if function_args_str:
+            function_args = json.loads(function_args_str)
+        
+        if function_name not in state["called_functions"]:
+            function_to_call = function_mapping.get(function_name)
+            if function_to_call:
+                try:
+                    function_result = function_to_call(**function_args)
+                except TypeError as e:
+                    function_result = {"error": f"Function call error: {str(e)}"}
+                
+                state["called_functions"].add(function_name)
+                state["function_results"][function_name] = function_result
+
+                messages.append({
+                    "role": "function", 
+                    "name": function_name, 
+                    "content": json.dumps(function_result)  # Ensure content is JSON encoded
+                })
+
+                # Recursive call to handle further function calls
+                print(state)
+                return handle_function_calls(messages, state)
+            else:
+                messages.append({
+                    "role": "function", 
+                    "name": function_name, 
+                    "content": json.dumps({"error": "Function not implemented"})
+                })
+                print(state)
+                return handle_function_calls(messages, state)
+    else:
+        return message.content
+    
+def query_expansion(context, clarifying_question=None):
+    # Generate a clarifying question if none is provided
+    if not clarifying_question:
+        clarifying_question = "Could you provide more details about your preferences or what you're looking for?"
+
+    # Return the question to ask the user
+    return {
+        "clarifying_question": clarifying_question
+    }
+
+def chat_with_gpt(user_query):
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": user_query}
+    ]
+    state = {
+        "called_functions": set(),
+        "function_results": {}
+    }
+    final_response = handle_function_calls(messages, state)
+    return final_response
 
 ###########################################################################################################
 if __name__ == '__main__':

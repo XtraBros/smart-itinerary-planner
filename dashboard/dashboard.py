@@ -155,12 +155,24 @@ def upload_csv():
 def update_cluster_graph():
     global df
     coords = df[['latitude', 'longitude']].values
+    
+    # Fit KMeans model
     kmeans = KMeans(n_clusters=18, random_state=0).fit(coords)
     df['cluster'] = kmeans.labels_
-    cluster_locations = df[['name', 'cluster']]
-    # Clear the existing collection and insert the new cluster graph
+    
+    # Prepare centroid locations data
+    centroids = kmeans.cluster_centers_
+    centroid_data = [{
+        "cluster": i,
+        "latitude": centroid[0],
+        "longitude": centroid[1]
+    } for i, centroid in enumerate(centroids)]
+    
+    # Clear the existing centroid collection and insert the new centroid data
     cluster_loc.delete_many({})
-    cluster_loc.insert_many(cluster_locations.to_dict(orient='records'))
+    cluster_loc.insert_many(centroid_data)
+
+    print("Cluster graph and centroids updated successfully.")
 
 def add_poi_to_distance_matrix(new_poi):
     global df, distance_matrix
