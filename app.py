@@ -72,11 +72,10 @@ def ask_plan():
     messages = [
         {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
             Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
-            If the query requires you to suggest attractions at the zoo, follow the following instructions:
+            If you are to suggest attractions at the zoo, follow the following 3 instructions strictly:
             1) Avoid selecting toilets/water points, tram stops, nursing rooms, and shops unless requested. 
-            2) Ensure the names are encased in single apostrophes, as given in the list.
-            3) Reply with only the list that can be evaluated in python as a list. Adhere to this strictly.
-            4) Do NOT recommend more than 15 attractions at once.
+            2) Arrange your response as a Python list with the names of the attractions, and reply with ONLY this list and nothing else.
+            3) If unspecified, always start from the Entrance/Exit.
             Otherwise, simply reply to the user's query."""},
         {"role": "user", "content": user_input}
     ]
@@ -110,9 +109,9 @@ def get_text():
             model=model_name,
             messages=[
                 {"role": "system", "content": f"""You are a tour guide at {zoo_name}. 
-                 Your task is to talk to a visitor, telling them the attractions they will visit in the sequence given in the following list.
-                 Keep you response succint, and ensure the names of the attractions are encsed in single apostrophies, as given in the list.
-                 Structure your response as a bulleted list so that it is easily read."""},
+                 Your task is to guide a visitor, introducing them the attractions they will visit in the sequence given in the following list.
+                 Keep you response succint, and ensure the names of the attractions are as given in the list. Remove any quotation marks from the names, but encase the names in single apostrophies.
+                 Structure your response as a bulleted list so that it is easy to read, and ensure the message is engaging."""},
                 {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
@@ -132,7 +131,9 @@ def get_text():
 @app.route('/get_coordinates', methods=['POST'])
 def get_coordinates():
     places = request.json['places']
-    places = [place.strip('[] ').replace("'", "") for place in places]
+    places = [place.strip().replace('"', '').lstrip() for place in places]
+    print(places)
+
     coordinates = []
     for place in places:
         # Find the row in the DataFrame that matches the place name
@@ -141,16 +142,21 @@ def get_coordinates():
             lng = float(row["longitude"].iloc[0])
             lat = float(row["latitude"].iloc[0])
             coordinates.append({'lng': lng, 'lat': lat})
+        else:
+            places.remove(place)
+    print(places)
     print(coordinates)
     print(len(coordinates))
-    return jsonify(coordinates)
+    return jsonify({"coordinates":coordinates, "places":places})
 
 # POST endpoint for optimizing route
 @app.route('/optimize_route', methods=['POST'])
 def optimize_route():
     data = request.get_json()
     place_names = data.get('placeNames')
-
+    print(place_names)
+    place_names = [place.strip().replace('"', '').lstrip() for place in place_names]
+    print(place_names)
     # Assuming place_names is a list of names to optimize
     ordered_place_indexes = solve_route(place_names)
     print(ordered_place_indexes)
@@ -160,13 +166,13 @@ def optimize_route():
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
-    places = [place.strip('[] ').replace("'", "") for place in places]
+    places = [place.strip().replace('"', '').lstrip() for place in places]
     # Split the coordinates into separate columns
     filtered_df = place_info_df[place_info_df['name'].isin(places)]
     # Convert the dataframe to a list of dictionaries
     places = filtered_df[['name','description']].set_index('name')['description'].to_dict()
     # return {'name':'description'} 
-    #print(places)
+    print(f"place_info: {places}")
     return jsonify(places)
 
 @app.route('/weather_icon', methods=['POST'])
@@ -194,7 +200,6 @@ def get_centroids():
 # output: permutation of indexes based on input e.g. [0,2,3,5,1,4]
 def solve_route(place_names):
     # get index of place from csv file
-    print(place_names)
     indices = [name_to_index[name.replace("'","")] for name in place_names]
     # Fetch distance matrix subset
     subset_matrix = distance_matrix.iloc[indices, indices]
@@ -260,19 +265,20 @@ def solve_tsp(distance_matrix):
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
     hyperlinks = {}
+    place_list = [f"{place.strip().replace('"', '').lstrip()}" for place in place_list]
+    print(f"Hyperlink names: {place_list}")
     for name in place_list:
-        name = name.replace("'","")
-        formatted_id = name.replace(' ', '-').lower()
+        formatted_id = name.replace('"', '').replace(' ', '-').lower()
         # Create the hyperlink HTML
-        hyperlink = f'<a href="#" class="location-link" data-marker-id={formatted_id}>{name}</a>'
+        hyperlink = f'<a href="#" class="location-link" data-marker-id="{formatted_id}">{name}</a>'
         hyperlinks[name] = hyperlink
+    print(hyperlinks)
     return hyperlinks
 
 
 def insertHyperlinks(message, replacements):
     # Split the message into chunks by single apostrophes
     chunks = message.split("'")
-    
     # Iterate through the chunks and replace matches
     for i in range(len(chunks)):
         chunk = chunks[i].strip()
@@ -361,7 +367,7 @@ function_schemas = [
     },
     {
     "name": "fetch_poi_data",
-    "description": "Fetches the name, operating hours, and description of all attractions and animals in Singapore Zoo from the MongoDB database.",
+    "description": "Fetches the name, operating hours, and description of all attractions, ammenities and animals in Singapore Zoo from the MongoDB database.",
     "parameters": {}
     }
 ]
@@ -402,7 +408,7 @@ def handle_function_calls(messages, state):
                 })
 
                 # Recursive call to handle further function calls
-                print(state)
+                print(state['called_functions'])
                 return handle_function_calls(messages, state)
             else:
                 messages.append({
