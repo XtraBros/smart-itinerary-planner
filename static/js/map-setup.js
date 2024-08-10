@@ -468,6 +468,7 @@ async function get_coordinates(data) {
 
         let responseData = await response.json();
         let coordinates = responseData.coordinates;
+        placeNames = responseData.places;
 
         // Map coordinates to waypoints
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
