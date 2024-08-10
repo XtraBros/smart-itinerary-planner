@@ -302,9 +302,11 @@ async function postMessage(message, chatMessages) {
         let data = await response.json();
         // check for operation type and run route functions if neccesarry.
         if (data.operation == "route"){
-            console.log(data.response)
+            let cleanedPlaceNames = JSON.parse(data.response).map(place => place.trim());
+
+            console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
-            let orderOfVisit = await get_coordinates(data.response);
+            let orderOfVisit = await get_coordinates(cleanedPlaceNames);
             let route = orderOfVisit[0][0];
             let instr = orderOfVisit[1];
             // Send a request to the /get_text endpoint with the route
@@ -450,30 +452,25 @@ function showNavSteps(content, messageDiv) {
 }
 
 async function get_coordinates(data) {
-    let placeNames = data.replace('[', '').replace(']', '').split(',').map(place => place.trim());
-
+    let placeNames = data;
     try {
         let response = await fetch('/get_coordinates', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ places: placeNames })  // Send the list of places to get their coordinates
+            body: JSON.stringify({ places: data })  // Send the list of places to get their coordinates
         });
 
         if (!response.ok) {
             throw new Error('Network response was not ok ' + response.statusText);
         }
 
-        let coordinates = await response.json();
-        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+        let responseData = await response.json();
+        let coordinates = responseData.coordinates;
 
-        // If there's only one place, add "Entrance/Exit" to the beginning
-        if (placeNames.length === 1) {
-            placeNames.unshift("Entrance/Exit");
-            // Add default coordinates for "Entrance/Exit"
-            waypoints.unshift([103.790457, 1.404228]);  // Replace with actual coordinates
-        }
+        // Map coordinates to waypoints
+        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
 
         // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
         let orderOfVisit = await optimizeRoute(placeNames, waypoints);
@@ -503,7 +500,8 @@ function addMarkers(placeNames, waypoints) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-                placeName = placeName.replace(/['"\[\]]/g, '');
+                placeName = placeName.trim().replace(/['\[\]]/g, '');
+                console.log(placeName)
 
                 var place = {
                     description: placesData[placeName],
@@ -518,7 +516,6 @@ function addMarkers(placeNames, waypoints) {
                 var popupContent = doc.querySelector('.info-card-content');
                 var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
 
-
                 var popup = new mapboxgl.Popup().setDOMContent(popupContent);
 
                 var marker = new mapboxgl.Marker()
@@ -531,6 +528,7 @@ function addMarkers(placeNames, waypoints) {
         });
     });
 }
+
 
 function fetchTemplate(url) {
     return fetch(url).then(response => response.text());
