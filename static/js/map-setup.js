@@ -503,7 +503,7 @@ function addMarkers(placeNames, waypoints) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-                placeName = placeName.replace(/['\[\]]/g, '');
+                placeName = placeName.replace(/['"\[\]]/g, '');
 
                 var place = {
                     description: placesData[placeName],

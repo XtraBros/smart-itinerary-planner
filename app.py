@@ -109,7 +109,7 @@ def get_text():
             messages=[
                 {"role": "system", "content": f"""You are a tour guide at {zoo_name}. 
                  Your task is to guide a visitor, introducing them the attractions they will visit in the sequence given in the following list.
-                 Keep you response succint, and ensure the names of the attractions are encsed in single apostrophies, as given in the list.
+                 Keep you response succint, and ensure the names of the attractions are as given in the list. Remove any quotation marks from the names, but encase the names in single apostrophies.
                  Structure your response as a bulleted list so that it is easy to read."""},
                 {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
@@ -261,9 +261,10 @@ def solve_tsp(distance_matrix):
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
     hyperlinks = {}
+    place_list = [place.strip().replace('"', '') for place in place_list]
+    print(f"Hyperlink names: {place_list}")
     for name in place_list:
-        name = name.replace("'","")
-        formatted_id = name.replace(' ', '-').lower()
+        formatted_id = name.replace('"', '').replace(' ', '-').lower()
         # Create the hyperlink HTML
         hyperlink = f'<a href="#" class="location-link" data-marker-id={formatted_id}>{name}</a>'
         hyperlinks[name] = hyperlink
@@ -274,7 +275,7 @@ def create_hyperlinks(place_list):
 def insertHyperlinks(message, replacements):
     # Split the message into chunks by single apostrophes
     chunks = message.split("'")
-    
+    print(chunks)
     # Iterate through the chunks and replace matches
     for i in range(len(chunks)):
         chunk = chunks[i].strip()
