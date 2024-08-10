@@ -302,6 +302,7 @@ async function postMessage(message, chatMessages) {
         let data = await response.json();
         // check for operation type and run route functions if neccesarry.
         if (data.operation == "route"){
+            console.log(data.response)
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(data.response);
             let route = orderOfVisit[0][0];
@@ -467,15 +468,23 @@ async function get_coordinates(data) {
         let coordinates = await response.json();
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
 
+        // If there's only one place, add "Entrance/Exit" to the beginning
+        if (placeNames.length === 1) {
+            placeNames.unshift("Entrance/Exit");
+            // Add default coordinates for "Entrance/Exit"
+            waypoints.unshift([103.790457, 1.404228]);  // Replace with actual coordinates
+        }
+
         // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
         let orderOfVisit = await optimizeRoute(placeNames, waypoints);
 
         let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1]);
-        return [orderOfVisit, instr]
+        return [orderOfVisit, instr];
     } catch (error) {
         console.error('Error fetching coordinates:', error);
     }
 }
+
 
 function addMarkers(placeNames, waypoints) {
     if (window.mapMarkers) {
