@@ -131,7 +131,6 @@ def get_text():
 @app.route('/get_coordinates', methods=['POST'])
 def get_coordinates():
     places = request.json['places']
-    places = [place.strip().replace('"', '').lstrip() for place in places]
     print(places)
 
     coordinates = []
@@ -155,8 +154,6 @@ def optimize_route():
     data = request.get_json()
     place_names = data.get('placeNames')
     print(place_names)
-    place_names = [place.strip().replace('"', '').lstrip() for place in place_names]
-    print(place_names)
     # Assuming place_names is a list of names to optimize
     ordered_place_indexes = solve_route(place_names)
     print(ordered_place_indexes)
@@ -166,7 +163,6 @@ def optimize_route():
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
-    places = [place.strip().replace('"', '').lstrip() for place in places]
     # Split the coordinates into separate columns
     filtered_df = place_info_df[place_info_df['name'].isin(places)]
     # Convert the dataframe to a list of dictionaries
@@ -265,7 +261,6 @@ def solve_tsp(distance_matrix):
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
     hyperlinks = {}
-    place_list = [f"{place.strip().replace('"', '').lstrip()}" for place in place_list]
     print(f"Hyperlink names: {place_list}")
     for name in place_list:
         formatted_id = name.replace('"', '').replace(' ', '-').lower()
@@ -367,7 +362,8 @@ function_schemas = [
     },
     {
     "name": "fetch_poi_data",
-    "description": "Fetches the name, operating hours, and description of all attractions, ammenities and animals in Singapore Zoo from the MongoDB database.",
+    "description": '''Fetches the name, operating hours, and description of all attractions,
+                    ammenities and animals in Singapore Zoo from the MongoDB database. Required for planning routes and tours.''',
     "parameters": {}
     }
 ]
@@ -445,4 +441,4 @@ def chat_with_gpt(user_query):
 
 ###########################################################################################################
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=3106)
