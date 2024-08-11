@@ -31,7 +31,6 @@ db = mongo_client[config['MONGO_DB_NAME']]
 poi_db = db[config['POI_DB_NAME']]
 dist_mat = db[config["DISTANCE_MATRIX"]]
 cluster_loc = db[config['CLUSTER_LOCATIONS']]
-collection = db[config['RAG_DB_NAME']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
 # Load the embedding model for semantic search
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -72,6 +71,7 @@ def ask_plan():
     messages = [
         {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
             Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
+            If the user's request is vague or generic, follow up with a question to get more information about the user's context. 
             If you are to suggest attractions at the zoo, follow the following 3 instructions strictly:
             1) Avoid selecting toilets/water points, tram stops, nursing rooms, and shops unless requested. 
             2) Arrange your response as a Python list with the names of the attractions, and reply with ONLY this list and nothing else.
@@ -79,21 +79,35 @@ def ask_plan():
             Otherwise, simply reply to the user's query."""},
         {"role": "user", "content": user_input}
     ]
+    
     # Handle function calls and get the final response
     state = {
         "called_functions": set(),
         "function_results": {}
     }
     message = handle_function_calls(messages, state)
+    print(message)
+    print(state)
+    # Initialize operation
+    operation = 'message'
     
     try:
-        evaluated_message = ast.literal_eval(message)
+        # Parse the message as a Python dictionary
+        evaluated_message = json.loads(message)
+        
+        # Check if the response is a list
         if isinstance(evaluated_message, list):
             operation = 'route'
-        else:
-            operation = 'message'
-    except (ValueError, SyntaxError):
-        operation = 'message'
+        
+        # Check for clarifying_question in the response
+        elif isinstance(evaluated_message, dict) and "clarifying_question" in evaluated_message:
+            message = evaluated_message["clarifying_question"]
+        
+        # Otherwise, keep the operation as 'message'
+    
+    except (ValueError, SyntaxError, json.JSONDecodeError) as e:
+        print(f"Error parsing message: {e}")
+        # If parsing fails, keep operation as 'message' and return the raw message
     
     return jsonify({'response': message, 'operation': operation})
 
@@ -131,7 +145,6 @@ def get_text():
 @app.route('/get_coordinates', methods=['POST'])
 def get_coordinates():
     places = request.json['places']
-    places = [place.strip().replace('"', '').lstrip() for place in places]
     print(places)
 
     coordinates = []
@@ -155,8 +168,6 @@ def optimize_route():
     data = request.get_json()
     place_names = data.get('placeNames')
     print(place_names)
-    place_names = [place.strip().replace('"', '').lstrip() for place in place_names]
-    print(place_names)
     # Assuming place_names is a list of names to optimize
     ordered_place_indexes = solve_route(place_names)
     print(ordered_place_indexes)
@@ -166,7 +177,6 @@ def optimize_route():
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
-    places = [place.strip().replace('"', '').lstrip() for place in places]
     # Split the coordinates into separate columns
     filtered_df = place_info_df[place_info_df['name'].isin(places)]
     # Convert the dataframe to a list of dictionaries
@@ -265,7 +275,6 @@ def solve_tsp(distance_matrix):
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
     hyperlinks = {}
-    place_list = [f"{place.strip().replace('"', '').lstrip()}" for place in place_list]
     print(f"Hyperlink names: {place_list}")
     for name in place_list:
         formatted_id = name.replace('"', '').replace(' ', '-').lower()
@@ -342,24 +351,24 @@ defines a list of all available functions and their descriptions. GPT will use t
 functions are suitable and relevant, and call these functions if needed.
 '''
 function_schemas = [
-    {
-        "name": "query_expansion",
-        "description": "Asks the user for more information to better understand their needs and provide a more personalized experience.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "context": {
-                    "type": "string",
-                    "description": "The current conversation context or user input that needs clarification."
-                },
-                "clarifying_question": {
-                    "type": "string",
-                    "description": "The question to ask the user to gather more details."
-                }
-            },
-            "required": ["context"]
-        }
-    },
+    # {
+    #     "name": "query_expansion",
+    #     "description": "Asks the user for more information to better understand their needs and provide a more personalized experience. Always ask for more context is not specified.",
+    #     "parameters": {
+    #         "type": "object",
+    #         "properties": {
+    #             "context": {
+    #                 "type": "string",
+    #                 "description": "The current conversation context or user input that needs clarification."
+    #             },
+    #             "clarifying_question": {
+    #                 "type": "string",
+    #                 "description": "The question to ask the user to gather more details."
+    #             }
+    #         },
+    #         "required": ["context"]
+    #     }
+    # },
     {
         "name": "fetch_weather_data",
         "description": "Fetches the 24-hour weather forecast from data.gov.sg",
@@ -367,7 +376,8 @@ function_schemas = [
     },
     {
     "name": "fetch_poi_data",
-    "description": "Fetches the name, operating hours, and description of all attractions, ammenities and animals in Singapore Zoo from the MongoDB database.",
+    "description": '''Fetches the name, operating hours, and description of all attractions,
+                    ammenities and animals in Singapore Zoo from the MongoDB database. Always call this function if recommending attractions or places.''',
     "parameters": {}
     }
 ]
@@ -401,6 +411,10 @@ def handle_function_calls(messages, state):
                 state["called_functions"].add(function_name)
                 state["function_results"][function_name] = function_result
 
+                # # Check if the result is from query_expansion and return immediately
+                # if function_name == "query_expansion":
+                #     return function_result['clarifying_question']
+
                 messages.append({
                     "role": "function", 
                     "name": function_name, 
@@ -416,20 +430,20 @@ def handle_function_calls(messages, state):
                     "name": function_name, 
                     "content": json.dumps({"error": "Function not implemented"})
                 })
-                print(state)
                 return handle_function_calls(messages, state)
     else:
         return message.content
-    
-def query_expansion(context, clarifying_question=None):
-    # Generate a clarifying question if none is provided
-    if not clarifying_question:
-        clarifying_question = "Could you provide more details about your preferences or what you're looking for?"
 
-    # Return the question to ask the user
-    return {
-        "clarifying_question": clarifying_question
-    }
+    
+# def query_expansion(context, clarifying_question=None):
+#     # Generate a clarifying question if none is provided
+#     if not clarifying_question:
+#         clarifying_question = "Could you provide more details about your preferences or what you're looking for?"
+
+#     # Return the question to ask the user
+#     return {
+#         "clarifying_question": clarifying_question
+#     }
 
 def chat_with_gpt(user_query):
     messages = [
@@ -445,4 +459,4 @@ def chat_with_gpt(user_query):
 
 ###########################################################################################################
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=3106)
