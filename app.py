@@ -41,9 +41,6 @@ place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
 place_info_df.columns = place_info_df.columns.str.strip()
 place_info_df['name'] = place_info_df['name'].str.strip()
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
-distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
-# remove first column which contains names of locations.
-distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
 cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 ######################### CSV DATA #########################
 
@@ -148,19 +145,21 @@ def get_coordinates():
     print(places)
 
     coordinates = []
+    found_places = []
+
     for place in places:
-        # Find the row in the DataFrame that matches the place name
-        row = place_info_df[place_info_df['name'] == place]
-        if not row.empty:
-            lng = float(row["longitude"].iloc[0])
-            lat = float(row["latitude"].iloc[0])
+        # Query the MongoDB database directly
+        result = poi_db.find_one({"name": place.strip()}, {"_id": 0, "longitude": 1, "latitude": 1})
+        if result:
+            lng = float(result["longitude"])
+            lat = float(result["latitude"])
             coordinates.append({'lng': lng, 'lat': lat})
-        else:
-            places.remove(place)
-    print(places)
+            found_places.append(place)
+
+    print(found_places)
     print(coordinates)
     print(len(coordinates))
-    return jsonify({"coordinates":coordinates, "places":places})
+    return jsonify({"coordinates": coordinates, "places": found_places})
 
 # POST endpoint for optimizing route
 @app.route('/optimize_route', methods=['POST'])
@@ -177,13 +176,19 @@ def optimize_route():
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
-    # Split the coordinates into separate columns
-    filtered_df = place_info_df[place_info_df['name'].isin(places)]
-    # Convert the dataframe to a list of dictionaries
-    places = filtered_df[['name','description']].set_index('name')['description'].to_dict()
-    # return {'name':'description'} 
-    print(f"place_info: {places}")
-    return jsonify(places)
+    print(places)
+
+    place_info = {}
+
+    for place in places:
+        # Query the MongoDB database directly
+        result = poi_db.find_one({"name": place.strip()}, {"_id": 0, "name": 1, "description": 1})
+        if result:
+            place_info[result['name']] = result['description']
+
+    print(f"place_info: {place_info}")
+    return jsonify(place_info)
+
 
 @app.route('/weather_icon', methods=['POST'])
 def weather_icon():
@@ -201,7 +206,7 @@ def get_centroids():
     names = request.json['names']
     if not names:
         return jsonify({'error': 'No names provided'}), 400
-    coords_str = get_unique_clusters_coordinates(names, place_info_df, cluster_locations)
+    coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
     return jsonify({'centroids': coords_str})
 
 ###########################################################################################################
@@ -209,6 +214,10 @@ def get_centroids():
 # input: list of place names from CSV. 
 # output: permutation of indexes based on input e.g. [0,2,3,5,1,4]
 def solve_route(place_names):
+    # fetch distance matrix
+    distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
+    # remove first column which contains names of locations.
+    distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
     # get index of place from csv file
     indices = [name_to_index[name.replace("'","")] for name in place_names]
     # Fetch distance matrix subset
@@ -298,16 +307,25 @@ def insertHyperlinks(message, replacements):
     return "'".join(chunks)
 
 # function to get cluster centroid locations
-def get_unique_clusters_coordinates(names, df, centroids_df):
+def get_unique_clusters_coordinates(names, poi_db, centroids_db):
+    # Clean up the names
     names = [name.replace("'", "") for name in names]
-    filtered_df = df[df['name'].isin(names)]
-    clusters = filtered_df['cluster']
-    centroids = centroids_df[centroids_df['cluster'].isin(clusters)]
-    coords_list = centroids.apply(
-        lambda row: f"[{row['centroid_longitude']},{row['centroid_latitude']}]", axis=1
-    ).tolist()
+
+    # Query MongoDB for POIs with matching names
+    filtered_pois = list(poi_db.find({"name": {"$in": names}}, {"_id": 0, "name": 1, "cluster": 1}))
+
+    # Extract clusters from the filtered POIs
+    clusters = [poi['cluster'] for poi in filtered_pois]
+
+    # Query MongoDB for centroids with matching clusters
+    centroids = list(centroids_db.find({"cluster": {"$in": clusters}}, {"_id": 0, "cluster": 1, "centroid_longitude": 1, "centroid_latitude": 1}))
+
+    # Generate the list of coordinates
+    coords_list = [f"[{centroid['centroid_longitude']},{centroid['centroid_latitude']}]" for centroid in centroids]
+
     print(coords_list)
     return coords_list
+
 
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
