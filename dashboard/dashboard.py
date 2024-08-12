@@ -51,8 +51,13 @@ def get_poi():
 @app.route('/add-poi', methods=['POST'])
 def add_poi():
     new_poi = request.json
+    
     print(f"Adding {new_poi['name']}")
     global df
+    if 'target_audience' in new_poi:
+        new_poi['for'] = new_poi.pop('target_audience')
+    new_poi['id'] = len(df)
+    print(new_poi)
     df = pd.concat([df, pd.DataFrame([new_poi])], ignore_index=True)
     add_poi_to_distance_matrix(new_poi)
     update_cluster_graph()
