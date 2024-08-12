@@ -71,8 +71,9 @@ def ask_plan():
             If the user's request is vague or generic, follow up with a question to get more information about the user's context. 
             If you are to suggest attractions at the zoo, follow the following 3 instructions strictly:
             1) Avoid selecting toilets/water points, tram stops, nursing rooms, and shops unless requested. 
-            2) Arrange your response as a Python list with the names of the attractions, and reply with ONLY this list and nothing else.
+            2) Arrange your response as a Python list with the names of the attractions/shows/events, and reply with ONLY this list and nothing else.
             3) If unspecified, always start from the Entrance/Exit.
+            4) If asked for locations, return the name of the location in a Python list. For example, ["Lions"].
             Otherwise, simply reply to the user's query."""},
         {"role": "user", "content": user_input}
     ]
@@ -395,7 +396,8 @@ function_schemas = [
     {
     "name": "fetch_poi_data",
     "description": '''Fetches the name, operating hours, and description of all attractions,
-                    ammenities and animals in Singapore Zoo from the MongoDB database. Always call this function if recommending attractions or places.''',
+                    ammenities, events, shows and animals in Singapore Zoo from the MongoDB database. 
+                    Always call this function if recommending attractions or places.''',
     "parameters": {}
     }
 ]

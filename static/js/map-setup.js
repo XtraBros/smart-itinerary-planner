@@ -273,7 +273,7 @@ function submitChat(event) {
     if (event.key === "Enter") {
         event.preventDefault();
         var inputBox = document.getElementById("chatbot-input");
-        var message = inputBox.value.trim();
+        var message = inputBox.value;
 
         if (message !== "") {
             var chatMessages = document.getElementById("chatbot-messages");
@@ -302,7 +302,7 @@ async function postMessage(message, chatMessages) {
         let data = await response.json();
         // check for operation type and run route functions if neccesarry.
         if (data.operation == "route"){
-            let cleanedPlaceNames = JSON.parse(data.response).map(place => place.trim());
+            let cleanedPlaceNames = JSON.parse(data.response);
 
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
@@ -501,7 +501,7 @@ function addMarkers(placeNames, waypoints) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-                placeName = placeName.trim().replace(/['\[\]]/g, '');
+                placeName = placeName.replace(/['\[\]]/g, '');
                 console.log(placeName)
 
                 var place = {
