@@ -177,3 +177,23 @@
     text-decoration: none;
     cursor: pointer;
 }
+#navigation-controls {
+    position: absolute;
+    top: 10px; /* Adjust based on the position of other buttons */
+    left: 10px;
+    z-index: 1;
+}
+
+#toggle-navigation {
+    margin-top: 5px;
+    padding: 10px;
+    background-color: #0074D9;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#toggle-navigation:hover {
+    background-color: #005fa3;
+}

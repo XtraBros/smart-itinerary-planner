@@ -2,6 +2,8 @@
 var waypoints = [];
 var map;
 var directions;
+let navigationEnabled = false;
+
 fetch('/config')
     .then(response => response.json())
     .then(data => {
@@ -10,10 +12,10 @@ fetch('/config')
 
         map = new mapboxgl.Map({
             container: 'map',
-            //style: 'mapbox://styles/mapbox/streets-v12',
-            style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
-            center: [103.78839388, 1.4042306],
+            center: [103.8198, 1.2528],
             zoom: 15
         });
 
@@ -26,8 +28,8 @@ fetch('/config')
         window.mapboxMap = map;
         map.on('load', function() {
             // Define and set bounds for the map
-            var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
-            map.setMaxBounds(bounds);
+            // var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
+            // map.setMaxBounds(bounds);
 
             // Add custom tiles
             map.addSource('custom-tiles', {
@@ -39,13 +41,37 @@ fetch('/config')
                 // using open source map to get tiles without proxy
                 //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
                 tileSize: 256,
-                minzoom: 12,
-                maxzoom: 22
+                // minzoom: 12,
+                // maxzoom: 22,
+                attribution: '© OpenStreetMap contributors'
             });
             map.addLayer({
                 id: 'custom-tiles-layer',
                 type: 'raster',
                 source: 'custom-tiles'
+            });
+            // 3D Layer for navigation view.    
+            map.addLayer({
+                'id': '3d-buildings',
+                'source': 'composite',
+                'source-layer': 'building',
+                'filter': ['==', 'extrude', 'true'],
+                'type': 'fill-extrusion',
+                'minzoom': 15,
+                'paint': {
+                    'fill-extrusion-color': '#aaa',
+                    'fill-extrusion-height': [
+                        'interpolate', ['linear'], ['zoom'],
+                        15, 0,
+                        16.05, ['get', 'height']
+                    ],
+                    'fill-extrusion-base': [
+                        'interpolate', ['linear'], ['zoom'],
+                        15, 0,
+                        16.05, ['get', 'min_height']
+                    ],
+                    'fill-extrusion-opacity': 0.6
+                }
             });
             // user location control
             map.addControl(
@@ -64,6 +90,36 @@ fetch('/config')
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
+
+document.getElementById('toggle-navigation').addEventListener('click', function() {
+    if (!navigationEnabled) {
+        enableNavigationMode();
+        this.textContent = 'Exit Navigation Mode';
+    } else {
+        disableNavigationMode();
+        this.textContent = 'Enter Navigation Mode';
+    }
+    navigationEnabled = !navigationEnabled;
+});
+
+// Navigation Mode 
+function enableNavigationMode() {
+    map.easeTo({
+        pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+        //REQUIRES UPDATE TO USER FACING DIRECTION
+        bearing: -20, // Rotates the map for a forward-facing view
+        zoom: 18, // Adjust the zoom level for better street view navigation
+        duration: 1000 // Animation duration in milliseconds
+    });
+}
+function disableNavigationMode() {
+    map.easeTo({
+        pitch: 0, // Back to 2D top-down view
+        bearing: 0,
+        zoom: 15, // Adjust zoom level if needed
+        duration: 1000
+    });
+}
 
 function displayRoute(placeNames, rawCoordinates) {
     return new Promise((resolve, reject) => {
