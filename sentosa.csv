@@ -1,12 +1,12 @@
-id,name,category,for,longitude,latitude
-0,Entrance,place,all,103.82214768654791,1.2650752183400424
-1,Exit,place,all,103.82214768654791,1.2650752183400424
-2,Shangri La,hotel,all,103.80988745985303,1.2580248411742314
-3,Fort Siloso,museum,adult,103.80875497685359,1.2594627677317751
-4,SEA Aquarium,entertainment,young,103.82078307166297,1.2579261286369647
-5,Palawan Beach,beach,all,103.82257200621378,1.2485722062330187
-6,Tanjong Beach,beach,all,103.82965397414539,1.2420518552660564
-7,Sentosa Golf Club,club,adult,103.8291636555687,1.2439384155631814
-8,W Singapore,hotel,all,103.84239928685857,1.2464410039986287
-9,Capella Singapore,hotel,all,103.82427954062327,1.2498203965981458
-10,Universal Studios Singapore,entertainment,all,103.82144480340177,1.2562996513243128
+id,name,category,for,longitude,latitude,description,operating_hours
+0,Entrance,place,all,103.8221477,1.265075218,"""tbd""","""tbd"""
+1,Exit,place,all,103.8221477,1.265075218,"""tbd""","""tbd"""
+2,Shangri La,hotel,all,103.8098875,1.258024841,"""tbd""","""tbd"""
+3,Fort Siloso,museum,adult,103.808755,1.259462768,"""tbd""","""tbd"""
+4,SEA Aquarium,entertainment,young,103.8207831,1.257926129,"""tbd""","""tbd"""
+5,Palawan Beach,beach,all,103.822572,1.248572206,"""tbd""","""tbd"""
+6,Tanjong Beach,beach,all,103.829654,1.242051855,"""tbd""","""tbd"""
+7,Sentosa Golf Club,club,adult,103.8291637,1.243938416,"""tbd""","""tbd"""
+8,W Singapore,hotel,all,103.8423993,1.246441004,"""tbd""","""tbd"""
+9,Capella Singapore,hotel,all,103.8242795,1.249820397,"""tbd""","""tbd"""
+10,Universal Studios Singapore,entertainment,all,103.8214448,1.256299651,"""tbd""","""tbd"""
