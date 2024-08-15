@@ -30,7 +30,7 @@ mongo_client = MongoClient(config['MONGO_CLUSTER_URI'])
 db = mongo_client[config['MONGO_DB_NAME']]
 poi_db = db[config['POI_DB_NAME']]
 dist_mat = db[config["DISTANCE_MATRIX"]]
-cluster_loc = db[config['CLUSTER_LOCATIONS']]
+#cluster_loc = db[config['CLUSTER_LOCATIONS']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
 # Load the embedding model for semantic search
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -38,10 +38,11 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 
 ######################### CSV DATA #########################
 place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
-place_info_df.columns = place_info_df.columns.str.strip()
-place_info_df['name'] = place_info_df['name'].str.strip()
+print(place_info_df)
+# place_info_df.columns = place_info_df.columns.str.strip()
+# place_info_df['name'] = place_info_df['name'].str.strip()
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
-cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
+#cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 ######################### CSV DATA #########################
 
 
@@ -66,14 +67,14 @@ def ask_plan():
     
     # Initial messages with RAG data
     messages = [
-        {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
-            Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
+        {"role": "system", "content": f"""You are a helpful tour guide who is working in {sentosa_name}. 
+            Your task is to interact with a visitor and advise them on features and attractions in {sentosa_name}.
             If the user's request is vague or generic, follow up with a question to get more information about the user's context. 
-            If you are to suggest attractions at the zoo, follow the following 3 instructions strictly:
-            1) Avoid selecting toilets/water points, tram stops, nursing rooms, and shops unless requested. 
+            If you are to suggest attractions, follow the following instructions strictly:
+            1) Prioritise store, attractions and places to spend money as your recommendations. 
             2) Arrange your response as a Python list with the names of the attractions/shows/events, and reply with ONLY this list and nothing else.
-            3) If unspecified, always start from the Entrance/Exit.
-            4) If asked for locations, return the name of the location in a Python list. For example, ["Lions"].
+            3) If unspecified, always start from the user's location.
+            4) If asked for locations, return the name of the location in a Python list. For example, ["Fort Siloso"].
             Otherwise, simply reply to the user's query."""},
         {"role": "user", "content": user_input}
     ]
@@ -201,14 +202,14 @@ def weather_icon():
         "Heavy Thundery Showers with Gusty Winds"]
     return jsonify(process.extractOne(forecast,lib)[0])
 
-
-@app.route('/get_centroids', methods=['POST'])
-def get_centroids():
-    names = request.json['names']
-    if not names:
-        return jsonify({'error': 'No names provided'}), 400
-    coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
-    return jsonify({'centroids': coords_str})
+# Not needed in sentosa variant right now.
+# @app.route('/get_centroids', methods=['POST'])
+# def get_centroids():
+#     names = request.json['names']
+#     if not names:
+#         return jsonify({'error': 'No names provided'}), 400
+#     coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
+#     return jsonify({'centroids': coords_str})
 
 ###########################################################################################################
 # route optimisation function: 
@@ -307,25 +308,26 @@ def insertHyperlinks(message, replacements):
     # Reconstruct the message
     return "'".join(chunks)
 
-# function to get cluster centroid locations
-def get_unique_clusters_coordinates(names, poi_db, centroids_db):
-    # Clean up the names
-    names = [name.replace("'", "") for name in names]
+# not needed in sentosa variant right now
+# # function to get cluster centroid locations
+# def get_unique_clusters_coordinates(names, poi_db, centroids_db):
+#     # Clean up the names
+#     names = [name.replace("'", "") for name in names]
 
-    # Query MongoDB for POIs with matching names
-    filtered_pois = list(poi_db.find({"name": {"$in": names}}, {"_id": 0, "name": 1, "cluster": 1}))
+#     # Query MongoDB for POIs with matching names
+#     filtered_pois = list(poi_db.find({"name": {"$in": names}}, {"_id": 0, "name": 1, "cluster": 1}))
 
-    # Extract clusters from the filtered POIs
-    clusters = [poi['cluster'] for poi in filtered_pois]
+#     # Extract clusters from the filtered POIs
+#     clusters = [poi['cluster'] for poi in filtered_pois]
 
-    # Query MongoDB for centroids with matching clusters
-    centroids = list(centroids_db.find({"cluster": {"$in": clusters}}, {"_id": 0, "cluster": 1, "centroid_longitude": 1, "centroid_latitude": 1}))
+#     # Query MongoDB for centroids with matching clusters
+#     centroids = list(centroids_db.find({"cluster": {"$in": clusters}}, {"_id": 0, "cluster": 1, "centroid_longitude": 1, "centroid_latitude": 1}))
 
-    # Generate the list of coordinates
-    coords_list = [f"[{centroid['centroid_longitude']},{centroid['centroid_latitude']}]" for centroid in centroids]
+#     # Generate the list of coordinates
+#     coords_list = [f"[{centroid['centroid_longitude']},{centroid['centroid_latitude']}]" for centroid in centroids]
 
-    print(coords_list)
-    return coords_list
+#     print(coords_list)
+#     return coords_list
 
 
 ###########################################################################################################
