@@ -52,11 +52,11 @@ fetch('/config')
             //     // maxzoom: 22,
             //     attribution: '© OpenStreetMap contributors'
             // });
-            map.addLayer({
-                id: 'custom-tiles-layer',
-                type: 'raster',
-                source: 'custom-tiles'
-            });
+            // map.addLayer({
+            //     id: 'custom-tiles-layer',
+            //     type: 'raster',
+            //     source: 'custom-tiles'
+            // });
             // 3D Layer for navigation view.    
             map.addLayer({
                 'id': '3d-buildings',
@@ -66,20 +66,28 @@ fetch('/config')
                 'type': 'fill-extrusion',
                 'minzoom': 15,
                 'paint': {
-                    'fill-extrusion-color': '#aaa',
+                    'fill-extrusion-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15, '#aaa',
+                        16, '#aaa'
+                    ],
                     'fill-extrusion-height': [
                         'interpolate', ['linear'], ['zoom'],
                         15, 0,
-                        16.05, ['get', 'height']
+                        16, ['get', 'height']
                     ],
                     'fill-extrusion-base': [
                         'interpolate', ['linear'], ['zoom'],
                         15, 0,
-                        16.05, ['get', 'min_height']
+                        16, ['get', 'min_height']
                     ],
-                    'fill-extrusion-opacity': 0.6
+                    'fill-extrusion-opacity': 0.6,
+                    'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
+            
             // user location control
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
@@ -250,7 +258,6 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
     });
 }
 
-
 // Function to optimize route. Takes in list of places and coordinates, returns both ordered in sequence of visit
 async function optimizeRoute(placeNames, coordinates) {
     // Check if inputs are valid
@@ -283,6 +290,7 @@ async function optimizeRoute(placeNames, coordinates) {
 
 // Function to optimize coordinates. should reorder coordinates in optimised order.
 async function getOptimizedSequence(placeNames) {
+    console.log(placeNames);
     try {
         //post data to server endpoint
         const response = await fetch('/optimize_route', {
@@ -360,6 +368,27 @@ async function postMessage(message, chatMessages) {
             // Append the response from the /get_text endpoint to the chat
             appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
             appendMessage(instr, "nav-button", chatMessages);
+            attachEventListeners();
+        }else if (data.operation == "location"){
+            let cleanedPlaceNames = data.response;
+
+            console.log(cleanedPlaceNames); // Check the cleaned list
+            // Get the route from the get_coordinates function
+            let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
+            // Send a request to the /get_text endpoint with the route
+            let textResponse = await fetch('/get_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ route: orderOfVisit, message: message })
+            });
+            if (!textResponse.ok) {
+                throw new Error('Network response was not ok ' + textResponse.statusText);
+            }
+            let textData = await textResponse.json();
+            // Append the response from the /get_text endpoint to the chat
+            appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
             attachEventListeners();
         } else { // return message directly
             appendMessage("Guide: " + data.response, 'guide-message', chatMessages);
@@ -538,7 +567,45 @@ async function get_coordinates(data) {
     }
 }
 
+async function get_coordinates_without_route(data) {
+    let placeNames = data;
+    try {
+        // Send the place names and the user's location to the Flask endpoint
+        let response = await fetch('/get_coordinates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                places: data,
+            })
+        });
 
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+
+        let responseData = await response.json();
+        let coordinates = responseData.coordinates;
+        placeNames = responseData.places;
+
+        // Map coordinates to waypoints
+        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+
+        // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+        console.log(orderOfVisit);
+        if (map.getSource('route')) {
+            map.removeLayer('route');
+            map.removeLayer('directions');
+            map.removeSource('route');
+        }
+        addMarkers(placeNames, waypoints);
+        return orderOfVisit;
+    } catch (error) {
+        console.error('Error fetching coordinates:', error);
+    }
+}
 
 function addMarkers(placeNames, waypoints) {
     if (window.mapMarkers) {
