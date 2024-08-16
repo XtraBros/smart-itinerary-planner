@@ -71,10 +71,9 @@ def ask_plan():
             Your task is to interact with a visitor and advise them on features and attractions in {sentosa_name}.
             If the user's request is vague or generic, follow up with a question to get more information about the user's context. 
             If you are to suggest attractions, follow the following instructions strictly:
-            1) Prioritise store, attractions and places to spend money as your recommendations. 
-            2) Arrange your response as a Python list with the names of the attractions/shows/events, and reply with ONLY this list and nothing else.
-            3) If unspecified, always start from the user's location.
-            4) If asked for locations, return the name of the location in a Python list. For example, ["Fort Siloso"].
+            1) Prioritise store, attractions and places to spend money as your recommendations, and ensure the names are as given from the database. Use the closest matched data value, otherwise reply that you do not know of such an attraction.
+            2) If asked to name attractions or places without directions to them, return the names of the locations in a Python dictionary with the key "location". For example, {{"location":["Fort Siloso",...]}}.
+            3) If asked for directions or a route to different locations, reply with the name of the places in a Python list. For example,["Capella Singapore"] represents routing from the user's location to Capella Singapore, and ["W Singapore","Capella Singapore"] indicates a route from W Singapore to Capella Singpaore.
             Otherwise, simply reply to the user's query."""},
         {"role": "user", "content": user_input}
     ]
@@ -97,7 +96,9 @@ def ask_plan():
         # Check if the response is a list
         if isinstance(evaluated_message, list):
             operation = 'route'
-        
+        elif isinstance(evaluated_message, dict):
+            operation = 'location'
+            message = evaluated_message['location']
         # Check for clarifying_question in the response
         elif isinstance(evaluated_message, dict) and "clarifying_question" in evaluated_message:
             message = evaluated_message["clarifying_question"]
@@ -113,15 +114,18 @@ def ask_plan():
 # end point to use LLM to structure route as response
 @app.route('/get_text', methods=['POST'])
 def get_text():
+    # Get the 'route' data from the request JSON
+    route = request.json['route']
+    print(f"route:{route}")
+    user_input = request.json['message']
+    if isinstance(route[0],list):
+        route = route[0]
     try:
-        # Get the 'route' data from the request JSON
-        route = request.json['route']
-        user_input = request.json['message']
         # Continue with your processing
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"""You are a tour guide at {zoo_name}. 
+                {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
                  Your task is to guide a visitor, introducing them the attractions they will visit in the sequence given in the following list.
                  Keep you response succint, and ensure the names of the attractions are as given in the list. Remove any quotation marks from the names, but encase the names in single apostrophies.
                  Structure your response as a bulleted list so that it is easy to read, and ensure the message is engaging."""},
@@ -286,7 +290,6 @@ def solve_tsp(distance_matrix):
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
     hyperlinks = {}
-    print(f"Hyperlink names: {place_list}")
     for name in place_list:
         formatted_id = name.replace('"', '').replace(' ', '-').lower()
         # Create the hyperlink HTML
@@ -398,8 +401,8 @@ function_schemas = [
     {
     "name": "fetch_poi_data",
     "description": '''Fetches the name, operating hours, and description of all attractions,
-                    ammenities, events, shows and animals in Singapore Zoo from the MongoDB database. 
-                    Always call this function if recommending attractions or places.''',
+                    ammenities, and places in Sentosa from the MongoDB database.
+                    Always call this function if recommending attractions or places, or trying to locate a place of interest.''',
     "parameters": {}
     }
 ]
