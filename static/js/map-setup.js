@@ -74,17 +74,34 @@ fetch('/config')
                 }
             });
             // user location control
-            map.addControl(
-                new mapboxgl.GeolocateControl({
-                    positionOptions: {
-                        enableHighAccuracy: true
-                    },
-                    // When active the map will receive updates to the device's location as it changes.
-                    trackUserLocation: true,
-                    // Draw an arrow next to the location dot to indicate which direction the device is heading.
-                    showUserHeading: true
-                })
-            );
+            // Add the Geolocate Control to the map
+            const geolocateControl = new mapboxgl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                trackUserLocation: true,
+                showUserHeading: true
+            });
+
+            map.addControl(geolocateControl);
+
+            // Override the geolocate event to use navigator.geolocation
+            geolocateControl.on('geolocate', () => {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const userLocation = {
+                        lng: position.coords.longitude,
+                        lat: position.coords.latitude
+                    };
+                    // Set the user's location on the map
+                    map.flyTo({
+                        center: [userLocation.lng, userLocation.lat],
+                        essential: true // this animation is considered essential with respect to prefers-reduced-motion
+                    });
+                    console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
+                }, (error) => {
+                    console.error('Error obtaining geolocation:', error);
+                });
+            });
         });
     })
     .catch(error => {
