@@ -3,6 +3,13 @@ var waypoints = [];
 var map;
 var directions;
 let navigationEnabled = false;
+const geolocateControl = new mapboxgl.GeolocateControl({
+    positionOptions: {
+        enableHighAccuracy: true
+    },
+    trackUserLocation: false,
+    showUserHeading: true
+});
 
 fetch('/config')
     .then(response => response.json())
@@ -75,14 +82,6 @@ fetch('/config')
             });
             // user location control
             // Add the Geolocate Control to the map
-            const geolocateControl = new mapboxgl.GeolocateControl({
-                positionOptions: {
-                    enableHighAccuracy: true
-                },
-                trackUserLocation: true,
-                showUserHeading: true
-            });
-
             map.addControl(geolocateControl);
 
             // Override the geolocate event to use navigator.geolocation
@@ -113,17 +112,15 @@ function enableNavigationMode() {
     // Function to update map bearing based on device orientation
     function updateBearing(event) {
         // Alpha gives the rotation around the Z-axis, which is the bearing
-        let heading = event.alpha;
-        
+        //let heading = event.alpha;
         // Normalize heading to match Mapbox's bearing format
-        if (typeof heading === 'number') {
-            map.easeTo({
-                pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-                bearing: 360 - heading, // Update the map bearing to match device heading
-                zoom: 18, // Adjust the zoom level for better street view navigation
-                duration: 500 // Animation duration in milliseconds
-            });
-        }
+        map.easeTo({
+            pitch: 80, // Tilts the map to 60 degrees for a 3D perspective
+            bearing: -20, // Update to dynamic bearing if needed
+            zoom: 18, // Adjust the zoom level for better street view navigation
+            duration: 500 // Animation duration in milliseconds
+        });
+        
     }
 
     // Start listening to device orientation events
