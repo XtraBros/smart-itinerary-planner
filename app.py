@@ -70,7 +70,7 @@ def ask_plan():
         {"role": "system", "content": f"""You are a helpful tour guide who is working in {sentosa_name}. 
             Your task is to interact with a visitor and advise them on features and attractions in {sentosa_name}.
             If the user's request is vague or generic, follow up with a question to get more information about the user's context. 
-            If you are to suggest attractions, follow the following instructions strictly:
+            If you are to suggest attractions, follow the following instructions strictly, and do not include any other text than the required answer:
             1) Prioritise store, attractions and places to spend money as your recommendations, and ensure the names are as given from the database. Use the closest matched data value, otherwise reply that you do not know of such an attraction.
             2) If asked to name attractions or places without directions to them, return the names of the locations in a Python dictionary with the key "location". For example, {{"location":["Fort Siloso",...]}}.
             3) If asked for directions or a route to different locations, reply with the name of the places in a Python list. For example,["Capella Singapore"] represents routing from the user's location to Capella Singapore, and ["W Singapore","Capella Singapore"] indicates a route from W Singapore to Capella Singpaore.
@@ -401,7 +401,7 @@ function_schemas = [
     {
     "name": "fetch_poi_data",
     "description": '''Fetches the name, operating hours, and description of all attractions,
-                    ammenities, and places in Sentosa from the MongoDB database.
+                    ammenities, and places of interest in Sentosa from the MongoDB database.
                     Always call this function if recommending attractions or places, or trying to locate a place of interest.''',
     "parameters": {}
     }
