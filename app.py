@@ -68,13 +68,15 @@ def ask_plan():
     # Initial messages with RAG data
     messages = [
         {"role": "system", "content": f"""You are a helpful tour guide who is working in {sentosa_name}. 
-            Your task is to interact with a visitor and advise them on features and attractions in {sentosa_name}.
-            If the user's request is vague or generic, follow up with a question to get more information about the user's context. 
-            If you are to suggest attractions, follow the following instructions strictly, and do not include any other text than the required answer:
-            1) Prioritise store, attractions and places to spend money as your recommendations, and ensure the names are as given from the database. Use the closest matched data value, otherwise reply that you do not know of such an attraction.
-            2) If asked to name attractions or places without directions to them, return the names of the locations in a Python dictionary with the key "location". For example, {{"location":["Fort Siloso",...]}}.
-            3) If asked for directions or a route to different locations, reply with the name of the places in a Python list. For example,["Capella Singapore"] represents routing from the user's location to Capella Singapore, and ["W Singapore","Capella Singapore"] indicates a route from W Singapore to Capella Singpaore.
-            Otherwise, simply reply to the user's query."""},
+            Your task is to advise visitors on features and attractions in {sentosa_name}.
+            If the user's request is vague or generic, follow up with a question to get more information about the user's context and interest. 
+            Follow these instructions to structure you response:
+            1) Structure your rseponse as a Python dictionary, with the keys "operation" and "message", and respond with only this dictionary and no other text. 
+            2) "operation" can have the values "message","location" and "route" only. Follow these classifications when deciding the value of "operation". "message" is when your response does not include any locations, and is replying the user directly. "location" is when your response contains locations of places without the need for directions, and "route" is to return a route or to perform wayfinding to the place(s) recommended by you.
+            3) "message" will contain your response. If the key "operation" has the value "message", the key "message" will contain your text response. If the key "opertion" has the value "route" or "location", the key "message" must contain only a Python list containing the names of the places of interest. The names must be exactly the same as given in the database. Use the function fetch_poi_data() to get the names of the locations.
+            4) Two examples: {{"operation":"message","message":"Hi, I am your tour guide for today. How may I help you?"}}, {{"operation":"route","message":["Din Tai Fung", "W Singapore"]}}.
+            5) Always start from the user's location unless specified. When starting from the user's location, your response should only contain the destinations. For example, {{"operation":"route","message":["Din Tai Fung"]}} will route from the user's location to Din Tai Fung.
+            """},
         {"role": "user", "content": user_input}
     ]
     
@@ -92,24 +94,15 @@ def ask_plan():
     try:
         # Parse the message as a Python dictionary
         evaluated_message = json.loads(message)
-        
-        # Check if the response is a list
-        if isinstance(evaluated_message, list):
-            operation = 'route'
-        elif isinstance(evaluated_message, dict):
-            operation = 'location'
-            message = evaluated_message['location']
-        # Check for clarifying_question in the response
-        elif isinstance(evaluated_message, dict) and "clarifying_question" in evaluated_message:
-            message = evaluated_message["clarifying_question"]
-        
-        # Otherwise, keep the operation as 'message'
+        response = evaluated_message['message']
+        operation = evaluated_message['operation']
+        print(f"'response': {response}, 'operation': {operation}")
+        return jsonify({'response': response, 'operation': operation})
     
     except (ValueError, SyntaxError, json.JSONDecodeError) as e:
         print(f"Error parsing message: {e}")
         # If parsing fails, keep operation as 'message' and return the raw message
-    
-    return jsonify({'response': message, 'operation': operation})
+        return jsonify({'response': message, 'operation': operation})
 
 # end point to use LLM to structure route as response
 @app.route('/get_text', methods=['POST'])
@@ -127,8 +120,9 @@ def get_text():
             messages=[
                 {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
                  Your task is to guide a visitor, introducing them the attractions they will visit in the sequence given in the following list.
-                 Keep you response succint, and ensure the names of the attractions are as given in the list. Remove any quotation marks from the names, but encase the names in single apostrophies.
-                 Structure your response as a bulleted list so that it is easy to read, and ensure the message is engaging."""},
+                 Keep you response succint, and ensure the names of the attractions are as given in the list, and encased in single apostrophies.
+                 Structure your response as a bulleted list only if there are multiple destinations. 
+                 If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map."""},
                 {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
@@ -236,7 +230,7 @@ def solve_tsp(distance_matrix):
     # Create the routing index manager
     scaled_distance_matrix = (distance_matrix * 1000).round().astype(int)
 
-    manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0)
+    manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0, len(distance_matrix) - 1)
 
     # Create the routing model
     routing = pywrapcp.RoutingModel(manager)
@@ -302,10 +296,12 @@ def create_hyperlinks(place_list):
 def insertHyperlinks(message, replacements):
     # Split the message into chunks by single apostrophes
     chunks = message.split("'")
+    print(f"Chunks: {chunks}")
     # Iterate through the chunks and replace matches
     for i in range(len(chunks)):
         chunk = chunks[i].strip()
         if chunk in replacements:
+            print(chunk)
             chunks[i] = replacements[chunk]
     
     # Reconstruct the message

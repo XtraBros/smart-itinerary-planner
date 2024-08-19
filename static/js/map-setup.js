@@ -128,7 +128,10 @@ function enableNavigationMode() {
             zoom: 18, // Adjust the zoom level for better street view navigation
             duration: 500 // Animation duration in milliseconds
         });
-        
+        map.flyTo({
+            center: [userLocation.lng, userLocation.lat],
+            essential: true // this animation is considered essential with respect to prefers-reduced-motion
+        });
     }
 
     // Start listening to device orientation events
@@ -261,6 +264,9 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
 // Function to optimize route. Takes in list of places and coordinates, returns both ordered in sequence of visit
 async function optimizeRoute(placeNames, coordinates) {
     // Check if inputs are valid
+    if (placeNames.length === 1) {
+        return [placeNames, coordinates];
+    }
     if (!Array.isArray(placeNames) || !Array.isArray(coordinates) || placeNames.length !== coordinates.length) {
         console.log(placeNames);
         console.log(coordinates);
@@ -344,9 +350,11 @@ async function postMessage(message, chatMessages) {
             throw new Error('Network response was not ok ' + response.statusText);
         }
         let data = await response.json();
+        console.log("GPT response: " + JSON.stringify(data));
         // check for operation type and run route functions if neccesarry.
         if (data.operation == "route"){
-            let cleanedPlaceNames = JSON.parse(data.response);
+            console.log("PLaces: " + data.response);
+            let cleanedPlaceNames = data.response;
 
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
