@@ -2,7 +2,13 @@
 var waypoints = [];
 var map;
 var directions;
+let route = {};
 let navigationEnabled = false;
+let simulationRunning = false; // Flag to indicate if the simulation is running
+let simulationPaused = false;  // Flag to indicate if the simulation is paused
+let simulationTimeout;         // Variable to store the timeout ID
+let userMarker;
+
 const geolocateControl = new mapboxgl.GeolocateControl({
     positionOptions: {
         enableHighAccuracy: true
@@ -95,7 +101,7 @@ fetch('/config')
             // Override the geolocate event to use navigator.geolocation
             geolocateControl.on('geolocate', () => {
                 navigator.geolocation.getCurrentPosition((position) => {
-                    const userLocation = {
+                    userLocation = {
                         lng: position.coords.longitude,
                         lat: position.coords.latitude
                     };
@@ -116,39 +122,153 @@ fetch('/config')
     });
 
 // Navigation Mode 
-function enableNavigationMode() {
-    // Function to update map bearing based on device orientation
-    function updateBearing(event) {
-        // Alpha gives the rotation around the Z-axis, which is the bearing
-        //let heading = event.alpha;
-        // Normalize heading to match Mapbox's bearing format
+function enableNavigationMode(route) {
+    navigator.geolocation.getCurrentPosition((position) => {
+        var userLocation = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude
+        };
+
+        // Perform map animations and start simulation in sequence
+        function startSimulationAfterAnimation() {
+            // Start simulating the user's location along the route
+            simulateUserLocation(route);
+        }
+
+        // Animate the map
         map.easeTo({
-            pitch: 80, // Tilts the map to 60 degrees for a 3D perspective
-            bearing: -20, // Update to dynamic bearing if needed
-            zoom: 18, // Adjust the zoom level for better street view navigation
+            pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+            bearing: 90, // Update to dynamic bearing if needed
+            zoom: 20, // Adjust the zoom level for better street view navigation
             duration: 500 // Animation duration in milliseconds
         });
-        map.flyTo({
-            center: [userLocation.lng, userLocation.lat],
-            essential: true // this animation is considered essential with respect to prefers-reduced-motion
-        });
-    }
 
-    // Start listening to device orientation events
-    if (window.DeviceOrientationEvent) {
-        window.addEventListener('deviceorientation', updateBearing, true);
-    } else {
-        console.log("Device orientation not supported");
-    }
+        // Wait for easeTo animation to complete, then perform flyTo
+        map.once('moveend', () => {
+            map.flyTo({
+                center: [userLocation.lng, userLocation.lat],
+                essential: true // this animation is considered essential with respect to prefers-reduced-motion
+            });
+
+            // Wait for flyTo animation to complete, then start simulation
+            map.once('moveend', startSimulationAfterAnimation);
+        });
+
+    }, (error) => {
+        console.error('Error getting user location:', error);
+    });
 }
 
-function disableNavigationMode() {
+
+function disableNavigationMode(route) {
     map.easeTo({
         pitch: 0, // Back to 2D top-down view
         bearing: 0,
         zoom: 15, // Adjust zoom level if needed
         duration: 1000
     });
+    if (simulationRunning){
+        pauseSimulation(route);
+    }
+}
+
+// Function to start simulating user location along the route
+function simulateUserLocation(route) {
+    let index = 0;
+    // Initialize the user marker if it doesn't exist
+    if (!userMarker) {
+        userMarker = new mapboxgl.Marker({ color: 'red' })
+            .setLngLat([route.coordinates[0][0], route.coordinates[0][1]])
+            .addTo(map);
+    }
+
+    function updateLocation() {
+        if (!simulationRunning) return; // If not running, do nothing
+
+        if (index < route.coordinates.length) {
+            // Simulate the user's location along the route
+            const newLocation = {
+                lng: route.coordinates[index][0],
+                lat: route.coordinates[index][1]
+            };
+
+            // Update the user's location in your app
+            updateUserLocation(newLocation);
+
+            // Remove the part of the route that has been traveled
+            const remainingRoute = {
+                type: 'LineString',
+                coordinates: route.coordinates.slice(index)
+            };
+
+            // Update the route displayed on the map to show only the remaining route
+            map.getSource('route').setData({
+                type: 'Feature',
+                geometry: remainingRoute
+            });
+
+            // Move to the next point in the route
+            index++;
+
+            if (!simulationPaused) {
+                // Call this function again after a delay to continue simulation
+                simulationTimeout = setTimeout(updateLocation, 3000); // Adjust the delay as needed
+            }
+        } else {
+            console.log("Route simulation completed");
+            simulationRunning = false;
+        }
+    }
+
+    // Start the location simulation
+    simulationRunning = true;
+    simulationPaused = false;
+    updateLocation();
+}
+
+// Function to pause the simulation
+function pauseSimulation(remainingRoute) {
+    route =  remainingRoute
+    if (simulationRunning && !simulationPaused) {
+        simulationPaused = true;
+        clearTimeout(simulationTimeout); // Stop the current timeout
+        console.log("Simulation paused");
+    }
+}
+
+// Function to resume the simulation
+function resumeSimulation() {
+    if (simulationPaused) {
+        simulationPaused = false;
+        simulationRunning = true;
+        simulateUserLocation(route); // Resume the simulation
+        console.log("Simulation resumed");
+    }
+}
+
+// Function to stop the simulation
+function stopSimulation() {
+    simulationRunning = false;
+    simulationPaused = false;
+    clearTimeout(simulationTimeout); // Stop any ongoing timeout
+    console.log("Simulation stopped");
+}
+
+
+function updateUserLocation(newLocation) {
+    userLocation = newLocation;
+
+    // Update the map view to center on the new location
+    map.flyTo({
+        center: [userLocation.lng, userLocation.lat],
+        essential: true, // Animation is essential
+        zoom: 18 // Adjust zoom level as needed
+    });
+
+    // Update the marker position
+    if (userMarker) {
+        userMarker.setLngLat([userLocation.lng, userLocation.lat]);
+    }
 }
 
 function displayRoute(userLocation, placeNames, rawCoordinates) {
@@ -179,7 +299,7 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
             .then(data => {
                 if (data.routes && data.routes.length > 0) {
                     var legs = data.routes[0].legs;
-                    var route = data.routes[0].geometry;
+                    route = data.routes[0].geometry;
                     return { legs, route };
                 } else {
                     console.error('No route found: ', data);
@@ -238,7 +358,7 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
                             map.getSource('route').setData(route);
                         });
                     }
-
+                    
                     // Extract route instructions
                     var instructions = extractRouteInstructions(result.legs, placeNames);
                     resolve(instructions);
@@ -251,7 +371,7 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
                 map.flyTo({
                     center: [userLocation.lng, userLocation.lat],
                     essential: true, // This ensures the animation happens even with prefers-reduced-motion
-                    zoom: 18 // Increase the zoom level as needed
+                    zoom: 15 // Increase the zoom level as needed
                 });
             })
             .catch(error => {
@@ -430,10 +550,10 @@ async function loadButtonTemplate(messageDiv, text) {
         const button = buttonDiv.querySelector("button");
         button.addEventListener('click', function() {
             if (!navigationEnabled) {
-                enableNavigationMode();
+                enableNavigationMode(route);
                 this.textContent = 'Exit Navigation Mode';
             } else {
-                disableNavigationMode();
+                disableNavigationMode(route);
                 this.textContent = 'Click here to start navigation!';
             }
             navigationEnabled = !navigationEnabled;
@@ -533,7 +653,7 @@ async function get_coordinates(data) {
     let placeNames = data;
     try {
         // Fetch the user's current location
-        let userLocation = await new Promise((resolve, reject) => {
+        userLocation = await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
                 position => resolve({ 
                     lat: parseFloat(position.coords.latitude), 
