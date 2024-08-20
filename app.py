@@ -71,11 +71,12 @@ def ask_plan():
             Your task is to advise visitors on features and attractions in {sentosa_name}.
             If the user's request is vague or generic, follow up with a question to get more information about the user's context and interest. 
             Follow these instructions to structure you response:
-            1) Structure your rseponse as a Python dictionary, with the keys "operation" and "message", and respond with only this dictionary and no other text. 
+            1) Structure your rseponse as a Python dictionary, with the keys "operation" and "message", and respond with only this dictionary and no other text. Ensure your response only contains ONE dictionary.
             2) "operation" can have the values "message","location" and "route" only. Follow these classifications when deciding the value of "operation". "message" is when your response does not include any locations, and is replying the user directly. "location" is when your response contains locations of places without the need for directions, and "route" is to return a route or to perform wayfinding to the place(s) recommended by you.
             3) "message" will contain your response. If the key "operation" has the value "message", the key "message" will contain your text response. If the key "opertion" has the value "route" or "location", the key "message" must contain only a Python list containing the names of the places of interest. The names must be exactly the same as given in the database. Use the function fetch_poi_data() to get the names of the locations.
             4) Two examples: {{"operation":"message","message":"Hi, I am your tour guide for today. How may I help you?"}}, {{"operation":"route","message":["Din Tai Fung", "W Singapore"]}}.
             5) Always start from the user's location unless specified. When starting from the user's location, your response should only contain the destinations. For example, {{"operation":"route","message":["Din Tai Fung"]}} will route from the user's location to Din Tai Fung.
+            6) Use the names of the places as given in the database. Any variance in the names of locations is not tolerated.
             """},
         {"role": "user", "content": user_input}
     ]
@@ -230,7 +231,7 @@ def solve_tsp(distance_matrix):
     # Create the routing index manager
     scaled_distance_matrix = (distance_matrix * 1000).round().astype(int)
 
-    manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0, len(distance_matrix) - 1)
+    manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0)
 
     # Create the routing model
     routing = pywrapcp.RoutingModel(manager)
