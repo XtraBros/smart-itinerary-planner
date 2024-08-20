@@ -28,8 +28,8 @@ fetch('/config')
             style: 'mapbox://styles/mapbox/streets-v12',
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
-            center: [103.8198, 1.2528],
-            zoom: 15
+            center: [103.827973, 1.250277],
+            zoom: 14
         });
 
         directions = new MapboxDirections({
@@ -135,13 +135,13 @@ function enableNavigationMode(route) {
             simulateUserLocation(route);
         }
 
-        // Animate the map
-        map.easeTo({
-            pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-            bearing: 90, // Update to dynamic bearing if needed
-            zoom: 20, // Adjust the zoom level for better street view navigation
-            duration: 500 // Animation duration in milliseconds
-        });
+        // // Animate the map
+        // map.easeTo({
+        //     pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+        //     bearing: 90, // Update to dynamic bearing if needed
+        //     zoom: 20, // Adjust the zoom level for better street view navigation
+        //     duration: 500 // Animation duration in milliseconds
+        // });
 
         // Wait for easeTo animation to complete, then perform flyTo
         map.once('moveend', () => {
@@ -160,7 +160,7 @@ function enableNavigationMode(route) {
 }
 
 
-function disableNavigationMode(route) {
+function disableNavigationMode() {
     map.easeTo({
         pitch: 0, // Back to 2D top-down view
         bearing: 0,
@@ -168,12 +168,13 @@ function disableNavigationMode(route) {
         duration: 1000
     });
     if (simulationRunning){
-        pauseSimulation(route);
+        pauseSimulation();
     }
 }
 
 // Function to start simulating user location along the route
 function simulateUserLocation(route) {
+    console.log("Starting simulation");
     let index = 0;
     // Initialize the user marker if it doesn't exist
     if (!userMarker) {
@@ -200,6 +201,7 @@ function simulateUserLocation(route) {
                 type: 'LineString',
                 coordinates: route.coordinates.slice(index)
             };
+            route = remainingRoute;
 
             // Update the route displayed on the map to show only the remaining route
             map.getSource('route').setData({
@@ -227,22 +229,12 @@ function simulateUserLocation(route) {
 }
 
 // Function to pause the simulation
-function pauseSimulation(remainingRoute) {
-    route =  remainingRoute
+function pauseSimulation() {
+    console.log(route)
     if (simulationRunning && !simulationPaused) {
         simulationPaused = true;
         clearTimeout(simulationTimeout); // Stop the current timeout
         console.log("Simulation paused");
-    }
-}
-
-// Function to resume the simulation
-function resumeSimulation() {
-    if (simulationPaused) {
-        simulationPaused = false;
-        simulationRunning = true;
-        simulateUserLocation(route); // Resume the simulation
-        console.log("Simulation resumed");
     }
 }
 
@@ -530,6 +522,10 @@ async function postMessage(message, chatMessages) {
 function appendMessage(text, className, chatMessages) {
     var messageDiv = document.createElement("div");
     if (className == "nav-button"){
+        var navButton = document.querySelector(".nav-button");
+        if (navButton) {
+            navButton.remove();
+        }
         loadButtonTemplate(messageDiv,text)
     } else {
         messageDiv.innerHTML = marked.parse(text);
@@ -551,9 +547,10 @@ async function loadButtonTemplate(messageDiv, text) {
         button.addEventListener('click', function() {
             if (!navigationEnabled) {
                 enableNavigationMode(route);
+                console.log(route)
                 this.textContent = 'Exit Navigation Mode';
             } else {
-                disableNavigationMode(route);
+                disableNavigationMode();
                 this.textContent = 'Click here to start navigation!';
             }
             navigationEnabled = !navigationEnabled;
