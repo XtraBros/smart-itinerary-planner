@@ -136,12 +136,12 @@ function enableNavigationMode(route) {
         }
 
         // // Animate the map
-        // map.easeTo({
-        //     pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-        //     bearing: 90, // Update to dynamic bearing if needed
-        //     zoom: 20, // Adjust the zoom level for better street view navigation
-        //     duration: 500 // Animation duration in milliseconds
-        // });
+        map.easeTo({
+            pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+            bearing: 90, // Update to dynamic bearing if needed
+            zoom: 20, // Adjust the zoom level for better street view navigation
+            duration: 500 // Animation duration in milliseconds
+        });
 
         // Wait for easeTo animation to complete, then perform flyTo
         map.once('moveend', () => {
@@ -456,7 +456,7 @@ async function postMessage(message, chatMessages) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({ message: message, userLocation: userLocation })
         });
         if (!response.ok) {
             throw new Error('Network response was not ok ' + response.statusText);

@@ -12,6 +12,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
+from geopy.distance import geodesic
 
 
 app = Flask(__name__)
@@ -29,6 +30,9 @@ model_name = config['GPT_MODEL']
 mongo_client = MongoClient(config['MONGO_CLUSTER_URI'])
 db = mongo_client[config['MONGO_DB_NAME']]
 poi_db = db[config['POI_DB_NAME']]
+# create geosphere index
+poi_db.create_index([('location', '2dsphere')])
+indexes = poi_db.index_information()
 dist_mat = db[config["DISTANCE_MATRIX"]]
 #cluster_loc = db[config['CLUSTER_LOCATIONS']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
@@ -38,7 +42,6 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 
 ######################### CSV DATA #########################
 place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
-print(place_info_df)
 # place_info_df.columns = place_info_df.columns.str.strip()
 # place_info_df['name'] = place_info_df['name'].str.strip()
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
@@ -64,12 +67,14 @@ def get_config():
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
     user_input = request.json['message']
+    user_location = request.json['userLocation']
+    print(request)
     
     # Initial messages with RAG data
     messages = [
         {"role": "system", "content": f"""You are a helpful tour guide who is working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}.
-            If the user's request is vague or generic, follow up with a question to get more information about the user's context and interest. 
+            Your task is to advise visitors on features and attractions in {sentosa_name}, form their current location(lng,lat): {user_location}.
+            If the user's request is vague or generic, follow up with a question to get more information about the user's context and interest. Do not repeat your response.
             Follow these instructions to structure you response:
             1) Structure your rseponse as a Python dictionary, with the keys "operation" and "message", and respond with only this dictionary and no other text. Ensure your response only contains ONE dictionary.
             2) "operation" can have the values "message","location" and "route" only. Follow these classifications when deciding the value of "operation". "message" is when your response does not include any locations, and is replying the user directly. "location" is when your response contains locations of places without the need for directions, and "route" is to return a route or to perform wayfinding to the place(s) recommended by you.
@@ -77,10 +82,11 @@ def ask_plan():
             4) Two examples: {{"operation":"message","message":"Hi, I am your tour guide for today. How may I help you?"}}, {{"operation":"route","message":["Din Tai Fung", "W Singapore"]}}.
             5) Always start from the user's location unless specified. When starting from the user's location, your response should only contain the destinations. For example, {{"operation":"route","message":["Din Tai Fung"]}} will route from the user's location to Din Tai Fung.
             6) Use the names of the places as given in the database. Any variance in the names of locations is not tolerated.
+            7) If asked for nearby POIs, use the find_nearby_pois function.If there are no nearby attractions, recommend some places for the user to go to. Return a response with "operation" = "location". Use a radius of 100 metres if not specified.
             """},
         {"role": "user", "content": user_input}
     ]
-    
+     
     # Handle function calls and get the final response
     state = {
         "called_functions": set(),
@@ -308,28 +314,6 @@ def insertHyperlinks(message, replacements):
     # Reconstruct the message
     return "'".join(chunks)
 
-# not needed in sentosa variant right now
-# # function to get cluster centroid locations
-# def get_unique_clusters_coordinates(names, poi_db, centroids_db):
-#     # Clean up the names
-#     names = [name.replace("'", "") for name in names]
-
-#     # Query MongoDB for POIs with matching names
-#     filtered_pois = list(poi_db.find({"name": {"$in": names}}, {"_id": 0, "name": 1, "cluster": 1}))
-
-#     # Extract clusters from the filtered POIs
-#     clusters = [poi['cluster'] for poi in filtered_pois]
-
-#     # Query MongoDB for centroids with matching clusters
-#     centroids = list(centroids_db.find({"cluster": {"$in": clusters}}, {"_id": 0, "cluster": 1, "centroid_longitude": 1, "centroid_latitude": 1}))
-
-#     # Generate the list of coordinates
-#     coords_list = [f"[{centroid['centroid_longitude']},{centroid['centroid_latitude']}]" for centroid in centroids]
-
-#     print(coords_list)
-#     return coords_list
-
-
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
 ###########################################################################################################
@@ -359,12 +343,48 @@ def fetch_poi_data():
     
     return poi_data
 
+def find_nearby_pois(user_location, radius_in_meters):
+    results = []
+    user_lon = user_location['longitude']
+    user_lat = user_location['latitude']
+    try:
+        # Convert radius to radians (radius of Earth is approximately 6378100 meters)
+        radius_in_radians = radius_in_meters / 6378100.0
+        print(f"centerSphre: {[user_lon, user_lat], radius_in_radians}")
+
+        # Perform a geospatial query to find POIs within the radius
+        nearby_pois = poi_db.find({
+            "location": {
+                "$geoWithin": {
+                    "$centerSphere": [[user_lon, user_lat], radius_in_radians]
+                }
+            }
+        })
+        # Convert the cursor to a list to check what is returned
+        nearby_pois_list = list(nearby_pois)
+        print(f"Found POIs: {nearby_pois_list}")
+
+        # # Sort POIs by distance from the user
+        # sorted_pois = sorted(
+        #     nearby_pois,
+        #     key=lambda poi: geodesic((user_lat, user_lon), (poi['latitude'], poi['longitude'])).meters
+        # )
+        for place in nearby_pois_list:
+            results.append(place['name'])
+
+        return results
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return results
+
 '''
 Function Mapping: map the function names to the function, so that it can be identified and called in handle_function_calls()
 '''
 function_mapping = {
     "fetch_weather_data": fetch_weather_data,
-    "fetch_poi_data": fetch_poi_data
+    "fetch_poi_data": fetch_poi_data,
+    "find_nearby_pois": find_nearby_pois
 }
 '''
 Function Schema:
@@ -372,24 +392,6 @@ defines a list of all available functions and their descriptions. GPT will use t
 functions are suitable and relevant, and call these functions if needed.
 '''
 function_schemas = [
-    # {
-    #     "name": "query_expansion",
-    #     "description": "Asks the user for more information to better understand their needs and provide a more personalized experience. Always ask for more context is not specified.",
-    #     "parameters": {
-    #         "type": "object",
-    #         "properties": {
-    #             "context": {
-    #                 "type": "string",
-    #                 "description": "The current conversation context or user input that needs clarification."
-    #             },
-    #             "clarifying_question": {
-    #                 "type": "string",
-    #                 "description": "The question to ask the user to gather more details."
-    #             }
-    #         },
-    #         "required": ["context"]
-    #     }
-    # },
     {
         "name": "fetch_weather_data",
         "description": "Fetches the 24-hour weather forecast from data.gov.sg",
@@ -401,7 +403,62 @@ function_schemas = [
                     ammenities, and places of interest in Sentosa from the MongoDB database.
                     Always call this function if recommending attractions or places, or trying to locate a place of interest.''',
     "parameters": {}
+    },
+    {
+        "name": "find_nearby_pois",
+        "description": "Finds places of interest (POIs) within a specified radius of the user's location, sorted by proximity.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_location": {
+                    "type": "object",
+                    "description": "The user's current location.",
+                    "properties": {
+                        "longitude": {
+                            "type": "number",
+                            "description": "The longitude of the user's location."
+                        },
+                        "latitude": {
+                            "type": "number",
+                            "description": "The latitude of the user's location."
+                        }
+                    },
+                    "required": ["longitude", "latitude"]
+                },
+                "radius_in_meters": {
+                    "type": "number",
+                    "description": "The radius within which to find POIs, in meters.",
+                    "default": 100
+                }
+            },
+            "required": ["user_location"]
+        },
+        "responses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the place of interest."
+                    },
+                    "location": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "description": "The location of the place of interest as [longitude, latitude]."
+                    },
+                    "distance": {
+                        "type": "number",
+                        "description": "The distance from the user's location to the place of interest, in meters."
+                    }
+                },
+                "required": ["name", "location", "distance"]
+            }
+        }
     }
+
 ]
 
 def handle_function_calls(messages, state):
@@ -456,28 +513,6 @@ def handle_function_calls(messages, state):
     else:
         return message.content
 
-    
-# def query_expansion(context, clarifying_question=None):
-#     # Generate a clarifying question if none is provided
-#     if not clarifying_question:
-#         clarifying_question = "Could you provide more details about your preferences or what you're looking for?"
-
-#     # Return the question to ask the user
-#     return {
-#         "clarifying_question": clarifying_question
-#     }
-
-def chat_with_gpt(user_query):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": user_query}
-    ]
-    state = {
-        "called_functions": set(),
-        "function_results": {}
-    }
-    final_response = handle_function_calls(messages, state)
-    return final_response
 
 ###########################################################################################################
 if __name__ == '__main__':
