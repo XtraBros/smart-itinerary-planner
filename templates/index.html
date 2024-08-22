@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' />
     <title>Smart Tour Guide</title>
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -14,17 +15,33 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
 </head>
 <body>
-    <div class="header">
-        <img src="static/icons/guide-genius.png" class="header-icon">
-        <div class="header-text">Guide Genius</div>
-        <div class="min-weather-widget" id="minWeatherWidget">
-            <img alt="min weather icon" class="min-weather-icon" id="weather-icon0">
-            <div class="min-forecast" id="forecast0"></div>
-            <div class="min-temp-details">
-                <div class="min-tempLow" id="tempLow0"></div>
-                <div class="min-tempHigh" id="tempHigh0"></div>
-            </div>           
-        </div>
+    <div class="newHeader">
+        <ul class="list">
+            <li class="item">
+                <p><img src="static/icons/attraction.svg" alt="" srcset=""></p>
+                <p>Attraction</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/dining.svg" alt="" srcset=""></p>
+                <p>Dining</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/show.svg" alt="" srcset=""></p>
+                <p>Show</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/toilet.svg" alt="" srcset=""></p>
+                <p>Toilet</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/hotel.svg" alt="" srcset=""></p>
+                <p>Hotel</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/retail.svg" alt="" srcset=""></p>
+                <p>Retail</p>
+            </li>
+        </ul>
     </div>
     <div class="weather-widget" id="weather-widget">
         <button class="close-button" id="close-button">&times;</button>
@@ -66,33 +83,23 @@
     </div>
     <div id="container">
         <div id="map"></div>
-        <div id="resizer"></div>
-        <div id="right-panel">
-            <div id="chatbot-area">
-                <div id="chatbot-messages">
-                    <div id="nav-steps" class="nav-steps"></div>
-                </div>
-                <div id="input-container">
-                    <input type="text" id="chatbot-input" placeholder="Type a message..." onkeydown="submitChat(event)">
-                    <button id="voice-btn" onclick="startVoiceInput()">
-                        <i id="record" class="fas fa-microphone"></i>
-                    </button>
-                </div>
-
-                <div id="voice">
-                    <div class="mt-4" id="div_language" style="display:none">
-                        <h2 class="mb-3 text-light">Select Language</h2>
-                        <select class="form-select bg-secondary text-light" id="select_language" onchange="updateCountry()"></select>
-                        <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
-                    </div>
-                </div>
-
-            </div>
-        </div>      
+        <!-- <div id="resizer"></div>     -->
         <div id="zoom-controls">
-            <button id="zoom-in">+</button>
-            <button id="zoom-out">-</button>
-    </div>
+            <div class="lunchtime">
+                <div class="infomfor">It's lunchtime. I've picked out a few restaurants 
+                    in the neighbourhoods that I think you'll like. 
+                    Take a look at them.</div>
+                <button id="robotIcoId" class="robotIco">
+                    <img src="static/icons/choml.png" alt="" srcset="">
+                </button>
+            </div>
+            <button id="zoom-in">
+                <span>+</span>
+            </button>
+            <button id="zoom-out">
+                <span>-</span>
+            </button>
+        </div>
     <div id="waypoint-form-container" style="display: none;">
         <div id="waypoint-form">
             <label for="waypoint-title">Title:</label>
@@ -103,11 +110,40 @@
             <button id="cancel-waypoint">Cancel</button>
         </div>
     </div>
-    <div class="tooltip">Click to display detailed forecast.</div>
+    <!-- <div class="tooltip">Click to display detailed forecast.</div> -->
+    </div>
+
+    <div id="popupModal" class="modal">
+        <div class="modalContent">
+          <div class="modal-body">
+            <div id="right-panel">
+                <div id="chatbot-area">
+                    <div id="chatbot-messages">
+                        <div id="nav-steps" class="nav-steps"></div>
+                    </div>
+                    <div id="voice">
+                        <div class="mt-4" id="div_language" style="display:none">
+                            <h2 class="mb-3 text-light">Select Language</h2>
+                            <select class="form-select bg-secondary text-light" id="select_language" onchange="updateCountry()"></select>
+                            <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
+                        </div>
+                    </div>
+    
+                </div>
+            </div>
+            <div id="input-container">
+                <input type="text" id="chatbot-input" placeholder="Let’s chat" onkeydown="submitChat(event)">
+                <button id="voice-btn" onclick="startVoiceInput()">
+                    <i id="record" class="fas fa-microphone"></i>
+                </button>
+            </div>
+          </div>
+        </div>
+    </div>
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
     <script src="{{ url_for('static', filename='js/language.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
     <script src="{{url_for('static',filename='js/chatbox-resize.js')}}"></script>
-    <script src="{{url_for('static',filename='js/weather-widget.js')}}"></script>
+    <!-- <script src="{{url_for('static',filename='js/weather-widget.js')}}"></script> -->
 </body>
 </html>

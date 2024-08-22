@@ -1,31 +1,40 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const resizer = document.getElementById('resizer');
+    // const resizer = document.getElementById('resizer');
     const rightPanel = document.getElementById('right-panel');
-    const map = document.getElementById('map');
-    const zoomCtrls = document.getElementById('zoom-controls');
-
+    // const map = document.getElementById('map');
+    // const zoomCtrls = document.getElementById('zoom-controls');
+    const popupModal = document.getElementById('popupModal');
+    const btn = document.getElementById("robotIcoId");
+    btn.onclick = function () {
+        popupModal.style.display = "block";
+    }
+    window.onclick = function (event) {
+      if (event.target === popupModal) {
+        popupModal.style.display = "none";
+      }
+    }
     let isResizing = false;
 
-    resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
+    // resizer.addEventListener('mousedown', (e) => {
+    //     isResizing = true;
+    //     document.addEventListener('mousemove', onMouseMove);
+    //     document.addEventListener('mouseup', onMouseUp);
+    // });
 
     const onMouseMove = (e) => {
         if (!isResizing) return;
 
         // Calculate new widths in percentages
-        const containerWidth = document.getElementById('container').clientWidth;
-        const newRightPanelWidthPercentage = ((containerWidth - e.clientX) / containerWidth) * 100;
-        const newMapWidthPercentage = 100 - newRightPanelWidthPercentage - ((resizer.offsetWidth / containerWidth) * 100);
-        const zoomControlsRightPercentage = newRightPanelWidthPercentage + 3;
+        // const containerWidth = document.getElementById('container').clientWidth;
+        // const newRightPanelWidthPercentage = ((containerWidth - e.clientX) / containerWidth) * 100;
+        // const newMapWidthPercentage = 100 - newRightPanelWidthPercentage - ((resizer.offsetWidth / containerWidth) * 100);
+        // const zoomControlsRightPercentage = newRightPanelWidthPercentage + 3;
 
         // Set the new widths and positions in percentages
-        rightPanel.style.width = `${newRightPanelWidthPercentage}%`;
-        map.style.width = `${newMapWidthPercentage}%`;
-        resizer.style.right = `${newRightPanelWidthPercentage}%`;
-        zoomCtrls.style.right = `${zoomControlsRightPercentage}%`;
+        // rightPanel.style.width = `${newRightPanelWidthPercentage}%`;
+        // map.style.width = `${newMapWidthPercentage}%`;
+        // resizer.style.right = `${newRightPanelWidthPercentage}%`;
+        // zoomCtrls.style.right = `${zoomControlsRightPercentage}%`;
 
         // Trigger map resize
         if (window.mapboxMap) {
@@ -40,17 +49,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 });
 document.addEventListener('DOMContentLoaded', function() {
-    const rightPanel = document.getElementById('right-panel');
-    const zoomControls = document.getElementById('zoom-controls');
-    const resizer = document.getElementById('resizer');
+    // const rightPanel = document.getElementById('right-panel');
+    // const zoomControls = document.getElementById('zoom-controls');
+    // const resizer = document.getElementById('resizer');
 
     function adjustZoomControls() {
-        const containerWidth = document.getElementById('container').offsetWidth;
-        const rightPanelWidth = rightPanel.offsetWidth;
-        const threePercentWidth = containerWidth * 0.02; // Calculate 3% of the container's width
-        const zoomControlRight = rightPanelWidth + threePercentWidth;
+        // const containerWidth = document.getElementById('container').offsetWidth;
+        // const rightPanelWidth = rightPanel.offsetWidth;
+        // const threePercentWidth = containerWidth * 0.02; // Calculate 3% of the container's width
+        // const zoomControlRight = rightPanelWidth + threePercentWidth;
 
-        zoomControls.style.right = `${zoomControlRight}px`;
+        // zoomControls.style.right = `${zoomControlRight}px`;
     }
 
     // Initial adjustment
@@ -60,10 +69,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', adjustZoomControls);
 
     // Adjust when the resizer is moved
-    resizer.addEventListener('mousedown', function() {
-        document.addEventListener('mousemove', adjustZoomControls);
-        document.addEventListener('mouseup', function() {
-            document.removeEventListener('mousemove', adjustZoomControls);
-        }, { once: true });
-    });
+    // resizer.addEventListener('mousedown', function() {
+    //     document.addEventListener('mousemove', adjustZoomControls);
+    //     document.addEventListener('mouseup', function() {
+    //         document.removeEventListener('mousemove', adjustZoomControls);
+    //     }, { once: true });
+    // });
 });
