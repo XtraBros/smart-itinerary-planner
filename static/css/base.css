@@ -1,30 +1,39 @@
+body, li, p {
+    padding: 0px;
+    margin: 0px;
+}
 #container {
-    display: flex;
-    position: absolute;
-    top: 6%;
-    left: 0;
     width: 100%;
-    height: 94%;
+    height: calc(100vh);
 }
 #map {
-    flex-grow: 1;
-    min-width: 500px;
+    /* flex-grow: 1; */
+    /* min-width: 500px; */
     height: 100%;
-    width: 70%;
+    width: 100%;
 }
 #zoom-controls {
     position: absolute;
     bottom: 20px;
+    right: 3px;
     display: flex;
     flex-direction: column;
 }
 #zoom-controls button {
-    background: white;
-    border: white;
-    padding: 10px;
+    background-color: transparent; border: none;
     margin: 2px;
     cursor: pointer;
     font-size: 16px;
+}
+#zoom-controls button#zoom-in span, #zoom-controls button#zoom-out span{
+    background-color: white;
+    padding: 8px 12px; border-radius: 4px;
+}
+#zoom-controls button#zoom-out {
+    margin-top: 20px;
+}
+#zoom-controls button#zoom-out span {
+    padding: 8px 14px;
 }
 #resizer {
     width: 10px;
@@ -33,19 +42,13 @@
     right: 30%;
 }
 #right-panel {
-    width: 30%;
-    min-width: 200px;
-    padding: 20px;
-    background-color: #f4f4f4;
+    width: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 #chatbot-area {
     flex-grow: 1;
-    border: 1px solid #ccc;
-    padding: 10px;
-    margin-top: 5px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -55,7 +58,8 @@
 }
 
 #chatbot-messages {
-    max-height: 800px;
+    max-height: calc(100vh - 280px);
+    overflow: hidden;
     overflow-y: auto;
     width: 100%;
     flex-grow: 1;
@@ -63,59 +67,138 @@
 }
 
 #input-container {
+    position: absolute;
+    bottom: 16px;
+    left: 0px; right: 0px;
     display: flex;
     align-items: center;
     width: 100%;
-    padding-right: 5px;
 }
 
 #chatbot-input {
     flex-grow: 1;
-    padding: 12px 10px;
-    border: 1px solid #ccc;
-    border-right: none;
-    border-radius: 4px 0 0 4px;
-    margin-right: 5px;
+    padding: 0px 16px; border: none;
+    height: 45px; outline: none;
+    background-color: #F6F6F6; border-radius: 8px;
+    margin: 0px 10px 0px 16px;
 }
 #voice-btn {
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    background-color: #f4f4f4;
-    border-radius: 0 4px 4px 0;
+    padding: 15px 18px;
+    border: none;
+    background-color: #F6F6F6;
+    border-radius: 8px; margin-right: 16px;
 }
 /* Styles for the chat container and messages */
 .chat-message {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 10px;
-    word-wrap: break-word;
+    word-wrap: break-word; margin-bottom: 10px;
+}
+
+.chat-message p {
+    margin: 0px; padding: 0px;
 }
 
 /* Styles for the Visitor's messages */
-.visitor-message {
-    background-color: #d1e7dd;  /* Light green background */
-    color: #0f5132;             /* Dark green text */
+.visitor-message { text-align: right; padding-left: 10px;}
+.visitor-message p {
+    display: inline-block;
+    background-color: #00ADE9;
+    color: white;
+    padding: 6px 8px; margin-right: 10px;
+    border-radius: 10px; position: relative;
+}
+
+.visitor-message p:before {
+    position: absolute;
+    top: 6px;
+    right: -11px;
+    padding: 0;
+    border: 6px solid;
+    border-color: transparent transparent transparent #00ADE9;
+    display: block;
+    content: '';
+    z-index: 9;
 }
 
 /* Styles for the Guide's messages */
 .guide-message {
-    background-color: #cfe2ff;  /* Light blue background */
-    color: #084298;             /* Dark blue text */
+    text-align: left; display: flex; justify-content: space-between;
+}
+.guideImage {
+    width: 40px;
+}
+.guideImage img {
+    width: 36px;
+}
+.guideText {
+    flex: 1; padding-right: 6px;
+}
+.guideText p {
+    display: inline-block;
+    background-color: #F6F6F6;
+    color: #2C2C2C;
+    padding: 6px 8px; margin-left: 5px;
+    border-radius: 10px; position: relative;
+}
+
+.guideText p:before {
+    position: absolute;
+    top: 6px;
+    left: -11px;
+    padding: 0;
+    border: 6px solid;
+    border-color: transparent #F6F6F6 transparent transparent;
+    display: block;
+    content: '';
+    z-index: 9;
 }
 
 /* styles for banner */
-.header{
-    top: 0;
-    left: 0;
-    width:100%;
-    display: flex;
+.newHeader{
+    width: 100%;
+    background-color: #fff;
+    color: #666;
+    height: auto;
+    top: 0px;
+    z-index: 1049;
+    position: fixed;
+    overflow-x: auto;
+}
+.newHeader::-webkit-scrollbar {
+    display: none;
+}
+.list{
+    width: 120%; margin: 0px; padding: 10px 0px;
+    box-sizing:border-box;
+    display: flex; justify-content: flex-start;
+    height: 100%;
+}
+.list li p { line-height: 18px; }
+.list li p:first-child { height: 30px; }
+.item{
+    width: calc(100vw / 5);
+    list-style: none;
+    font-size: 15px;
+    text-align:center;
+}
+.lunchtime { position: relative; }
+.infomfor {
     position: absolute;
-    background-color: #143733;
-    color: #cfe2ff;
-    z-index: 9999;
-    height: 6.5vh;
-    border-bottom: .5vh solid #0a5310;
-    align-items: center;
+    right: 10px; color: #116996;
+    bottom: 65px; background-color: white; border-radius: 14px; 
+    box-shadow: 4px 5px 5px #0000001a;
+    box-sizing: border-box; padding: 10px 16px;
+    width: calc(100vw - 28px);
+}
+.infomfor:before {
+    position: absolute;
+    bottom: -12px;
+    right: 12px;
+    padding: 0;
+    border: 6px solid;
+    border-color: #fff transparent transparent transparent;
+    display: block;
+    content: '';
+    z-index: 9;
 }
 .header-icon {
     left:2%;
@@ -197,3 +280,109 @@
 #toggle-navigation:hover {
     background-color: #005fa3;
 }
+#zoom-controls button.robotIco {
+    background-color: transparent; border: none; padding: 0px; margin: 0px;
+}
+#zoom-controls button.robotIco img {
+    width: 44px; margin-bottom: 5px;
+}
+a.mapboxgl-ctrl-logo {
+    display: none;
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0, 0, 0);
+    background-color: rgba(0, 0, 0, 0.4);
+    -webkit-animation-name: fadeIn;
+    -webkit-animation-duration: 0.4s;
+    animation-name: fadeIn;
+    animation-duration: 0.4s
+  }
+
+  /* 弹窗内容 */
+  .modalContent {
+    position: fixed;
+    bottom: 0;
+    background-color: #fff; border-top-left-radius: 20px; border-top-right-radius: 20px;
+    width: 100%;
+    -webkit-animation-name: slideIn;
+    -webkit-animation-duration: 0.4s;
+    animation-name: slideIn;
+    animation-duration: 0.4s
+  }
+
+  .modal-header {
+    padding: 2px 16px;
+    background-color: #fff;
+    color: white;
+  }
+
+  .modal-body {
+    padding: 16px 5px;
+    min-height: calc(100vh - 220px);
+    position: relative;
+  }
+
+  .modal-footer {
+    padding: 2px 16px;
+    background-color: #fff;
+    color: white;
+  }
+
+  /* 添加动画 */
+  @-webkit-keyframes slideIn {
+    from {
+      bottom: -300px;
+      opacity: 0
+    }
+
+    to {
+      bottom: 0;
+      opacity: 1
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      bottom: -300px;
+      opacity: 0
+    }
+
+    to {
+      bottom: 0;
+      opacity: 1
+    }
+  }
+
+  @-webkit-keyframes fadeIn {
+    from {
+      opacity: 0
+    }
+
+    to {
+      opacity: 1
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0
+    }
+
+    to {
+      opacity: 1
+    }
+  }
+  .mapboxgl-ctrl-bottom-right {
+    display: none;
+  }
+  .mapboxgl-ctrl-top-right {
+    top: 80px;
+  }

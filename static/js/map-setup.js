@@ -8,6 +8,20 @@ let simulationRunning = false; // Flag to indicate if the simulation is running
 let simulationPaused = false;  // Flag to indicate if the simulation is paused
 let simulationTimeout;         // Variable to store the timeout ID
 let userMarker;
+let userLocation;
+
+window.onload = function () {
+    navigator.geolocation.getCurrentPosition((position) => {
+        // 1.253142,103.8261829
+        userLocation = {
+            lng: '103.827973',
+            lat: '1.250277'
+        };
+        console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
+    }, (error) => {
+        console.error('Error obtaining geolocation:', error);
+    });
+}
 
 const geolocateControl = new mapboxgl.GeolocateControl({
     positionOptions: {
@@ -448,7 +462,7 @@ function submitChat(event) {
 
 async function postMessage(message, chatMessages) {
     // Append the visitor's message
-    appendMessage("Visitor: " + message, "visitor-message", chatMessages);
+    appendMessage(message, "visitor-message", chatMessages);
     try {
         // Send message to Flask endpoint and get the response
         let response = await fetch('/ask_plan', {
@@ -486,7 +500,7 @@ async function postMessage(message, chatMessages) {
             }
             let textData = await textResponse.json();
             // Append the response from the /get_text endpoint to the chat
-            appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
+            appendMessage(textData.response, "guide-message", chatMessages);
             appendMessage(instr, "nav-button", chatMessages);
             attachEventListeners();
         }else if (data.operation == "location"){
@@ -508,32 +522,36 @@ async function postMessage(message, chatMessages) {
             }
             let textData = await textResponse.json();
             // Append the response from the /get_text endpoint to the chat
-            appendMessage("Guide: " + textData.response, "guide-message", chatMessages);
+            appendMessage(textData.response, "guide-message", chatMessages);
             attachEventListeners();
         } else { // return message directly
-            appendMessage("Guide: " + data.response, 'guide-message', chatMessages);
+            appendMessage(data.response, 'guide-message', chatMessages);
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error:', JSON.stringify(error));
     }
 }
 
 // creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages) {
-    var messageDiv = document.createElement("div");
     if (className == "nav-button"){
+        var messageDiv = document.createElement("div");
         var navButton = document.querySelector(".nav-button");
         if (navButton) {
             navButton.remove();
         }
         loadButtonTemplate(messageDiv,text)
+        chatMessages.appendChild(messageDiv);
+    } else if (className == "guide-message") {
+        chatMessages.innerHTML += `<div class='chat-message ${className}'>
+            <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
+            <div class='guideText'>${marked.parse(text)}</div>
+        </div>
+        `
     } else {
-        messageDiv.innerHTML = marked.parse(text);
-        messageDiv.className = "chat-message " + className;      
+        chatMessages.innerHTML += `<div class='chat-message ${className}'>${marked.parse(text)}</div>`
     }
-    chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-
 }
 
 async function loadButtonTemplate(messageDiv, text) {
