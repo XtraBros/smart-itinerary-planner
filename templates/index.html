@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' />
+    <meta name='viewport'
+        content='width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' />
     <title>Smart Tour Guide</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="static/css/base.css">
@@ -12,8 +15,11 @@
     <link rel="stylesheet" href="static/css/weather-widget.css">
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/marked/marked.min.js'></script>
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
 </head>
+
 <body>
     <div class="newHeader">
         <ul class="list">
@@ -83,61 +89,135 @@
     </div>
     <div id="container">
         <div id="map"></div>
-        <!-- <div id="resizer"></div>     -->
         <div id="zoom-controls">
             <div class="lunchtime">
-                <div class="infomfor">It's lunchtime. I've picked out a few restaurants 
-                    in the neighbourhoods that I think you'll like. 
+                <div class="infomfor" id="tishi">It's lunchtime. I've picked out a few restaurants
+                    in the neighbourhoods that I think you'll like.
                     Take a look at them.</div>
                 <button id="robotIcoId" class="robotIco">
                     <img src="static/icons/choml.png" alt="" srcset="">
                 </button>
             </div>
-            <button id="zoom-in">
-                <span>+</span>
-            </button>
-            <button id="zoom-out">
-                <span>-</span>
-            </button>
-        </div>
-    <div id="waypoint-form-container" style="display: none;">
-        <div id="waypoint-form">
-            <label for="waypoint-title">Title:</label>
-            <input type="text" id="waypoint-title" name="waypoint-title"><br>
-            <label for="waypoint-notes">Notes:</label>
-            <textarea id="waypoint-notes" name="waypoint-notes"></textarea><br>
-            <button id="save-waypoint">Save</button>
-            <button id="cancel-waypoint">Cancel</button>
-        </div>
-    </div>
-    <!-- <div class="tooltip">Click to display detailed forecast.</div> -->
-    </div>
-
-    <div id="popupModal" class="modal">
-        <div class="modalContent">
-          <div class="modal-body">
-            <div id="right-panel">
-                <div id="chatbot-area">
-                    <div id="chatbot-messages">
-                        <div id="nav-steps" class="nav-steps"></div>
-                    </div>
-                    <div id="voice">
-                        <div class="mt-4" id="div_language" style="display:none">
-                            <h2 class="mb-3 text-light">Select Language</h2>
-                            <select class="form-select bg-secondary text-light" id="select_language" onchange="updateCountry()"></select>
-                            <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
+            <!-- 推荐poi -->
+            <div id="poiSwiper">
+                <div class="promo">Promo Nearby</div>
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <div class="slideItme">
+                                <div class="swperimg">
+                                    <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/11/b4/45/48/this-restaurant-is-amazing.jpg?w=1200&h=-1&s=1"
+                                        alt="" srcset="">
+                                </div>
+                                <div class="visitors">
+                                    <h4>A Taste of Time Travel: Back
+                                        to 1870s (Fort Serapong)</h4>
+                                    <p><span class="islander">Islander earns 50 points</span></p>
+                                    <p class="address">
+                                        <span>
+                                            <img src="static/icons/addess.svg" alt="" srcset="">
+                                            500m
+                                        </span>
+                                        <span>
+                                            <img src="static/icons/time.svg" alt="" srcset="">
+                                            5mins
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="swiper-slide">
+                            <div class="slideItme">
+                                <div class="swperimg">
+                                    <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/11/b4/45/48/this-restaurant-is-amazing.jpg?w=1200&h=-1&s=1"
+                                        alt="" srcset="">
+                                </div>
+                                <div class="visitors">
+                                    <h4>A Taste of Time Travel: Back
+                                        to 1870s (Fort Serapong)</h4>
+                                    <p><span class="islander">Islander earns 50 points</span></p>
+                                    <p class="address">
+                                        <span>
+                                            <img src="static/icons/addess.svg" alt="" srcset="">
+                                            500m
+                                        </span>
+                                        <span>
+                                            <img src="static/icons/time.svg" alt="" srcset="">
+                                            5mins
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-    
                 </div>
             </div>
-            <div id="input-container">
-                <input type="text" id="chatbot-input" placeholder="Let’s chat" onkeydown="submitChat(event)">
-                <button id="voice-btn" onclick="startVoiceInput()">
-                    <i id="record" class="fas fa-microphone"></i>
-                </button>
+        </div>
+        <div class="mapandlistbut">
+            <button>
+                <span>Map</span>
+            </button>
+            <button>
+                <span>List</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- chatgpt -->
+    <div id="popupModal" class="modal">
+        <div class="modalContent">
+            <div class="modal-body">
+                <div id="right-panel">
+                    <div id="chatbot-area">
+                        <div id="chatbot-messages">
+                            <div id="nav-steps" class="nav-steps"></div>
+                        </div>
+                        <div id="voice">
+                            <div class="mt-4" id="div_language" style="display:none">
+                                <h2 class="mb-3 text-light">Select Language</h2>
+                                <select class="form-select bg-secondary text-light" id="select_language"
+                                    onchange="updateCountry()"></select>
+                                <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div id="input-container">
+                    <input type="text" id="chatbot-input" placeholder="Let’s chat" onkeydown="submitChat(event)">
+                    <button id="voice-btn" onclick="startVoiceInput()">
+                        <i id="record" class="fas fa-microphone"></i>
+                    </button>
+                </div>
             </div>
-          </div>
+        </div>
+    </div>
+
+    <!-- 导航 -->
+    <div id="navigation">
+        <div class="neststat">
+            <p>
+                <img src="static/icons/left.svg" alt="" srcset="">
+                <span class="number">18</span><span>meters</span>
+            </p>
+        </div>
+        <div class="datelInfo">
+            <div>
+                <h3>18:00</h3>
+                <p>Arrive</p>
+            </div>
+            <div>
+                <h3>20</h3>
+                <p>mins</p>
+            </div>
+            <div>
+                <h3>2.1</h3>
+                <p>km</p>
+            </div>
+            <div>
+                <p><img src="static/icons/closed.svg" alt="" width="26px" srcset=""></p>
+                <p>Stop</p>
+            </div>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
@@ -146,4 +226,5 @@
     <script src="{{url_for('static',filename='js/chatbox-resize.js')}}"></script>
     <!-- <script src="{{url_for('static',filename='js/weather-widget.js')}}"></script> -->
 </body>
+
 </html>

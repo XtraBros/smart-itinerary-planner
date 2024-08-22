@@ -1,4 +1,4 @@
-body, li, p {
+body, li, p, button, h4, h3 {
     padding: 0px;
     margin: 0px;
 }
@@ -14,10 +14,9 @@ body, li, p {
 }
 #zoom-controls {
     position: absolute;
-    bottom: 20px;
-    right: 3px;
-    display: flex;
-    flex-direction: column;
+    bottom: 30px;
+    left: 0px;
+    width: 100%;
 }
 #zoom-controls button {
     background-color: transparent; border: none;
@@ -180,9 +179,9 @@ body, li, p {
     font-size: 15px;
     text-align:center;
 }
-.lunchtime { position: relative; }
+.lunchtime { position: relative; text-align: right; padding-right: 10px; }
 .infomfor {
-    position: absolute;
+    position: absolute; display: none; text-align: left;
     right: 10px; color: #116996;
     bottom: 65px; background-color: white; border-radius: 14px; 
     box-shadow: 4px 5px 5px #0000001a;
@@ -210,7 +209,142 @@ body, li, p {
     font-size: large;
     font-weight: 700;
 }
+.mapandlistbut {
+    position: absolute;
+    left: 15px;
+    bottom: 35px;
+    background-color: white;
+    border-radius: 20px;
+    border: 2px solid white;
+    overflow: hidden;
+}
+.mapandlistbut button {
+    background-color: white;
+    border: none;
+    width: 60px;
+    height: 40px;
+}
 
+.mapandlistbut button:first-child {
+    background-color: #00ADE9;
+    border-radius: 20px;
+    color: white;
+}
+#poiSwiper {
+    position: relative;
+}
+.swiper-slide {
+    border-radius: 12px;
+    width: 90%;
+    background-color: white;
+}
+.swiper-wrapper .swiper-slide:first-child {
+    margin-left: 15px;
+}
+.slideItme {
+    padding: 12px;
+}
+.slideItme:after{
+    content: "020"; 
+    display: block; 
+    height: 0; 
+    clear: both; 
+    visibility: hidden;  
+}
+
+.promo {
+    background-color: white;
+    position: absolute; top: -45px;
+    font-size: 15px; color: #2C2C2C;
+    width: 120px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    margin-left: 16px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+}
+  
+.slideItme {
+    zoom: 1; 
+}
+.swperimg {
+    width: 100px;
+    height: 100px;
+    float: left;
+    overflow: hidden;
+    border-radius: 12px;
+}
+.swperimg img {
+    width: 100px;
+    height: 100%;
+}
+.visitors {
+    float: right;
+    width: calc(100% - 115px);
+}
+.visitors h4 {
+    font-size: 15px;
+    color: #2C2C2C;
+    font-weight: normal;
+    line-height: 18px;
+    margin-bottom: 10px;
+}
+
+.visitors .islander {
+    background-color: #FFF7E6;
+    color: #FF8A00;
+    font-size: 13px;
+    border-radius: 20px;
+    padding: 3px 10px;
+    border: 1px solid #FFD591;
+}
+
+.visitors .address {
+    margin-top: 10px;
+    font-size: 13px; color: #666666;
+}
+
+.visitors .address span {
+    display: inline-block;
+}
+
+.visitors .address span:first-child {
+    padding-right: 15px;
+}
+
+.visitors .address img {
+    float: left; margin-top: 1px; margin-right: 5px;
+}
+#navigation {
+    position: fixed;
+    top: 10px; left: 10px; right: 10px; font-size: 17px;
+    z-index: 9999; color: white; border-radius: 12px;
+    height: auto; background-color: #183140;
+    padding: 16px;
+}
+.datelInfo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center; padding-top: 16px;
+    border-top: 1px solid #183140;
+}
+.datelInfo h3 {
+    font-size: 17px; font-weight: normal;
+}
+.datelInfo p {
+    font-size: 15px; color: #C3C3C3;
+}
+.datelInfo p img {
+    width: 26px;
+}
+.neststat {
+    font-size: 20px; padding-bottom: 16px;
+}
+.neststat .number{
+    font-size: 40px; font-weight: 400;
+}
 .nav-button {
     display: block;
     margin: 10px auto; /* Centers the button horizontally */
@@ -284,7 +418,7 @@ body, li, p {
     background-color: transparent; border: none; padding: 0px; margin: 0px;
 }
 #zoom-controls button.robotIco img {
-    width: 44px; margin-bottom: 5px;
+    width: 44px;
 }
 a.mapboxgl-ctrl-logo {
     display: none;

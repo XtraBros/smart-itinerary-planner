@@ -9,17 +9,37 @@ let simulationPaused = false;  // Flag to indicate if the simulation is paused
 let simulationTimeout;         // Variable to store the timeout ID
 let userMarker;
 let userLocation;
+let isFirstOpen = false;
 
 window.onload = function () {
+    const tishiDom = document.getElementById('tishi')
+    isFirstOpen = localStorage.getItem('isFirstOpen')
+    if (tishiDom && isFirstOpen) {
+        tishiDom.style.display = 'none'
+    } else {
+        tishiDom.style.display = 'block'
+    }
     navigator.geolocation.getCurrentPosition((position) => {
-        // 1.253142,103.8261829
         userLocation = {
-            lng: '103.827973',
-            lat: '1.250277'
+            lng: position.coords.longitude,
+            lat: position.coords.latitude
         };
         console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
     }, (error) => {
         console.error('Error obtaining geolocation:', error);
+    });
+    const swiper = new Swiper('.swiper', {
+        loop: true,
+        // autoplay: true,
+        // delay: 50000,
+        slidesPerView: "auto",
+        spaceBetween: 16,
+        pagination: {
+            el: '.swiper-pagination',
+        },
+    });
+    swiper.on('touchStart', function (swiper, event) {
+        console.log('slide changed', event);
     });
 }
 
@@ -820,13 +840,13 @@ function fetchPlacesData(places) {
 }
 
 // Zoom button scripts
-document.getElementById('zoom-in').addEventListener('click', () => {
-    map.zoomIn();
-});
+// document.getElementById('zoom-in').addEventListener('click', () => {
+//     map.zoomIn();
+// });
 
-document.getElementById('zoom-out').addEventListener('click', () => {
-    map.zoomOut();
-});
+// document.getElementById('zoom-out').addEventListener('click', () => {
+//     map.zoomOut();
+// });
 // Function to simulate click on marker to show popup
 function clickMarker(markerId) {
     if (window.mapMarkers[markerId]) {

@@ -5,10 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // const zoomCtrls = document.getElementById('zoom-controls');
     const popupModal = document.getElementById('popupModal');
     const btn = document.getElementById("robotIcoId");
+    const tishiDom = document.getElementById('tishi')
+    const poiSwiper = document.getElementById('poiSwiper')
     btn.onclick = function () {
         popupModal.style.display = "block";
+        tishiDom.style.display = "none";
+        localStorage.setItem('isFirstOpen', true)
     }
     window.onclick = function (event) {
+        poiSwiper.style.display = 'none';
       if (event.target === popupModal) {
         popupModal.style.display = "none";
       }
