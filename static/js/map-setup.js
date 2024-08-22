@@ -136,12 +136,62 @@ fetch('/config')
     });
 
 // Navigation Mode 
-function enableNavigationMode(route) {
+function enableNavigationMode(route, instructions) {
+    document.getElementById('popupModal').style.display = "none";
+    let currentStepIndex = 0; // Start at the first step of the route
+
+    // Function to update navigation instructions based on user's current location
+    function updateNavigationInstructions(userLocation) {
+        // Calculate the distance between the user's current location and the next checkpoint
+        const checkpoint = {
+            lng: route.coordinates[currentStepIndex][0],
+            lat: route.coordinates[currentStepIndex][1]
+        };        
+        console.log(checkpoint)
+        const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
+
+        // If the user is close enough to the checkpoint, move to the next step
+        const thresholdDistance = 10; // meters, adjust this value as needed
+        if (distanceToCheckpoint < thresholdDistance) {
+            currentStepIndex++;
+            if (currentStepIndex < instructions.length) {
+                //displayInstruction(instructions[currentStepIndex]);
+            } else {
+                console.log("You've reached your destination!");
+                stopNavigation(); // Optionally stop navigation or handle route completion
+            }
+        }
+    }
+
+    // Function to calculate the distance between two points (Haversine formula)
+    function calculateDistance(point1, point2) {
+        const R = 6371000; // Radius of the Earth in meters
+        const toRad = Math.PI / 180;
+        const dLat = (point2.lat - point1.lat) * toRad;
+        const dLng = (point2.lng - point1.lng) * toRad;
+
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(point1.lat * toRad) * Math.cos(point2.lat * toRad) *
+                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }    
+
+    // Monitor the user's GPS location
+    //navigator.geolocation.watchPosition((position) => {
     navigator.geolocation.getCurrentPosition((position) => {
-        var userLocation = {
+        const userLocation = {
             lng: position.coords.longitude,
             lat: position.coords.latitude
         };
+        const userHeading = position.coords.heading || 0;
+
+        // Rotate the map to match the user's heading
+        map.rotateTo(userHeading);
+
+        // Update navigation instructions based on the user's location
+        updateNavigationInstructions(userLocation);
 
         // Perform map animations and start simulation in sequence
         function startSimulationAfterAnimation() {
@@ -149,28 +199,25 @@ function enableNavigationMode(route) {
             simulateUserLocation(route);
         }
 
-        // // Animate the map
+        // Animate the map to tilt and zoom for 3D perspective
         map.easeTo({
             pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-            bearing: 90, // Update to dynamic bearing if needed
-            zoom: 20, // Adjust the zoom level for better street view navigation
+            zoom: 20,  // Adjust the zoom level for better street view navigation
+            center: [userLocation.lng, userLocation.lat], // Center map on user's location
             duration: 500 // Animation duration in milliseconds
         });
 
-        // Wait for easeTo animation to complete, then perform flyTo
-        map.once('moveend', () => {
-            map.flyTo({
-                center: [userLocation.lng, userLocation.lat],
-                essential: true // this animation is considered essential with respect to prefers-reduced-motion
-            });
-
-            // Wait for flyTo animation to complete, then start simulation
-            map.once('moveend', startSimulationAfterAnimation);
-        });
+        // Wait for easeTo animation to complete, then start simulation
+        map.once('moveend', startSimulationAfterAnimation);
 
     }, (error) => {
         console.error('Error getting user location:', error);
     });
+    //, {
+    //     enableHighAccuracy: true, // Enable high accuracy mode to use GPS
+    //     maximumAge: 0, // Don't use a cached position
+    //     timeout: 10000 // Set a timeout for getting the location
+    // });
 }
 
 
@@ -186,10 +233,12 @@ function disableNavigationMode() {
     }
 }
 
-// Function to start simulating user location along the route
+// Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
     let index = 0;
+    const targetDistance = 10; // meters per step for interpolation
+
     // Initialize the user marker if it doesn't exist
     if (!userMarker) {
         userMarker = new mapboxgl.Marker({ color: 'red' })
@@ -200,36 +249,57 @@ function simulateUserLocation(route) {
     function updateLocation() {
         if (!simulationRunning) return; // If not running, do nothing
 
-        if (index < route.coordinates.length) {
+        if (index < route.coordinates.length - 1) {
             // Simulate the user's location along the route
-            const newLocation = {
+            const currentPosition = {
                 lng: route.coordinates[index][0],
                 lat: route.coordinates[index][1]
             };
-
-            // Update the user's location in your app
-            updateUserLocation(newLocation);
-
-            // Remove the part of the route that has been traveled
-            const remainingRoute = {
-                type: 'LineString',
-                coordinates: route.coordinates.slice(index)
+            const nextPosition = {
+                lng: route.coordinates[index + 1][0],
+                lat: route.coordinates[index + 1][1]
             };
-            route = remainingRoute;
 
-            // Update the route displayed on the map to show only the remaining route
-            map.getSource('route').setData({
-                type: 'Feature',
-                geometry: remainingRoute
-            });
+            // Calculate the distance between the current and next position
+            const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 
-            // Move to the next point in the route
-            index++;
+            // Animate the marker along the path between current and next position
+            function animateMarker(interpolatedPosition) {
+                if (!simulationRunning) return; // If not running, do nothing
 
-            if (!simulationPaused) {
-                // Call this function again after a delay to continue simulation
-                simulationTimeout = setTimeout(updateLocation, 3000); // Adjust the delay as needed
+                // Update marker position
+                userMarker.setLngLat(interpolatedPosition);
+
+                // Update the user's location in your app
+                updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
+
+                // Calculate remaining distance to next position
+                const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
+
+                // If the remaining distance is less than the target, move to the next point
+                if (remainingDistance <= targetDistance) {
+                    index++;
+                    if (index < route.coordinates.length - 1) {
+                        setTimeout(updateLocation, 100); // Continue to the next point
+                    } else {
+                        console.log("Route simulation completed");
+                        simulationRunning = false;
+                    }
+                } else {
+                    // Calculate the new interpolated position
+                    const fraction = targetDistance / remainingDistance;
+                    const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
+
+                    // Continue animating along the current segment
+                    setTimeout(() => animateMarker(newInterpolatedPosition), 2000);
+                }
             }
+
+            // Start animating along the current segment with initial interpolation
+            const initialFraction = targetDistance / distance;
+            const initialInterpolatedPosition = interpolate([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat], initialFraction);
+            animateMarker(initialInterpolatedPosition);
+
         } else {
             console.log("Route simulation completed");
             simulationRunning = false;
@@ -241,6 +311,37 @@ function simulateUserLocation(route) {
     simulationPaused = false;
     updateLocation();
 }
+
+
+// Function to calculate the distance between two points using the Haversine formula
+function distanceBetweenPoints(p1, p2) {
+    const R = 6371000; // Radius of the Earth in meters
+    const toRad = Math.PI / 180;
+    const dLat = (p2[1] - p1[1]) * toRad;
+    const dLng = (p2[0] - p1[0]) * toRad;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(p1[1] * toRad) * Math.cos(p2[1] * toRad) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Function to interpolate between two points
+function interpolate(p1, p2, fraction) {
+    return [
+        p1[0] + (p2[0] - p1[0]) * fraction,
+        p1[1] + (p2[1] - p1[1]) * fraction
+    ];
+}
+
+// Function to update user location in your app
+function updateUserLocation(location) {
+    // Update logic here
+    console.log("User location updated:", location);
+}
+
 
 // Function to pause the simulation
 function pauseSimulation() {
@@ -564,7 +665,7 @@ async function loadButtonTemplate(messageDiv, text) {
         const button = buttonDiv.querySelector("button");
         button.addEventListener('click', function() {
             if (!navigationEnabled) {
-                enableNavigationMode(route);
+                enableNavigationMode(route, text);
                 console.log(route)
                 this.textContent = 'Exit Navigation Mode';
             } else {
