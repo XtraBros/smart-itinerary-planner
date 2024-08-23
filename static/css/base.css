@@ -390,6 +390,7 @@ h3 {
   height: auto;
   background-color: #183140;
   padding: 16px;
+  display: none;
 }
 .datelInfo {
   display: flex;

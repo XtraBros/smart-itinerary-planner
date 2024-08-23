@@ -10,12 +10,18 @@ let simulationTimeout;         // Variable to store the timeout ID
 let userMarker;
 let userLocation;
 let isFirstOpen = false;
+let steps;
 
 window.onload = function () {
     const tishiDom = document.getElementById('tishi')
     isFirstOpen = localStorage.getItem('isFirstOpen')
     const popupModal = document.getElementById('popupModal');
     const btn = document.getElementById("robotIcoId");
+    const stopNav = document.getElementById('stopNav')
+
+    stopNav.onclick = function () {
+        disableNavigationMode();
+    }
 
     btn.onclick = function () {
         popupModal.style.display = "block";
@@ -189,7 +195,8 @@ function enableNavigationMode(route, instructions) {
         if (distanceToCheckpoint < thresholdDistance) {
             currentStepIndex++;
             if (currentStepIndex < instructions.length) {
-                //displayInstruction(instructions[currentStepIndex]);
+                const nextInstructionObject = instructions[currentStepIndex];
+                displayInstruction(nextInstructionObject, distanceToCheckpoint);
             } else {
                 console.log("You've reached your destination!");
                 stopNavigation(); // Optionally stop navigation or handle route completion
@@ -212,6 +219,20 @@ function enableNavigationMode(route, instructions) {
         return R * c;
     }    
 
+    function displayInstruction(instructionTextContent, distanceToCheckpoint) {
+        // Extract the instruction text from the object    
+        // Get the pop-up elements
+        const instructionPopup = document.getElementById('navigation');
+        const instructionText = document.getElementById('instructionText');
+        const distanceText = document.getElementById('distanceText');
+    
+        // Update the text content with the extracted instruction
+        instructionText.textContent = instructionTextContent;
+        distanceText.textContent = `Distance to next step: ${distanceToCheckpoint.toFixed(1)} meters`;
+    
+        // Show the pop-up
+        instructionPopup.style.display = 'block';
+    }
     // Monitor the user's GPS location
     //navigator.geolocation.watchPosition((position) => {
     navigator.geolocation.getCurrentPosition((position) => {
@@ -253,7 +274,6 @@ function enableNavigationMode(route, instructions) {
     //     timeout: 10000 // Set a timeout for getting the location
     // });
 }
-
 
 function disableNavigationMode() {
     map.easeTo({
@@ -325,7 +345,7 @@ function simulateUserLocation(route) {
                     const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
 
                     // Continue animating along the current segment
-                    setTimeout(() => animateMarker(newInterpolatedPosition), 2000);
+                    setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
                 }
             }
 
@@ -382,6 +402,7 @@ function pauseSimulation() {
     console.log(route)
     if (simulationRunning && !simulationPaused) {
         simulationPaused = true;
+        simulationRunning = false;
         clearTimeout(simulationTimeout); // Stop the current timeout
         console.log("Simulation paused");
     }
@@ -441,6 +462,7 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
                 if (data.routes && data.routes.length > 0) {
                     var legs = data.routes[0].legs;
                     route = data.routes[0].geometry;
+                    steps = data.routes[0].legs[0].steps;
                     return { legs, route };
                 } else {
                     console.error('No route found: ', data);
@@ -636,7 +658,7 @@ async function postMessage(message, chatMessages) {
             let textData = await textResponse.json();
             // Append the response from the /get_text endpoint to the chat
             appendMessage(textData.response, "guide-message", chatMessages);
-            appendMessage(instr, "nav-button", chatMessages);
+            //appendMessage(instr, "nav-button", chatMessages);
             attachEventListeners();
         } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
@@ -669,15 +691,16 @@ async function postMessage(message, chatMessages) {
 
 // creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages) {
-    if (className == "nav-button") {
-        var messageDiv = document.createElement("div");
-        var navButton = document.querySelector(".nav-button");
-        if (navButton) {
-            navButton.remove();
-        }
-        loadButtonTemplate(messageDiv, text)
-        chatMessages.appendChild(messageDiv);
-    } else if (className == "guide-message") {
+    // if (className == "nav-button") {
+    //     var messageDiv = document.createElement("div");
+    //     var navButton = document.querySelector(".nav-button");
+    //     if (navButton) {
+    //         navButton.remove();
+    //     }
+    //     loadButtonTemplate(messageDiv, text)
+    //     chatMessages.appendChild(messageDiv);
+    // } else 
+    if (className == "guide-message") {
         chatMessages.innerHTML += `<div class='chat-message ${className}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
@@ -699,6 +722,14 @@ function appendMessage(text, className, chatMessages) {
     } else {
         chatMessages.innerHTML += `<div class='chat-message ${className}'>${marked.parse(text)}</div>`
     }
+    var takeThereBut = document.getElementById("takeThereBut");
+    if (takeThereBut) {
+        takeThereBut.addEventListener("click", function() {
+            // Call your function here
+            enableNavigationMode(route, steps);
+        });
+    }
+    
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
