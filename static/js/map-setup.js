@@ -615,14 +615,56 @@ function navFunc(e, id) {
                 },
             });
             map.setPitch(45);
-            map.setZoom(17);
-            map.setCenter(lineData.geometry.coordinates[0]);
+            // 实时跟踪用户位置
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(position => {
+                    const userLocation = lineData.geometry.coordinates[0]
+                    console.error("asdsdsd", userLocation);
+                    // const userLocation = [position.coords.longitude, position.coords.latitude];
+                    map.setCenter(userLocation);
+                    map.rotateTo(90, {duration: 0})
+                    map.flyTo({
+                        center: lineData.geometry.coordinates[0],
+                        zoom: 20, // 可设置缩放级别
+                        speed: 1.5 // 飞行速度
+                    });
+                    // if (!userMarker) {
+                    //     userMarker = new mapboxgl.Marker()
+                    //         .setLngLat(userLocation)
+                    //         .addTo(map);
+                    // } else {
+                    //     userMarker.setLngLat(userLocation);
+                    // }
+                }, error => {
+                    console.error("无法获取当前位置：", error);
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                });
+            }
             startMarker = new mapboxgl.Marker({
                 draggable: true,
                 color: '#83f7a0'
             })
                 .setLngLat(lineData.geometry.coordinates[0])
                 .addTo(map);
+            // if (window.DeviceOrientationEvent) {
+            //     window.addEventListener('deviceorientation', (event) => {
+            //         if (event.alpha !== null) {
+            //             const heading = 360 - event.alpha; // 获取设备的方向
+            //             // 实时旋转地图
+            //             map.rotateTo(heading, {
+            //                 duration: 0 // 禁用动画，使旋转更顺畅
+            //             });
+            //         }
+            //     });
+            // } else {
+            //     console.error("浏览器不支持设备方向事件");
+            // }
+
+
+
 
             nedMarker = new mapboxgl.Marker({
                 draggable: true,
