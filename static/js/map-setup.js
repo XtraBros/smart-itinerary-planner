@@ -10,6 +10,8 @@ let simulationTimeout;         // Variable to store the timeout ID
 let userMarker;
 let userLocation;
 let isFirstOpen = false;
+let startMarker;
+let nedMarker;
 
 window.onload = function () {
     const tishiDom = document.getElementById('tishi')
@@ -77,7 +79,7 @@ fetch('/config')
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
             center: [103.827973, 1.250277],
-            zoom: 14
+            zoom: 15
         });
 
         directions = new MapboxDirections({
@@ -566,6 +568,89 @@ async function postMessage(message, chatMessages) {
     }
 }
 
+function navFunc(e, id) {
+    console.log('----->>>', e, id)
+    const popupModal = document.getElementById('popupModal');
+    const navigation = document.getElementById('navigation');
+    navigation.classList.add('fadeshowin')
+    popupModal.style.display = 'none';
+    if(map.getLayer('route')) return
+    const lineData = {
+        type: 'Feature',
+        geometry: {
+            type: 'LineString',
+            coordinates: [
+                [103.826511, 1.248450],
+                [103.827457, 1.248179],
+                [103.827967, 1.247061],
+                [103.829030, 1.246154],
+                [103.829098, 1.245841],
+                [103.828930, 1.245373],
+                [103.828544, 1.244633],
+                [103.827659, 1.245229],
+            ]
+        },
+        properties: {}
+    };
+    map.addSource('route', {
+        type: 'geojson',
+        data: lineData
+    });
+    map.loadImage(
+        'static/icons/nav.png',
+        (err, image) => {
+            console.log(image)
+            if (err) throw err;
+            map.addImage('pattern', image);
+            map.addLayer({
+                'id': 'route',
+                'type': 'symbol',
+                'source': 'route',
+                'layout': {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 2,
+                    'icon-image': 'pattern',
+                    'icon-size': 0.5,
+                    'icon-allow-overlap': true,
+                },
+            });
+            map.setPitch(45);
+            map.setZoom(17);
+            map.setCenter(lineData.geometry.coordinates[0]);
+            startMarker = new mapboxgl.Marker({
+                draggable: true,
+                color: '#83f7a0'
+            })
+                .setLngLat(lineData.geometry.coordinates[0])
+                .addTo(map);
+
+            nedMarker = new mapboxgl.Marker({
+                draggable: true,
+                color: '#ed6461'
+            })
+                .setLngLat(lineData.geometry.coordinates[lineData.geometry.coordinates.length - 1])
+                .addTo(map);
+        }
+    );
+}
+
+function closedNavfun() {
+    const navigation = document.getElementById('navigation');
+    navigation.classList.remove('fadeshowin');
+    navigation.classList.add('fadeout');
+    if (map.getLayer('route')) {
+        map.removeLayer('route');
+    }
+    if (map.getSource('route')) {
+        map.removeSource('route');
+    }
+    if (map.hasImage('pattern')) {
+        map.removeImage('pattern');
+    }
+    startMarker.remove();
+    nedMarker.remove();
+}
+
 // creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages) {
     if (className == "nav-button") {
@@ -586,7 +671,7 @@ function appendMessage(text, className, chatMessages) {
                         <button id="detailsButton">
                             Details
                         </button>
-                        <button id="takeThereBut">
+                        <button id="takeThereBut" onclick="navFunc(event, '${className}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>

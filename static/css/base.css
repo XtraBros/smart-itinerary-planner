@@ -174,21 +174,32 @@ h3 {
   z-index: 9;
 }
 .messageStype p:last-child {
-    padding-top: 10px;
+  padding-top: 10px;
 }
 #detailsButton {
-    background-color: transparent;
-    border: 1px solid #FF8A00; border-radius: 20px; line-height: 18px;
-    padding: 5px 16px; color: #FF8A00; font-size: 13px;
+  background-color: transparent;
+  border: 1px solid #ff8a00;
+  border-radius: 20px;
+  line-height: 18px;
+  padding: 5px 16px;
+  color: #ff8a00;
+  font-size: 13px;
 }
 
 #takeThereBut {
-    background-color: #FF8A00; border: 1px solid #FF8A00;
-    border: none; border-radius: 20px; margin-left: 10px; line-height: 18px;
-    padding: 6px 16px; color: white; font-size: 13px;
+  background-color: #ff8a00;
+  border: 1px solid #ff8a00;
+  border: none;
+  border-radius: 20px;
+  margin-left: 10px;
+  line-height: 18px;
+  padding: 6px 16px;
+  color: white;
+  font-size: 13px;
 }
 #takeThereBut img {
-    float: right; margin-left: 8px;
+  float: right;
+  margin-left: 8px;
 }
 
 /* styles for banner */
@@ -550,15 +561,23 @@ a.mapboxgl-ctrl-logo {
   background-color: #fff;
   color: white;
 }
-
+.none {
+    display: none;
+}
 .lineThree {
-    width: 44px;
-    margin: 0 auto;
-    height: 3.5px;
-    background-color: #D3D3D3;
-    border-radius: 3px;
-    font-size: 0px; margin-top: 10px;
-    overflow: hidden;
+  width: 44px;
+  margin: 0 auto;
+  height: 3.5px;
+  background-color: #d3d3d3;
+  border-radius: 3px;
+  font-size: 0px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.closedBut {
+    background-color: transparent;
+    border: none;
 }
 
 /* 添加动画 */
@@ -610,4 +629,32 @@ a.mapboxgl-ctrl-logo {
 }
 .mapboxgl-ctrl-top-right {
   top: 80px;
+}
+
+.fadeout {
+  animation: fadeshowout 1s;
+}
+.fadeshowin {
+  display: block;
+  animation: fadeshowin 1s;
+}
+/* 移出动画 */
+@keyframes fadeshowout {
+  0% {
+    opacity: 1;
+    display: block;
+  }
+  100% {
+    opacity: 0;
+    display: block;
+  }
+}
+/* 进入动画 */
+@keyframes fadeshowin {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
