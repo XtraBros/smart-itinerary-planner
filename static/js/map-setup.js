@@ -14,6 +14,20 @@ let isFirstOpen = false;
 window.onload = function () {
     const tishiDom = document.getElementById('tishi')
     isFirstOpen = localStorage.getItem('isFirstOpen')
+    const popupModal = document.getElementById('popupModal');
+    const btn = document.getElementById("robotIcoId");
+
+    btn.onclick = function () {
+        popupModal.style.display = "block";
+        tishiDom.style.display = "none";
+        localStorage.setItem('isFirstOpen', true)
+    }
+    window.onclick = function (event) {
+        if (event.target === popupModal) {
+            popupModal.style.display = "none";
+        }
+    }
+
     if (tishiDom && isFirstOpen) {
         tishiDom.style.display = 'none'
     } else {
@@ -73,7 +87,7 @@ fetch('/config')
         });
         // variable to allow resizing function
         window.mapboxMap = map;
-        map.on('load', function() {
+        map.on('load', function () {
             // Define and set bounds for the map
             // var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
             // map.setMaxBounds(bounds);
@@ -127,7 +141,7 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
-            
+
             // user location control
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
@@ -201,7 +215,7 @@ function disableNavigationMode() {
         zoom: 15, // Adjust zoom level if needed
         duration: 1000
     });
-    if (simulationRunning){
+    if (simulationRunning) {
         pauseSimulation();
     }
 }
@@ -352,7 +366,7 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
                     if (!map.getLayer('route')) {
                         // Add arrows to the route using static png asset
                         const url = 'static/icons/arrow2.png';
-                        map.loadImage(url, function(err, image) {
+                        map.loadImage(url, function (err, image) {
                             if (err) {
                                 console.error('Error loading image:', err);
                                 reject(err);
@@ -379,12 +393,12 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
                         });
 
                         // Update route data on map
-                        directions.on('route', function(e) {
+                        directions.on('route', function (e) {
                             const route = e.route[0].geometry;
                             map.getSource('route').setData(route);
                         });
                     }
-                    
+
                     // Extract route instructions
                     var instructions = extractRouteInstructions(result.legs, placeNames);
                     resolve(instructions);
@@ -450,7 +464,7 @@ async function getOptimizedSequence(placeNames) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({'placeNames': placeNames})
+            body: JSON.stringify({ 'placeNames': placeNames })
         });
 
         if (!response.ok) {
@@ -498,7 +512,7 @@ async function postMessage(message, chatMessages) {
         let data = await response.json();
         console.log("GPT response: " + JSON.stringify(data));
         // check for operation type and run route functions if neccesarry.
-        if (data.operation == "route"){
+        if (data.operation == "route") {
             console.log("PLaces: " + data.response);
             let cleanedPlaceNames = data.response;
 
@@ -523,7 +537,7 @@ async function postMessage(message, chatMessages) {
             appendMessage(textData.response, "guide-message", chatMessages);
             appendMessage(instr, "nav-button", chatMessages);
             attachEventListeners();
-        }else if (data.operation == "location"){
+        } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
 
             console.log(cleanedPlaceNames); // Check the cleaned list
@@ -554,18 +568,31 @@ async function postMessage(message, chatMessages) {
 
 // creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages) {
-    if (className == "nav-button"){
+    if (className == "nav-button") {
         var messageDiv = document.createElement("div");
         var navButton = document.querySelector(".nav-button");
         if (navButton) {
             navButton.remove();
         }
-        loadButtonTemplate(messageDiv,text)
+        loadButtonTemplate(messageDiv, text)
         chatMessages.appendChild(messageDiv);
     } else if (className == "guide-message") {
         chatMessages.innerHTML += `<div class='chat-message ${className}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
-            <div class='guideText'>${marked.parse(text)}</div>
+            <div class='guideText'>
+                <div class='messageStype'>
+                    ${marked.parse(text)}
+                    <p>
+                        <button id="detailsButton">
+                            Details
+                        </button>
+                        <button id="takeThereBut">
+                            <img src="static/icons/daohang.svg" alt="" srcset="">
+                            <span>Take me there</span>
+                        </button>
+                    </p>
+                </div>
+            </div>
         </div>
         `
     } else {
@@ -582,7 +609,7 @@ async function loadButtonTemplate(messageDiv, text) {
         buttonDiv.innerHTML = template;
 
         const button = buttonDiv.querySelector("button");
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             if (!navigationEnabled) {
                 enableNavigationMode(route);
                 console.log(route)
@@ -601,50 +628,50 @@ async function loadButtonTemplate(messageDiv, text) {
 
 function extractRouteInstructions(data, placeNames) {
     let result = '';
-  
+
     // Helper function to find steps in a nested object
     function findSteps(obj) {
-      let steps = [];
-  
-      function recurse(currentObj) {
-        for (let key in currentObj) {
-          if (key === 'steps') {
-            steps = steps.concat(currentObj[key]);
-          } else if (typeof currentObj[key] === 'object' && currentObj[key] !== null) {
-            recurse(currentObj[key]);
-          }
+        let steps = [];
+
+        function recurse(currentObj) {
+            for (let key in currentObj) {
+                if (key === 'steps') {
+                    steps = steps.concat(currentObj[key]);
+                } else if (typeof currentObj[key] === 'object' && currentObj[key] !== null) {
+                    recurse(currentObj[key]);
+                }
+            }
         }
-      }
-  
-      recurse(obj);
-      return steps;
+
+        recurse(obj);
+        return steps;
     }
-  
+
     // Fetch all steps from the nested dictionary
     const steps = findSteps(data);
-  
+
     // Initialize a counter for placeNames
     let placeIndex = 0;
     let stepIndex = 0;
-  
+
     // Iterate over each step to format the instruction
     steps.forEach((step) => {
-      let instruction = step.maneuver.instruction;
-      const distance = step.distance.toFixed(0); // format distance to 2 decimal places
-  
-      // Check if the distance is 0.00, indicating arrival at a destination
-      if (parseFloat(distance) === 0 && placeIndex < placeNames.length) {
-        instruction = `You have arrived at destination number ${placeIndex}.`;
-        result += `<p>${instruction}</p>`;
-        placeIndex++; // Move to the next place name
-      } else {
-        result += `<p>Step ${stepIndex + 1}: ${instruction} (Distance: ${distance} meters)</p>`;
-        stepIndex++;
-      }
+        let instruction = step.maneuver.instruction;
+        const distance = step.distance.toFixed(0); // format distance to 2 decimal places
+
+        // Check if the distance is 0.00, indicating arrival at a destination
+        if (parseFloat(distance) === 0 && placeIndex < placeNames.length) {
+            instruction = `You have arrived at destination number ${placeIndex}.`;
+            result += `<p>${instruction}</p>`;
+            placeIndex++; // Move to the next place name
+        } else {
+            result += `<p>Step ${stepIndex + 1}: ${instruction} (Distance: ${distance} meters)</p>`;
+            stepIndex++;
+        }
     });
-  
+
     return result;
-  }
+}
 
 function showNavSteps(content, messageDiv) {
     // Create modal structure
@@ -656,7 +683,7 @@ function showNavSteps(content, messageDiv) {
     var closeButton = document.createElement("span");
     closeButton.className = "close";
     closeButton.innerHTML = "&times;";
-    closeButton.onclick = function() {
+    closeButton.onclick = function () {
         modal.style.display = "none";
         var button = document.getElementById("nav-button");
         button.style.display = "block";
@@ -677,7 +704,7 @@ function showNavSteps(content, messageDiv) {
     modal.style.display = "block";
 
     // Close the modal when clicking outside of it
-    window.onclick = function(event) {
+    window.onclick = function (event) {
         if (event.target == modal) {
             modal.style.display = "none";
         }
@@ -690,8 +717,8 @@ async function get_coordinates(data) {
         // Fetch the user's current location
         userLocation = await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
-                position => resolve({ 
-                    lat: parseFloat(position.coords.latitude), 
+                position => resolve({
+                    lat: parseFloat(position.coords.latitude),
                     lng: parseFloat(position.coords.longitude)
                 }),
                 error => reject(error)
@@ -704,7 +731,7 @@ async function get_coordinates(data) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 places: data,
             })
         });
@@ -723,7 +750,7 @@ async function get_coordinates(data) {
         // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
         let orderOfVisit = await optimizeRoute(placeNames, waypoints);
 
-        let instr = await displayRoute(userLocation,orderOfVisit[0], orderOfVisit[1]);
+        let instr = await displayRoute(userLocation, orderOfVisit[0], orderOfVisit[1]);
         return [orderOfVisit, instr];
     } catch (error) {
         console.error('Error fetching coordinates:', error);
@@ -739,7 +766,7 @@ async function get_coordinates_without_route(data) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 places: data,
             })
         });
@@ -833,10 +860,10 @@ function fetchPlacesData(places) {
         },
         body: JSON.stringify({ places: places })
     })
-    .then(response => response.json())
-    .catch(error => {
-        console.error('Error fetching places data:', error);
-    });
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Error fetching places data:', error);
+        });
 }
 
 // Zoom button scripts
@@ -856,13 +883,13 @@ function clickMarker(markerId) {
 
 // Add event listeners to the links
 function attachEventListeners() {
-    document.querySelectorAll('.location-link').forEach(function(link) {
-        link.addEventListener('mouseover', function() {
+    document.querySelectorAll('.location-link').forEach(function (link) {
+        link.addEventListener('mouseover', function () {
             var markerId = this.getAttribute('data-marker-id');
             clickMarker(markerId);
         });
 
-        link.addEventListener('mouseout', function() {
+        link.addEventListener('mouseout', function () {
             var markerId = this.getAttribute('data-marker-id');
             clickMarker(markerId);
         });

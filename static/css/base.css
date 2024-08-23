@@ -1,522 +1,613 @@
-body, li, p, button, h4, h3 {
-    padding: 0px;
-    margin: 0px;
+body,
+li,
+p,
+button,
+h4,
+h3 {
+  padding: 0px;
+  margin: 0px;
 }
 #container {
-    width: 100%;
-    height: calc(100vh);
+  width: 100%;
+  height: calc(100vh);
 }
 #map {
-    /* flex-grow: 1; */
-    /* min-width: 500px; */
-    height: 100%;
-    width: 100%;
+  height: 100%;
+  width: 100%;
 }
 #zoom-controls {
-    position: absolute;
-    bottom: 30px;
-    left: 0px;
-    width: 100%;
+  position: absolute;
+  bottom: 30px;
+  left: 0px;
+  width: 100%;
 }
 #zoom-controls button {
-    background-color: transparent; border: none;
-    margin: 2px;
-    cursor: pointer;
-    font-size: 16px;
+  background-color: transparent;
+  border: none;
+  margin: 2px;
+  cursor: pointer;
+  font-size: 16px;
 }
-#zoom-controls button#zoom-in span, #zoom-controls button#zoom-out span{
-    background-color: white;
-    padding: 8px 12px; border-radius: 4px;
+#zoom-controls button#zoom-in span,
+#zoom-controls button#zoom-out span {
+  background-color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
 }
 #zoom-controls button#zoom-out {
-    margin-top: 20px;
+  margin-top: 20px;
 }
 #zoom-controls button#zoom-out span {
-    padding: 8px 14px;
+  padding: 8px 14px;
 }
 #resizer {
-    width: 10px;
-    background: #ccc;
-    cursor: ew-resize;
-    right: 30%;
+  width: 10px;
+  background: #ccc;
+  cursor: ew-resize;
+  right: 30%;
 }
 #right-panel {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 #chatbot-area {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    overflow-y: scroll;
-    position: relative;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  overflow-y: scroll;
+  position: relative;
 }
 
 #chatbot-messages {
-    max-height: calc(100vh - 280px);
-    overflow: hidden;
-    overflow-y: auto;
-    width: 100%;
-    flex-grow: 1;
-    margin-bottom: 10px;
+  max-height: calc(100vh - 280px);
+  overflow: hidden;
+  overflow-y: auto;
+  width: 100%;
+  flex-grow: 1;
+  margin-bottom: 10px;
 }
 
 #input-container {
-    position: absolute;
-    bottom: 16px;
-    left: 0px; right: 0px;
-    display: flex;
-    align-items: center;
-    width: 100%;
+  position: absolute;
+  bottom: 16px;
+  left: 0px;
+  right: 0px;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
 #chatbot-input {
-    flex-grow: 1;
-    padding: 0px 16px; border: none;
-    height: 45px; outline: none;
-    background-color: #F6F6F6; border-radius: 8px;
-    margin: 0px 10px 0px 16px;
+  flex-grow: 1;
+  padding: 0px 16px;
+  border: none;
+  height: 45px;
+  outline: none;
+  background-color: #f6f6f6;
+  border-radius: 8px;
+  margin: 0px 10px 0px 16px;
 }
 #voice-btn {
-    padding: 15px 18px;
-    border: none;
-    background-color: #F6F6F6;
-    border-radius: 8px; margin-right: 16px;
+  padding: 15px 18px;
+  border: none;
+  background-color: #f6f6f6;
+  border-radius: 8px;
+  margin-right: 16px;
 }
 /* Styles for the chat container and messages */
 .chat-message {
-    word-wrap: break-word; margin-bottom: 10px;
+  word-wrap: break-word;
+  margin-bottom: 10px;
 }
 
 .chat-message p {
-    margin: 0px; padding: 0px;
+  margin: 0px;
+  padding: 0px;
 }
 
 /* Styles for the Visitor's messages */
-.visitor-message { text-align: right; padding-left: 10px;}
+.visitor-message {
+  text-align: right;
+  padding-left: 10px;
+}
 .visitor-message p {
-    display: inline-block;
-    background-color: #00ADE9;
-    color: white;
-    padding: 6px 8px; margin-right: 10px;
-    border-radius: 10px; position: relative;
+  display: inline-block;
+  background-color: #00ade9;
+  color: white;
+  padding: 6px 8px;
+  margin-right: 10px;
+  border-radius: 10px;
+  position: relative;
 }
 
 .visitor-message p:before {
-    position: absolute;
-    top: 6px;
-    right: -11px;
-    padding: 0;
-    border: 6px solid;
-    border-color: transparent transparent transparent #00ADE9;
-    display: block;
-    content: '';
-    z-index: 9;
+  position: absolute;
+  top: 6px;
+  right: -11px;
+  padding: 0;
+  border: 6px solid;
+  border-color: transparent transparent transparent #00ade9;
+  display: block;
+  content: "";
+  z-index: 9;
 }
 
 /* Styles for the Guide's messages */
 .guide-message {
-    text-align: left; display: flex; justify-content: space-between;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
 }
 .guideImage {
-    width: 40px;
+  width: 40px;
 }
 .guideImage img {
-    width: 36px;
+  width: 36px;
 }
 .guideText {
-    flex: 1; padding-right: 6px;
+  flex: 1;
+  padding-right: 6px;
 }
-.guideText p {
-    display: inline-block;
-    background-color: #F6F6F6;
-    color: #2C2C2C;
-    padding: 6px 8px; margin-left: 5px;
-    border-radius: 10px; position: relative;
+.guideText .messageStype {
+  display: inline-block;
+  background-color: #f6f6f6;
+  color: #2c2c2c;
+  padding: 6px 8px;
+  margin-left: 5px;
+  border-radius: 10px;
+  position: relative;
 }
 
-.guideText p:before {
-    position: absolute;
-    top: 6px;
-    left: -11px;
-    padding: 0;
-    border: 6px solid;
-    border-color: transparent #F6F6F6 transparent transparent;
-    display: block;
-    content: '';
-    z-index: 9;
+.guideText .messageStype:before {
+  position: absolute;
+  top: 6px;
+  left: -11px;
+  padding: 0;
+  border: 6px solid;
+  border-color: transparent #f6f6f6 transparent transparent;
+  display: block;
+  content: "";
+  z-index: 9;
+}
+.messageStype p:last-child {
+    padding-top: 10px;
+}
+#detailsButton {
+    background-color: transparent;
+    border: 1px solid #FF8A00; border-radius: 20px; line-height: 18px;
+    padding: 5px 16px; color: #FF8A00; font-size: 13px;
+}
+
+#takeThereBut {
+    background-color: #FF8A00; border: 1px solid #FF8A00;
+    border: none; border-radius: 20px; margin-left: 10px; line-height: 18px;
+    padding: 6px 16px; color: white; font-size: 13px;
+}
+#takeThereBut img {
+    float: right; margin-left: 8px;
 }
 
 /* styles for banner */
-.newHeader{
-    width: 100%;
-    background-color: #fff;
-    color: #666;
-    height: auto;
-    top: 0px;
-    z-index: 1049;
-    position: fixed;
-    overflow-x: auto;
+.newHeader {
+  width: 100%;
+  background-color: #fff;
+  color: #666;
+  height: auto;
+  top: 0px;
+  z-index: 1049;
+  position: fixed;
+  overflow-x: auto;
 }
 .newHeader::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
-.list{
-    width: 120%; margin: 0px; padding: 10px 0px;
-    box-sizing:border-box;
-    display: flex; justify-content: flex-start;
-    height: 100%;
+.list {
+  width: 120%;
+  margin: 0px;
+  padding: 10px 0px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: flex-start;
+  height: 100%;
 }
-.list li p { line-height: 18px; }
-.list li p:first-child { height: 30px; }
-.item{
-    width: calc(100vw / 5);
-    list-style: none;
-    font-size: 15px;
-    text-align:center;
+.list li p {
+  line-height: 18px;
 }
-.lunchtime { position: relative; text-align: right; padding-right: 10px; }
+.list li p:first-child {
+  height: 30px;
+}
+.item {
+  width: calc(100vw / 5);
+  list-style: none;
+  font-size: 15px;
+  text-align: center;
+}
+.lunchtime {
+  position: relative;
+  text-align: right;
+  padding-right: 10px;
+}
 .infomfor {
-    position: absolute; display: none; text-align: left;
-    right: 10px; color: #116996;
-    bottom: 65px; background-color: white; border-radius: 14px; 
-    box-shadow: 4px 5px 5px #0000001a;
-    box-sizing: border-box; padding: 10px 16px;
-    width: calc(100vw - 28px);
+  position: absolute;
+  display: none;
+  text-align: left;
+  right: 10px;
+  color: #116996;
+  bottom: 65px;
+  background-color: white;
+  border-radius: 14px;
+  box-shadow: 4px 5px 5px #0000001a;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  width: calc(100vw - 28px);
 }
 .infomfor:before {
-    position: absolute;
-    bottom: -12px;
-    right: 12px;
-    padding: 0;
-    border: 6px solid;
-    border-color: #fff transparent transparent transparent;
-    display: block;
-    content: '';
-    z-index: 9;
+  position: absolute;
+  bottom: -12px;
+  right: 12px;
+  padding: 0;
+  border: 6px solid;
+  border-color: #fff transparent transparent transparent;
+  display: block;
+  content: "";
+  z-index: 9;
 }
 .header-icon {
-    left:2%;
-    height: 100%; 
-    margin-right: 3px; 
+  left: 2%;
+  height: 100%;
+  margin-right: 3px;
 }
-.header-text{
-    color: #f4f4f4;
-    font-size: large;
-    font-weight: 700;
+.header-text {
+  color: #f4f4f4;
+  font-size: large;
+  font-weight: 700;
 }
 .mapandlistbut {
-    position: absolute;
-    left: 15px;
-    bottom: 35px;
-    background-color: white;
-    border-radius: 20px;
-    border: 2px solid white;
-    overflow: hidden;
+  position: absolute;
+  left: 15px;
+  bottom: 35px;
+  background-color: white;
+  border-radius: 20px;
+  border: 2px solid white;
+  overflow: hidden;
 }
 .mapandlistbut button {
-    background-color: white;
-    border: none;
-    width: 60px;
-    height: 40px;
+  background-color: white;
+  border: none;
+  width: 60px;
+  height: 40px;
 }
 
 .mapandlistbut button:first-child {
-    background-color: #00ADE9;
-    border-radius: 20px;
-    color: white;
+  background-color: #00ade9;
+  border-radius: 20px;
+  color: white;
 }
 #poiSwiper {
-    position: relative;
+  position: relative;
 }
 .swiper-slide {
-    border-radius: 12px;
-    width: 90%;
-    background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  background-color: white;
 }
 .swiper-wrapper .swiper-slide:first-child {
-    margin-left: 15px;
+  margin-left: 15px;
 }
 .slideItme {
-    padding: 12px;
+  padding: 12px;
 }
-.slideItme:after{
-    content: "020"; 
-    display: block; 
-    height: 0; 
-    clear: both; 
-    visibility: hidden;  
+.slideItme:after {
+  content: "020";
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
 }
 
 .promo {
-    background-color: white;
-    position: absolute; top: -45px;
-    font-size: 15px; color: #2C2C2C;
-    width: 120px;
-    height: 30px;
-    text-align: center;
-    line-height: 30px;
-    margin-left: 16px;
-    margin-bottom: 10px;
-    border-radius: 6px;
+  background-color: white;
+  position: absolute;
+  top: -45px;
+  font-size: 15px;
+  color: #2c2c2c;
+  width: 120px;
+  height: 30px;
+  text-align: center;
+  line-height: 30px;
+  margin-left: 16px;
+  margin-bottom: 10px;
+  border-radius: 6px;
 }
-  
+
 .slideItme {
-    zoom: 1; 
+  zoom: 1;
 }
 .swperimg {
-    width: 100px;
-    height: 100px;
-    float: left;
-    overflow: hidden;
-    border-radius: 12px;
+  width: 100px;
+  height: 100px;
+  float: left;
+  overflow: hidden;
+  border-radius: 12px;
 }
 .swperimg img {
-    width: 100px;
-    height: 100%;
+  width: 100px;
+  height: 100%;
 }
 .visitors {
-    float: right;
-    width: calc(100% - 115px);
+  float: right;
+  width: calc(100% - 115px);
 }
 .visitors h4 {
-    font-size: 15px;
-    color: #2C2C2C;
-    font-weight: normal;
-    line-height: 18px;
-    margin-bottom: 10px;
+  font-size: 15px;
+  color: #2c2c2c;
+  font-weight: normal;
+  line-height: 18px;
+  margin-bottom: 10px;
 }
 
 .visitors .islander {
-    background-color: #FFF7E6;
-    color: #FF8A00;
-    font-size: 13px;
-    border-radius: 20px;
-    padding: 3px 10px;
-    border: 1px solid #FFD591;
+  background-color: #fff7e6;
+  color: #ff8a00;
+  font-size: 13px;
+  border-radius: 20px;
+  padding: 3px 10px;
+  border: 1px solid #ffd591;
 }
 
 .visitors .address {
-    margin-top: 10px;
-    font-size: 13px; color: #666666;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #666666;
 }
 
 .visitors .address span {
-    display: inline-block;
+  display: inline-block;
 }
 
 .visitors .address span:first-child {
-    padding-right: 15px;
+  padding-right: 15px;
 }
 
 .visitors .address img {
-    float: left; margin-top: 1px; margin-right: 5px;
+  float: left;
+  margin-top: 1px;
+  margin-right: 5px;
 }
 #navigation {
-    position: fixed;
-    top: 10px; left: 10px; right: 10px; font-size: 17px;
-    z-index: 9999; color: white; border-radius: 12px;
-    height: auto; background-color: #183140;
-    padding: 16px;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  font-size: 17px;
+  z-index: 9999;
+  color: white;
+  border-radius: 12px;
+  height: auto;
+  background-color: #183140;
+  padding: 16px;
 }
 .datelInfo {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    text-align: center; padding-top: 16px;
-    border-top: 1px solid #183140;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  padding-top: 16px;
+  border-top: 1px solid #183140;
 }
 .datelInfo h3 {
-    font-size: 17px; font-weight: normal;
+  font-size: 17px;
+  font-weight: normal;
 }
 .datelInfo p {
-    font-size: 15px; color: #C3C3C3;
+  font-size: 15px;
+  color: #c3c3c3;
 }
 .datelInfo p img {
-    width: 26px;
+  width: 26px;
 }
 .neststat {
-    font-size: 20px; padding-bottom: 16px;
+  font-size: 20px;
+  padding-bottom: 16px;
 }
-.neststat .number{
-    font-size: 40px; font-weight: 400;
+.neststat p {
+  padding-left: 10px;
+}
+.neststat .number {
+  font-size: 40px;
+  font-weight: 400;
 }
 .nav-button {
-    display: block;
-    margin: 10px auto; /* Centers the button horizontally */
-    padding: 10px 20px; /* Adds some padding to the button */
-    font-size: 16px; /* Adjust font size */
-    background-color: #007BFF; /* Button background color */
-    color: white; /* Button text color */
-    border: none; /* Removes border */
-    border-radius: 5px; /* Adds rounded corners */
-    cursor: pointer; /* Changes cursor to pointer on hover */
-    text-align: center; /* Centers the text inside the button */
+  display: block;
+  margin: 10px auto; /* Centers the button horizontally */
+  padding: 10px 20px; /* Adds some padding to the button */
+  font-size: 16px; /* Adjust font size */
+  background-color: #007bff; /* Button background color */
+  color: white; /* Button text color */
+  border: none; /* Removes border */
+  border-radius: 5px; /* Adds rounded corners */
+  cursor: pointer; /* Changes cursor to pointer on hover */
+  text-align: center; /* Centers the text inside the button */
 }
 
 .nav-button:hover {
-    background-color: #0056b3; /* Darker background on hover */
+  background-color: #0056b3; /* Darker background on hover */
 }
 /* Navigation details pop up modal*/
 .nav-steps {
-    display: none; /* Hidden by default */
-    width: 100%; /* Full width of chat box */
-    height: 100%; /* Full height of chat box */
+  display: none; /* Hidden by default */
+  width: 100%; /* Full width of chat box */
+  height: 100%; /* Full height of chat box */
 }
 
 /* Modal Content/Box */
 .modal-content {
-    background-color: #cfe2ff;  /* Light blue background */
-    padding: 10px;
-    margin: 5px;
-    border-radius: 10px;
-    word-wrap: break-word;
-    overflow-y: auto; /* Scroll within modal if content is too large */
+  background-color: #cfe2ff; /* Light blue background */
+  padding: 10px;
+  margin: 5px;
+  border-radius: 10px;
+  word-wrap: break-word;
+  overflow-y: auto; /* Scroll within modal if content is too large */
 }
 
 /* The Close Button */
 .close {
-    color: #aaa;
-    top: 0;
-    right: 0;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
+  color: #aaa;
+  top: 0;
+  right: 0;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
 }
 
 .close:hover,
 .close:focus {
-    color: #ff0000;
-    text-decoration: none;
-    cursor: pointer;
+  color: #ff0000;
+  text-decoration: none;
+  cursor: pointer;
 }
 #navigation-controls {
-    position: absolute;
-    top: 10px; /* Adjust based on the position of other buttons */
-    left: 10px;
-    z-index: 1;
+  position: absolute;
+  top: 10px; /* Adjust based on the position of other buttons */
+  left: 10px;
+  z-index: 1;
 }
 
 #toggle-navigation {
-    margin-top: 5px;
-    padding: 10px;
-    background-color: #0074D9;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
+  margin-top: 5px;
+  padding: 10px;
+  background-color: #0074d9;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
 #toggle-navigation:hover {
-    background-color: #005fa3;
+  background-color: #005fa3;
 }
 #zoom-controls button.robotIco {
-    background-color: transparent; border: none; padding: 0px; margin: 0px;
+  background-color: transparent;
+  border: none;
+  padding: 0px;
+  margin: 0px;
 }
 #zoom-controls button.robotIco img {
-    width: 44px;
+  width: 44px;
 }
 a.mapboxgl-ctrl-logo {
-    display: none;
+  display: none;
 }
 .modal {
-    display: none;
-    position: fixed;
-    z-index: 99999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgb(0, 0, 0);
-    background-color: rgba(0, 0, 0, 0.4);
-    -webkit-animation-name: fadeIn;
-    -webkit-animation-duration: 0.4s;
-    animation-name: fadeIn;
-    animation-duration: 0.4s
+  display: none;
+  position: fixed;
+  z-index: 99999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.4);
+  -webkit-animation-name: fadeIn;
+  -webkit-animation-duration: 0.4s;
+  animation-name: fadeIn;
+  animation-duration: 0.4s;
+}
+
+/* 弹窗内容 */
+.modalContent {
+  position: fixed;
+  bottom: 0;
+  background-color: #fff;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  width: 100%;
+  -webkit-animation-name: slideIn;
+  -webkit-animation-duration: 0.4s;
+  animation-name: slideIn;
+  animation-duration: 0.4s;
+}
+
+.modal-header {
+  padding: 2px 16px;
+  background-color: #fff;
+  color: white;
+}
+
+.modal-body {
+  padding: 16px 5px;
+  min-height: calc(100vh - 220px);
+  position: relative;
+}
+
+.modal-footer {
+  padding: 2px 16px;
+  background-color: #fff;
+  color: white;
+}
+
+.lineThree {
+    width: 44px;
+    margin: 0 auto;
+    height: 3.5px;
+    background-color: #D3D3D3;
+    border-radius: 3px;
+    font-size: 0px; margin-top: 10px;
+    overflow: hidden;
+}
+
+/* 添加动画 */
+@-webkit-keyframes slideIn {
+  from {
+    bottom: -300px;
+    opacity: 0;
   }
 
-  /* 弹窗内容 */
-  .modalContent {
-    position: fixed;
+  to {
     bottom: 0;
-    background-color: #fff; border-top-left-radius: 20px; border-top-right-radius: 20px;
-    width: 100%;
-    -webkit-animation-name: slideIn;
-    -webkit-animation-duration: 0.4s;
-    animation-name: slideIn;
-    animation-duration: 0.4s
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    bottom: -300px;
+    opacity: 0;
   }
 
-  .modal-header {
-    padding: 2px 16px;
-    background-color: #fff;
-    color: white;
+  to {
+    bottom: 0;
+    opacity: 1;
+  }
+}
+
+@-webkit-keyframes fadeIn {
+  from {
+    opacity: 0;
   }
 
-  .modal-body {
-    padding: 16px 5px;
-    min-height: calc(100vh - 220px);
-    position: relative;
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
 
-  .modal-footer {
-    padding: 2px 16px;
-    background-color: #fff;
-    color: white;
+  to {
+    opacity: 1;
   }
-
-  /* 添加动画 */
-  @-webkit-keyframes slideIn {
-    from {
-      bottom: -300px;
-      opacity: 0
-    }
-
-    to {
-      bottom: 0;
-      opacity: 1
-    }
-  }
-
-  @keyframes slideIn {
-    from {
-      bottom: -300px;
-      opacity: 0
-    }
-
-    to {
-      bottom: 0;
-      opacity: 1
-    }
-  }
-
-  @-webkit-keyframes fadeIn {
-    from {
-      opacity: 0
-    }
-
-    to {
-      opacity: 1
-    }
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0
-    }
-
-    to {
-      opacity: 1
-    }
-  }
-  .mapboxgl-ctrl-bottom-right {
-    display: none;
-  }
-  .mapboxgl-ctrl-top-right {
-    top: 80px;
-  }
+}
+.mapboxgl-ctrl-bottom-right {
+  display: none;
+}
+.mapboxgl-ctrl-top-right {
+  top: 80px;
+}
