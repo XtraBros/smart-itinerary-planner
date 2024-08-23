@@ -195,7 +195,7 @@ function enableNavigationMode(route, instructions) {
         if (distanceToCheckpoint < thresholdDistance) {
             currentStepIndex++;
             if (currentStepIndex < instructions.length) {
-                const nextInstructionObject = instructions[currentStepIndex];
+                const nextInstructionObject = instructions[currentStepIndex].maneuver.instruction;
                 displayInstruction(nextInstructionObject, distanceToCheckpoint);
             } else {
                 console.log("You've reached your destination!");
