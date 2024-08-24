@@ -199,26 +199,28 @@
         <div class="neststat">
             <p>
                 <img src="static/icons/left.svg" alt="" srcset="">
-                <span class="number">18</span><span>meters</span>
+                <!-- Need to adjust font and layout -->
+                <span id="distanceText"></span><span id="instructionText"></span>
             </p>
         </div>
+        <!-- Backend to update these fields -->
         <div class="datelInfo">
-            <div>
+            <div id="journeyETA">
                 <h3>18:00</h3>
                 <p>Arrive</p>
             </div>
-            <div>
+            <div id="journeyDuration">
                 <h3>20</h3>
                 <p>mins</p>
             </div>
-            <div>
+            <div id="journeyDistance">
                 <h3>2.1</h3>
                 <p>km</p>
             </div>
-            <div>
+            <button id="stopNav">
                 <p><img src="static/icons/closed.svg" alt="" width="26px" srcset=""></p>
                 <p>Stop</p>
-            </div>
+            </button>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>

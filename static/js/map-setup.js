@@ -2,6 +2,7 @@
 var waypoints = [];
 var map;
 var directions;
+var walkedRoute = [];
 let route = {};
 let navigationEnabled = false;
 let simulationRunning = false; // Flag to indicate if the simulation is running
@@ -11,6 +12,8 @@ let userMarker;
 let userLocation;
 let isFirstOpen = false;
 let steps;
+let routeIndex = 0;
+
 
 window.onload = function () {
     const tishiDom = document.getElementById('tishi')
@@ -21,6 +24,7 @@ window.onload = function () {
 
     stopNav.onclick = function () {
         disableNavigationMode();
+        document.getElementById('navigation').style.display = "none";
     }
 
     btn.onclick = function () {
@@ -147,6 +151,33 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
+            // Initial setup for route layers
+            map.addSource('walked-route', {
+                "type": "geojson",
+                "data": {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": []
+                    }
+                }
+            });
+
+            map.addLayer({
+                "id": "walked-route",
+                "type": "line",
+                "source": "walked-route",
+                "layout": {
+                    "line-join": "round",
+                    "line-cap": "round"
+                },
+                "paint": {
+                    "line-color": "#888888", // Grey color
+                    "line-width": 6,
+                    "line-dasharray": [2, 2] // Circles effect
+                }
+            });
+
 
             // user location control
             // Add the Geolocate Control to the map
@@ -290,7 +321,6 @@ function disableNavigationMode() {
 // Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
-    let index = 0;
     const targetDistance = 10; // meters per step for interpolation
 
     // Initialize the user marker if it doesn't exist
@@ -303,15 +333,15 @@ function simulateUserLocation(route) {
     function updateLocation() {
         if (!simulationRunning) return; // If not running, do nothing
 
-        if (index < route.coordinates.length - 1) {
+        if (routeIndex < route.coordinates.length - 1) {
             // Simulate the user's location along the route
             const currentPosition = {
-                lng: route.coordinates[index][0],
-                lat: route.coordinates[index][1]
+                lng: route.coordinates[routeIndex][0],
+                lat: route.coordinates[routeIndex][1]
             };
             const nextPosition = {
-                lng: route.coordinates[index + 1][0],
-                lat: route.coordinates[index + 1][1]
+                lng: route.coordinates[routeIndex + 1][0],
+                lat: route.coordinates[routeIndex + 1][1]
             };
 
             // Calculate the distance between the current and next position
@@ -329,11 +359,13 @@ function simulateUserLocation(route) {
 
                 // Calculate remaining distance to next position
                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
-
+                updateWalkedRoute(currentPosition);
+                updateRemainingRoute(currentPosition);
                 // If the remaining distance is less than the target, move to the next point
                 if (remainingDistance <= targetDistance) {
-                    index++;
-                    if (index < route.coordinates.length - 1) {
+                    routeIndex++;
+    
+                    if (routeIndex < route.coordinates.length - 1) {
                         setTimeout(updateLocation, 100); // Continue to the next point
                     } else {
                         console.log("Route simulation completed");
@@ -366,6 +398,32 @@ function simulateUserLocation(route) {
     updateLocation();
 }
 
+function updateWalkedRoute(currentPosition) {
+    // Add the current position to the walked route
+    walkedRoute.push([currentPosition.lng, currentPosition.lat]);
+
+    // Update the map with the walked route
+    map.getSource('walked-route').setData({
+        "type": "Feature",
+        "geometry": {
+            "type": "LineString",
+            "coordinates": walkedRoute
+        }
+    });
+}
+
+function updateRemainingRoute(currentPosition) {
+    // Update the remaining route after trimming
+    const remainingRoute = route.coordinates.slice(routeIndex);
+    remainingRoute.unshift([currentPosition.lng, currentPosition.lat]);
+    map.getSource('route').setData({
+        "type": "Feature",
+        "geometry": {
+            "type": "LineString",
+            "coordinates": remainingRoute
+        }
+    });
+}
 
 // Function to calculate the distance between two points using the Haversine formula
 function distanceBetweenPoints(p1, p2) {
@@ -412,6 +470,7 @@ function pauseSimulation() {
 function stopSimulation() {
     simulationRunning = false;
     simulationPaused = false;
+    rouetIndex = 0;
     clearTimeout(simulationTimeout); // Stop any ongoing timeout
     console.log("Simulation stopped");
 }
