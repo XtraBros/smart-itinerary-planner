@@ -11,6 +11,8 @@ let simulationTimeout;         // Variable to store the timeout ID
 let userMarker;
 let userLocation;
 let isFirstOpen = false;
+let startMarker;
+let nedMarker;
 let steps;
 let routeIndex = 0;
 
@@ -20,11 +22,10 @@ window.onload = function () {
     isFirstOpen = localStorage.getItem('isFirstOpen')
     const popupModal = document.getElementById('popupModal');
     const btn = document.getElementById("robotIcoId");
-    const stopNav = document.getElementById('stopNav')
+    const stopNav = document.getElementById('closedBut')
 
     stopNav.onclick = function () {
         disableNavigationMode();
-        document.getElementById('navigation').style.display = "none";
     }
 
     btn.onclick = function () {
@@ -87,7 +88,7 @@ fetch('/config')
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
             center: [103.827973, 1.250277],
-            zoom: 14
+            zoom: 15
         });
 
         directions = new MapboxDirections({
@@ -748,6 +749,131 @@ async function postMessage(message, chatMessages) {
     }
 }
 
+function navFunc(e, id) {
+    console.log('----->>>', e, id)
+    const popupModal = document.getElementById('popupModal');
+    const navigation = document.getElementById('navigation');
+    navigation.classList.add('fadeshowin')
+    popupModal.style.display = 'none';
+    if(map.getLayer('route')) return
+    const lineData = {
+        type: 'Feature',
+        geometry: {
+            type: 'LineString',
+            coordinates: [
+                [103.826511, 1.248450],
+                [103.827457, 1.248179],
+                [103.827967, 1.247061],
+                [103.829030, 1.246154],
+                [103.829098, 1.245841],
+                [103.828930, 1.245373],
+                [103.828544, 1.244633],
+                [103.827659, 1.245229],
+            ]
+        },
+        properties: {}
+    };
+    map.addSource('route', {
+        type: 'geojson',
+        data: lineData
+    });
+    map.loadImage(
+        'static/icons/nav.png',
+        (err, image) => {
+            console.log(image)
+            if (err) throw err;
+            map.addImage('pattern', image);
+            map.addLayer({
+                'id': 'route',
+                'type': 'symbol',
+                'source': 'route',
+                'layout': {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 2,
+                    'icon-image': 'pattern',
+                    'icon-size': 0.5,
+                    'icon-allow-overlap': true,
+                },
+            });
+            map.setPitch(45);
+            // 实时跟踪用户位置
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(position => {
+                    const userLocation = lineData.geometry.coordinates[0]
+                    console.error("asdsdsd", userLocation);
+                    // const userLocation = [position.coords.longitude, position.coords.latitude];
+                    map.setCenter(userLocation);
+                    map.rotateTo(90, {duration: 0})
+                    map.flyTo({
+                        center: lineData.geometry.coordinates[0],
+                        zoom: 20, // 可设置缩放级别
+                        speed: 1.5 // 飞行速度
+                    });
+                    // if (!userMarker) {
+                    //     userMarker = new mapboxgl.Marker()
+                    //         .setLngLat(userLocation)
+                    //         .addTo(map);
+                    // } else {
+                    //     userMarker.setLngLat(userLocation);
+                    // }
+                }, error => {
+                    console.error("无法获取当前位置：", error);
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                });
+            }
+            startMarker = new mapboxgl.Marker({
+                draggable: true,
+                color: '#83f7a0'
+            })
+                .setLngLat(lineData.geometry.coordinates[0])
+                .addTo(map);
+            // if (window.DeviceOrientationEvent) {
+            //     window.addEventListener('deviceorientation', (event) => {
+            //         if (event.alpha !== null) {
+            //             const heading = 360 - event.alpha; // 获取设备的方向
+            //             // 实时旋转地图
+            //             map.rotateTo(heading, {
+            //                 duration: 0 // 禁用动画，使旋转更顺畅
+            //             });
+            //         }
+            //     });
+            // } else {
+            //     console.error("浏览器不支持设备方向事件");
+            // }
+
+
+
+
+            nedMarker = new mapboxgl.Marker({
+                draggable: true,
+                color: '#ed6461'
+            })
+                .setLngLat(lineData.geometry.coordinates[lineData.geometry.coordinates.length - 1])
+                .addTo(map);
+        }
+    );
+}
+
+function closedNavfun() {
+    const navigation = document.getElementById('navigation');
+    navigation.classList.remove('fadeshowin');
+    navigation.classList.add('fadeout');
+    if (map.getLayer('route')) {
+        map.removeLayer('route');
+    }
+    if (map.getSource('route')) {
+        map.removeSource('route');
+    }
+    if (map.hasImage('pattern')) {
+        map.removeImage('pattern');
+    }
+    startMarker.remove();
+    nedMarker.remove();
+}
+
 // creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages) {
     // if (className == "nav-button") {
@@ -769,7 +895,7 @@ function appendMessage(text, className, chatMessages) {
                         <button id="detailsButton">
                             Details
                         </button>
-                        <button id="takeThereBut">
+                        <button id="takeThereBut" onclick="navFunc(event, '${className}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>

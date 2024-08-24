@@ -195,7 +195,7 @@
     </div>
 
     <!-- 导航 -->
-    <div id="navigation">
+    <div id="navigation" class="none">
         <div class="neststat">
             <p>
                 <img src="static/icons/left.svg" alt="" srcset="">
@@ -217,10 +217,12 @@
                 <h3>2.1</h3>
                 <p>km</p>
             </div>
-            <button id="stopNav">
-                <p><img src="static/icons/closed.svg" alt="" width="26px" srcset=""></p>
-                <p>Stop</p>
-            </button>
+            <div>
+                <button id="closedBut" class="closedBut" onclick="closedNavfun()">
+                    <p><img src="static/icons/closed.svg" alt="" width="26px" srcset=""></p>
+                    <p>Stop</p>
+                </button>
+            </div>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
