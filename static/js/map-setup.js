@@ -4,6 +4,7 @@ var map;
 var directions;
 var walkedRoute = [];
 let route = {};
+let api_response = {};
 let navigationEnabled = false;
 let simulationRunning = false; // Flag to indicate if the simulation is running
 let simulationPaused = false;  // Flag to indicate if the simulation is paused
@@ -262,6 +263,7 @@ function enableNavigationMode(route, instructions) {
         if (distanceToCheckpoint < thresholdDistance) {
             currentStepIndex++;
             if (currentStepIndex < instructions.length) {
+                console.log("Full instructions: " + instructions)
                 const nextInstructionObject = instructions[currentStepIndex].maneuver.instruction;
                 const modifierType = instructions[currentStepIndex].maneuver.modifier;
                 displayInstruction(nextInstructionObject, distanceToCheckpoint, modifierType);
@@ -294,6 +296,9 @@ function enableNavigationMode(route, instructions) {
         const instructionIcon = document.getElementById('distanceIcon');
         const instructionText = document.getElementById('instructionText');
         const distanceText = document.getElementById('distanceText');
+        const eta = document.getElementById('journeyETA');
+        const duration = document.getElementById('journeyDuration');
+        const distance = document.getElementById('journeyDistance');
         if (modifier && modifier.includes === 'left') {
             instructionIcon.setAttribute('src', 'static/icons/left.svg');
         } else if (modifier && modifier.includes === 'right') {
@@ -564,6 +569,7 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
             .then(data => {
                 if (data.routes && data.routes.length > 0) {
                     var legs = data.routes[0].legs;
+                    api_response = data.routes[0]
                     route = data.routes[0].geometry;
                     steps = data.routes[0].legs[0].steps;
                     return { legs, route };

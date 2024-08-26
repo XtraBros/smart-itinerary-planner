@@ -208,6 +208,23 @@ def weather_icon():
         "Heavy Thundery Showers with Gusty Winds"]
     return jsonify(process.extractOne(forecast,lib)[0])
 
+@app.route('/find_nearby_pois', methods=['POST'])
+def find_nearby():
+    data = request.get_json()  # Parse the JSON data from the request
+    
+    # Extract the required arguments
+    user_location = data.get('user_location')
+    radius_in_meters = data.get('radius_in_meters')
+    
+    if user_location is None or radius_in_meters is None:
+        return jsonify({'error': 'Missing required parameters'}), 400
+    
+    # Call the find_nearby_pois function with the provided arguments
+    nearby_pois = find_nearby_pois(user_location, radius_in_meters)
+    
+    # Return the result as JSON
+    return jsonify(nearby_pois)
+
 # Not needed in sentosa variant right now.
 # @app.route('/get_centroids', methods=['POST'])
 # def get_centroids():
