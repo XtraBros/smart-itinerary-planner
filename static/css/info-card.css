@@ -5,6 +5,31 @@
     overflow-y: auto;
     padding: 5px;
     box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+}
+.info-card-content:after{
+    content: "020";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
+.cardImage {
+    width: 82px;
+    height: 82px;
+    overflow: hidden;
+    border-radius: 14px;
+}
+.infoText {
+    width: calc(100% - 90px);
+    float: right;
+}
+
+.infoText .takeThereBut {
+    margin-left: 0px;
+    padding: 6px;
+    margin-top: 8px;
 }
 .info-card-thumbnail {
     max-width: 100%;

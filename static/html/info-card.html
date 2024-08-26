@@ -1,5 +1,15 @@
 <div class="info-card-content">
-    <h3>{{name}}</h3>
-    <img src="{{thumbnail}}" alt="{{name}}" class="info-card-thumbnail">
-    <p>{{description}}</p>
+    <div class="cardImage">
+        <img src="{{thumbnail}}" alt="{{name}}" class="info-card-thumbnail">
+    </div>
+    <div class="infoText">
+        <h3>{{name}}</h3>
+        <p>{{description}}</p>
+        <p>
+            <button id="takeThereBut" class="takeThereBut">
+                <img src="static/icons/daohang.svg" alt="" srcset="">
+                <span>Take me there</span>
+            </button>
+        </p>
+    </div>
 </div>

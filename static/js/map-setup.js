@@ -17,6 +17,49 @@ let steps;
 let routeIndex = 0;
 
 
+// User location
+function getUserCurrentPosition(callBack, error){
+    navigator.geolocation.getCurrentPosition((position) => {
+        userLocation = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude
+        };
+        if (callBack) {
+            callBack(userLocation)
+        }
+        // get POIs
+        getPoisByLocation(userLocation)
+        console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
+    }, (e) => {
+        if (error) {
+            cuerror(e)
+        }
+        console.error('Error obtaining geolocation:', e);
+    });
+}
+
+async function getPoisByLocation(location) {
+    try {
+        const response = await fetch('/find_nearby_pois', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 10 })
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const poisData = await response.json();
+        console.log('--------->>>', poisData)
+    } catch (error) {
+        console.error('Get Pois by Location', error);
+        return null;
+    }
+}
+
 window.onload = function () {
     const tishiDom = document.getElementById('tishi')
     isFirstOpen = localStorage.getItem('isFirstOpen')
@@ -25,6 +68,7 @@ window.onload = function () {
     const stopNav = document.getElementById('closedBut')
 
     stopNav.onclick = function () {
+        closedNavfun();
         disableNavigationMode();
     }
 
@@ -44,15 +88,7 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    navigator.geolocation.getCurrentPosition((position) => {
-        userLocation = {
-            lng: position.coords.longitude,
-            lat: position.coords.latitude
-        };
-        console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
-    }, (error) => {
-        console.error('Error obtaining geolocation:', error);
-    });
+    getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
         // autoplay: true,
@@ -164,19 +200,25 @@ fetch('/config')
                 }
             });
 
+            map.loadImage('static/icons/walked.png', function (err, image) {
+                if (err) {
+                    console.error('Error loading image:', err);
+                    reject(err);
+                }
+                map.addImage('walkedArrow', image);
+            });
+
             map.addLayer({
                 "id": "walked-route",
-                "type": "line",
+                "type": "symbol",
                 "source": "walked-route",
-                "layout": {
-                    "line-join": "round",
-                    "line-cap": "round"
+                'layout': {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 2,
+                    'icon-image': 'walkedArrow',
+                    'icon-size': 0.7,
+                    'icon-allow-overlap': true,
                 },
-                "paint": {
-                    "line-color": "#888888", // Grey color
-                    "line-width": 6,
-                    "line-dasharray": [2, 2] // Circles effect
-                }
             });
 
 
@@ -186,19 +228,12 @@ fetch('/config')
 
             // Override the geolocate event to use navigator.geolocation
             geolocateControl.on('geolocate', () => {
-                navigator.geolocation.getCurrentPosition((position) => {
-                    userLocation = {
-                        lng: position.coords.longitude,
-                        lat: position.coords.latitude
-                    };
+                getUserCurrentPosition((userLoc) => {
                     // Set the user's location on the map
                     map.flyTo({
-                        center: [userLocation.lng, userLocation.lat],
+                        center: [userLoc.lng, userLoc.lat],
                         essential: true // this animation is considered essential with respect to prefers-reduced-motion
                     });
-                    console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
-                }, (error) => {
-                    console.error('Error obtaining geolocation:', error);
                 });
             });
         });
@@ -228,7 +263,8 @@ function enableNavigationMode(route, instructions) {
             currentStepIndex++;
             if (currentStepIndex < instructions.length) {
                 const nextInstructionObject = instructions[currentStepIndex].maneuver.instruction;
-                displayInstruction(nextInstructionObject, distanceToCheckpoint);
+                const modifierType = instructions[currentStepIndex].maneuver.modifier;
+                displayInstruction(nextInstructionObject, distanceToCheckpoint, modifierType);
             } else {
                 console.log("You've reached your destination!");
                 stopNavigation(); // Optionally stop navigation or handle route completion
@@ -251,13 +287,20 @@ function enableNavigationMode(route, instructions) {
         return R * c;
     }    
 
-    function displayInstruction(instructionTextContent, distanceToCheckpoint) {
+    function displayInstruction(instructionTextContent, distanceToCheckpoint, modifier) {
         // Extract the instruction text from the object    
         // Get the pop-up elements
         const instructionPopup = document.getElementById('navigation');
+        const instructionIcon = document.getElementById('distanceIcon');
         const instructionText = document.getElementById('instructionText');
         const distanceText = document.getElementById('distanceText');
-    
+        if (modifier && modifier.includes === 'left') {
+            instructionIcon.setAttribute('src', 'static/icons/left.svg');
+        } else if (modifier && modifier.includes === 'right') {
+            instructionIcon.setAttribute('src', 'static/icons/right.svg');
+        } else {
+            instructionIcon.setAttribute('src', 'static/icons/lines.svg');
+        }
         // Update the text content with the extracted instruction
         instructionText.textContent = instructionTextContent;
         distanceText.textContent = `Distance to next step: ${distanceToCheckpoint.toFixed(1)} meters`;
@@ -548,7 +591,7 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
 
                     if (!map.getLayer('route')) {
                         // Add arrows to the route using static png asset
-                        const url = 'static/icons/arrow2.png';
+                        const url = 'static/icons/nav.png';
                         map.loadImage(url, function (err, image) {
                             if (err) {
                                 console.error('Error loading image:', err);
@@ -560,19 +603,15 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
                         // Add arrow-line layer
                         map.addLayer({
                             'id': 'route',
-                            'type': 'line',
+                            'type': 'symbol',
                             'source': 'route',
                             'layout': {
-                                'line-join': 'round',
-                                'line-cap': 'round',
+                                'symbol-placement': 'line',
+                                'symbol-spacing': 2,
+                                'icon-image': 'arrow',
+                                'icon-size': 0.7,
+                                'icon-allow-overlap': true,
                             },
-                            'paint': {
-                                'line-color': '#E21B1B',
-                                'line-width': 10,
-                                'line-offset': 2,
-                                'line-opacity': 0.9,
-                                'line-pattern': 'arrow'
-                            }
                         });
 
                         // Update route data on map
@@ -717,7 +756,7 @@ async function postMessage(message, chatMessages) {
             }
             let textData = await textResponse.json();
             // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages);
+            appendMessage(textData.response, "guide-message", chatMessages, 'route');
             //appendMessage(instr, "nav-button", chatMessages);
             attachEventListeners();
         } else if (data.operation == "location") {
@@ -739,7 +778,7 @@ async function postMessage(message, chatMessages) {
             }
             let textData = await textResponse.json();
             // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages);
+            appendMessage(textData.response, "guide-message", chatMessages, 'location');
             attachEventListeners();
         } else { // return message directly
             appendMessage(data.response, 'guide-message', chatMessages);
@@ -750,12 +789,11 @@ async function postMessage(message, chatMessages) {
 }
 
 function navFunc(e, id) {
-    console.log('----->>>', e, id)
     const popupModal = document.getElementById('popupModal');
     const navigation = document.getElementById('navigation');
     navigation.classList.add('fadeshowin')
     popupModal.style.display = 'none';
-    if(map.getLayer('route')) return
+    return
     const lineData = {
         type: 'Feature',
         geometry: {
@@ -809,13 +847,6 @@ function navFunc(e, id) {
                         zoom: 20, // 可设置缩放级别
                         speed: 1.5 // 飞行速度
                     });
-                    // if (!userMarker) {
-                    //     userMarker = new mapboxgl.Marker()
-                    //         .setLngLat(userLocation)
-                    //         .addTo(map);
-                    // } else {
-                    //     userMarker.setLngLat(userLocation);
-                    // }
                 }, error => {
                     console.error("无法获取当前位置：", error);
                 }, {
@@ -843,10 +874,6 @@ function navFunc(e, id) {
             // } else {
             //     console.error("浏览器不支持设备方向事件");
             // }
-
-
-
-
             nedMarker = new mapboxgl.Marker({
                 draggable: true,
                 color: '#ed6461'
@@ -861,37 +888,29 @@ function closedNavfun() {
     const navigation = document.getElementById('navigation');
     navigation.classList.remove('fadeshowin');
     navigation.classList.add('fadeout');
-    if (map.getLayer('route')) {
-        map.removeLayer('route');
-    }
-    if (map.getSource('route')) {
-        map.removeSource('route');
-    }
-    if (map.hasImage('pattern')) {
-        map.removeImage('pattern');
-    }
-    startMarker.remove();
-    nedMarker.remove();
+    // if (map.getLayer('route')) {
+    //     map.removeLayer('route');
+    // }
+    // if (map.getSource('route')) {
+    //     map.removeSource('route');
+    // }
+    // if (map.hasImage('pattern')) {
+    //     map.removeImage('pattern');
+    // }
+    // startMarker.remove();
+    // nedMarker.remove();
 }
 
 // creaate template and styles for each visitor/guide message.
-function appendMessage(text, className, chatMessages) {
-    // if (className == "nav-button") {
-    //     var messageDiv = document.createElement("div");
-    //     var navButton = document.querySelector(".nav-button");
-    //     if (navButton) {
-    //         navButton.remove();
-    //     }
-    //     loadButtonTemplate(messageDiv, text)
-    //     chatMessages.appendChild(messageDiv);
-    // } else 
+function appendMessage(text, className, chatMessages, type) {
     if (className == "guide-message") {
-        chatMessages.innerHTML += `<div class='chat-message ${className}'>
+        if (type === 'route') {
+            chatMessages.innerHTML += `<div class='chat-message ${className}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
                     ${marked.parse(text)}
-                    <p>
+                    <p style='margin-top: 10px;'>
                         <button id="detailsButton">
                             Details
                         </button>
@@ -904,6 +923,17 @@ function appendMessage(text, className, chatMessages) {
             </div>
         </div>
         `
+        } else {
+            chatMessages.innerHTML += `<div class='chat-message ${className}'>
+            <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
+            <div class='guideText'>
+                <div class='messageStype'>
+                    ${marked.parse(text)}
+                </div>
+            </div>
+        </div>
+        `
+        }
     } else {
         chatMessages.innerHTML += `<div class='chat-message ${className}'>${marked.parse(text)}</div>`
     }
@@ -1033,15 +1063,8 @@ async function get_coordinates(data) {
     try {
         // Fetch the user's current location
         userLocation = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-                position => resolve({
-                    lat: parseFloat(position.coords.latitude),
-                    lng: parseFloat(position.coords.longitude)
-                }),
-                error => reject(error)
-            );
+            getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
         });
-
         // Send the place names and the user's location to the Flask endpoint
         let response = await fetch('/get_coordinates', {
             method: 'POST',

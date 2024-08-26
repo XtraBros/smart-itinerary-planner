@@ -197,11 +197,14 @@
     <!-- 导航 -->
     <div id="navigation" class="none">
         <div class="neststat">
-            <p>
-                <img src="static/icons/left.svg" alt="" srcset="">
-                <!-- Need to adjust font and layout -->
-                <span id="distanceText"></span><span id="instructionText"></span>
-            </p>
+           <div>
+                <img id="distanceIcon" src="static/icons/left.svg" alt="" srcset="">
+           </div>
+           <div class="distext">
+             <!-- Need to adjust font and layout -->
+             <span id="distanceText"></span>
+             <span id="instructionText"></span>
+           </div>
         </div>
         <!-- Backend to update these fields -->
         <div class="datelInfo">
@@ -218,7 +221,7 @@
                 <p>km</p>
             </div>
             <div>
-                <button id="closedBut" class="closedBut" onclick="closedNavfun()">
+                <button id="closedBut" class="closedBut">
                     <p><img src="static/icons/closed.svg" alt="" width="26px" srcset=""></p>
                     <p>Stop</p>
                 </button>
