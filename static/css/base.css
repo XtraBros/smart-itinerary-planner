@@ -173,9 +173,6 @@ h3 {
   content: "";
   z-index: 9;
 }
-.messageStype p:last-child {
-  padding-top: 10px;
-}
 #detailsButton {
   background-color: transparent;
   border: 1px solid #ff8a00;
@@ -186,7 +183,7 @@ h3 {
   font-size: 13px;
 }
 
-#takeThereBut {
+#takeThereBut, .takeThereBut {
   background-color: #ff8a00;
   border: 1px solid #ff8a00;
   border: none;
@@ -197,7 +194,7 @@ h3 {
   color: white;
   font-size: 13px;
 }
-#takeThereBut img {
+#takeThereBut img, .takeThereBut img  {
   float: right;
   margin-left: 8px;
 }
@@ -401,7 +398,7 @@ h3 {
   height: auto;
   background-color: #183140;
   padding: 16px;
-  display: none;
+  /* display: none; */
 }
 .datelInfo {
   display: flex;
@@ -425,9 +422,12 @@ h3 {
 .neststat {
   font-size: 20px;
   padding-bottom: 16px;
+  display: flex;
+  justify-content: flex-start;
 }
-.neststat p {
+.neststat .distext {
   padding-left: 10px;
+  padding-top: 12px;
 }
 .neststat .number {
   font-size: 40px;
@@ -579,6 +579,18 @@ a.mapboxgl-ctrl-logo {
 .closedBut {
     background-color: transparent;
     border: none;
+}
+
+.mapboxgl-popup-content {
+  border-radius: 20px;
+}
+
+.mapboxgl-popup-close-button {
+  display: none;
+}
+
+.mapboxgl-popup-content {
+  padding: 10px 10px 10px;
 }
 
 /* 添加动画 */
