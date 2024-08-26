@@ -13,6 +13,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
 from geopy.distance import geodesic
+import certifi
 
 
 app = Flask(__name__)
@@ -27,7 +28,7 @@ model_name = config['GPT_MODEL']
 
 ######################### MONGO #########################
 # Connect to MongoDB
-mongo_client = MongoClient(config['MONGO_CLUSTER_URI'])
+mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
 db = mongo_client[config['MONGO_DB_NAME']]
 poi_db = db[config['POI_DB_NAME']]
 # create geosphere index

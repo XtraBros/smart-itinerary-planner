@@ -51,3 +51,4 @@ ortools==9.10.4067
 sentence-transformers==3.0.1
 pymongo==4.7.3
 geopy==2.4.1
+certifi==2024.2.2
