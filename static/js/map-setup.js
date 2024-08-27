@@ -19,7 +19,7 @@ let routeIndex = 0;
 
 
 // User location
-function getUserCurrentPosition(callBack, error){
+function getUserCurrentPosition(callBack, error) {
     navigator.geolocation.getCurrentPosition((position) => {
         userLocation = {
             lng: position.coords.longitude,
@@ -46,7 +46,7 @@ async function getPoisByLocation(location) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 10 })
+            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 5000 })
         });
 
         if (!response.ok) {
@@ -54,7 +54,34 @@ async function getPoisByLocation(location) {
         }
 
         const poisData = await response.json();
-        console.log('--------->>>', poisData)
+        const placeInfoResponse = await fetchPlacesData(poisData)
+        const swiperconent = document.getElementById('swiperconent')
+        let contenxt = '';
+        poisData.forEach((placeName, index) => {
+            contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
+                            <div class="slideItme">
+                                <div class="swperimg">
+                                    <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/11/b4/45/48/this-restaurant-is-amazing.jpg?w=1200&h=-1&s=1"
+                                        alt="${placeName}" srcset="">
+                                </div>
+                                <div class="visitors">
+                                    <h4>${placeName}</h4>
+                                    <p><span class="islander">${placeInfoResponse[placeName]}</span></p>
+                                    <p class="address">
+                                        <span>
+                                            <img src="static/icons/addess.svg" alt="" srcset="">
+                                            500m
+                                        </span>
+                                        <span>
+                                            <img src="static/icons/time.svg" alt="" srcset="">
+                                            5mins
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>`
+        });
+        swiperconent.innerHTML = contenxt
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;
@@ -100,8 +127,33 @@ window.onload = function () {
             el: '.swiper-pagination',
         },
     });
-    swiper.on('touchStart', function (swiper, event) {
-        console.log('slide changed', event);
+    swiper.on('click', async function (swiper, event) {
+        if (map.getSource('route')) {
+            map.removeLayer('route');
+            map.removeSource('route');
+            if (map.getLayer('directions')) {
+                map.removeLayer('directions');
+            }
+        }
+        const swiperconent = document.getElementById('swiperconent');
+        const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
+        let response = await fetch('/get_coordinates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                places: [place],
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+
+        let responseData = await response.json();
+        let waypoints = responseData.coordinates.map(coord => [coord.lng, coord.lat]);
+        addMarkers([place], waypoints);
     });
 }
 
@@ -125,7 +177,7 @@ fetch('/config')
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
             center: [103.827973, 1.250277],
-            zoom: 15
+            zoom: 13
         });
 
         directions = new MapboxDirections({
@@ -246,6 +298,9 @@ fetch('/config')
 // Navigation Mode 
 function enableNavigationMode(route, instructions) {
     document.getElementById('popupModal').style.display = "none";
+    const instructionPopup = document.getElementById('navigation');
+    // Show the pop-up
+    instructionPopup.classList.add('fadeshowin')
     let currentStepIndex = 0; // Start at the first step of the route
 
     // Function to update navigation instructions based on user's current location
@@ -254,7 +309,7 @@ function enableNavigationMode(route, instructions) {
         const checkpoint = {
             lng: route.coordinates[currentStepIndex][0],
             lat: route.coordinates[currentStepIndex][1]
-        };        
+        };
         console.log(checkpoint)
         const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
 
@@ -282,17 +337,16 @@ function enableNavigationMode(route, instructions) {
         const dLng = (point2.lng - point1.lng) * toRad;
 
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(point1.lat * toRad) * Math.cos(point2.lat * toRad) *
-                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            Math.cos(point1.lat * toRad) * Math.cos(point2.lat * toRad) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
-    }    
+    }
 
     function displayInstruction(instructionTextContent, distanceToCheckpoint, modifier) {
         // Extract the instruction text from the object    
         // Get the pop-up elements
-        const instructionPopup = document.getElementById('navigation');
         const instructionIcon = document.getElementById('distanceIcon');
         const instructionText = document.getElementById('instructionText');
         const distanceText = document.getElementById('distanceText');
@@ -309,9 +363,6 @@ function enableNavigationMode(route, instructions) {
         // Update the text content with the extracted instruction
         instructionText.textContent = instructionTextContent;
         distanceText.textContent = `Distance to next step: ${distanceToCheckpoint.toFixed(1)} meters`;
-    
-        // Show the pop-up
-        instructionPopup.style.display = 'block';
     }
     // Monitor the user's GPS location
     //navigator.geolocation.watchPosition((position) => {
@@ -413,7 +464,7 @@ function simulateUserLocation(route) {
                 // If the remaining distance is less than the target, move to the next point
                 if (remainingDistance <= targetDistance) {
                     routeIndex++;
-    
+
                     if (routeIndex < route.coordinates.length - 1) {
                         setTimeout(updateLocation, 100); // Continue to the next point
                     } else {
@@ -482,8 +533,8 @@ function distanceBetweenPoints(p1, p2) {
     const dLng = (p2[0] - p1[0]) * toRad;
 
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(p1[1] * toRad) * Math.cos(p2[1] * toRad) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        Math.cos(p1[1] * toRad) * Math.cos(p2[1] * toRad) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
@@ -546,8 +597,10 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
         // Clear existing routes
         if (map.getSource('route')) {
             map.removeLayer('route');
-            map.removeLayer('directions');
             map.removeSource('route');
+            if (map.getLayer('directions')) {
+                map.removeLayer('directions');
+            }
         }
         addMarkers(placeNames, rawCoordinates);
 
@@ -597,15 +650,16 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
 
                     if (!map.getLayer('route')) {
                         // Add arrows to the route using static png asset
-                        const url = 'static/icons/nav.png';
-                        map.loadImage(url, function (err, image) {
-                            if (err) {
-                                console.error('Error loading image:', err);
-                                reject(err);
-                            }
-                            map.addImage('arrow', image);
-                        });
-
+                        if (!map.hasImage('arrow')) {
+                            const url = 'static/icons/nav.png';
+                            map.loadImage(url, function (err, image) {
+                                if (err) {
+                                    console.error('Error loading image:', err);
+                                    reject(err);
+                                }
+                                map.addImage('arrow', image);
+                            });
+                        }
                         // Add arrow-line layer
                         map.addLayer({
                             'id': 'route',
@@ -847,7 +901,7 @@ function navFunc(e, id) {
                     console.error("asdsdsd", userLocation);
                     // const userLocation = [position.coords.longitude, position.coords.latitude];
                     map.setCenter(userLocation);
-                    map.rotateTo(90, {duration: 0})
+                    map.rotateTo(90, { duration: 0 })
                     map.flyTo({
                         center: lineData.geometry.coordinates[0],
                         zoom: 20, // 可设置缩放级别
@@ -945,12 +999,12 @@ function appendMessage(text, className, chatMessages, type) {
     }
     var takeThereBut = document.getElementById("takeThereBut");
     if (takeThereBut) {
-        takeThereBut.addEventListener("click", function() {
+        takeThereBut.addEventListener("click", function () {
             // Call your function here
             enableNavigationMode(route, steps);
         });
     }
-    
+
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -1123,7 +1177,7 @@ async function get_coordinates_without_route(data) {
 
         let responseData = await response.json();
         let coordinates = responseData.coordinates;
-        placeNames = responseData.places;
+        placeNames = responseData.places && responseData.places.length ? responseData.places : data;
 
         // Map coordinates to waypoints
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
@@ -1174,6 +1228,10 @@ function addMarkers(placeNames, waypoints) {
                 var popupContentString = populateTemplate(template, place);
                 var doc = parser.parseFromString(popupContentString, 'text/html');
                 var popupContent = doc.querySelector('.info-card-content');
+                popupContent.querySelector('button').onclick = async function () {
+                    await displayRoute(userLocation, [name], [coord]);
+                    enableNavigationMode(route, steps);
+                }
                 var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
 
                 var popup = new mapboxgl.Popup().setDOMContent(popupContent);
