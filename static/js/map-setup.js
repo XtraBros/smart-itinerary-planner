@@ -48,7 +48,7 @@ async function getPoisByLocation(location) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 5000 })
+            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 500 })
         });
 
         if (!response.ok) {
@@ -404,10 +404,9 @@ function displayInstruction(instructionTextContent, distanceToCheckpoint, remain
     document.querySelector('#journeyETA h3').textContent = formattedETA;
     // Update the text content with the extracted instruction
     instructionText.textContent = instructionTextContent;
-    distanceText.textContent = `Distance to next step: ${distanceToCheckpoint.toFixed(1)} meters`;
-
+    distanceText.textContent = `${distanceToCheckpoint.toFixed(1)}`;
     // Show the pop-up
-    instructionPopup.style.display = 'block';
+    instructionPopup.classList.add('fadeshowin')
 }
 
 // Perform map animations and start simulation in sequence
@@ -436,7 +435,7 @@ function updateNavigationInstructions(userLocation) {
     const checkpoint = {
         lng: route.coordinates[currentStepIndex + 1][0],
         lat: route.coordinates[currentStepIndex + 1][1]
-    };        
+    };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
     console.log("Distance to checkpoint" + distanceToCheckpoint);
     const userHeading = calculateBearing(userLocation.lat,userLocation.lng,checkpoint.lat,checkpoint.lng);
@@ -521,7 +520,7 @@ function simulateUserLocation(route) {
                 lng: route.coordinates[routeIndex + 1][0],
                 lat: route.coordinates[routeIndex + 1][1]
             };
-
+            getPoisByLocation(currentPosition);
             // Calculate the distance between the current and next position
             const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 

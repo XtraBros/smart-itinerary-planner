@@ -319,6 +319,7 @@ h3 {
 
 .promo {
   background-color: white;
+  box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.14);
   position: absolute;
   top: -45px;
   font-size: 15px;
@@ -406,11 +407,10 @@ h3 {
   align-items: center;
   text-align: center;
   padding-top: 16px;
-  border-top: 1px solid #183140;
+  border-top: 1px solid #244558;
 }
 .datelInfo h3 {
   font-size: 17px;
-  font-weight: normal;
 }
 .datelInfo p {
   font-size: 15px;
@@ -420,14 +420,14 @@ h3 {
   width: 26px;
 }
 .neststat {
-  font-size: 20px;
+  font-size: 16px;
   padding-bottom: 16px;
   display: flex;
+  align-items: center;
   justify-content: flex-start;
 }
 .neststat .distext {
-  padding-left: 10px;
-  padding-top: 12px;
+  padding-left: 16px;
 }
 .neststat .number {
   font-size: 40px;
@@ -474,6 +474,11 @@ h3 {
   float: right;
   font-size: 28px;
   font-weight: bold;
+}
+
+.stopButton {
+  padding: 0px 16px;
+  border-left: 1px solid #244558
 }
 
 .close:hover,

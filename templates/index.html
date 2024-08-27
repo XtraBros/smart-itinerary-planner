@@ -102,53 +102,7 @@
             <div id="poiSwiper">
                 <div class="promo">Promo Nearby</div>
                 <div class="swiper">
-                    <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                            <div class="slideItme">
-                                <div class="swperimg">
-                                    <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/11/b4/45/48/this-restaurant-is-amazing.jpg?w=1200&h=-1&s=1"
-                                        alt="" srcset="">
-                                </div>
-                                <div class="visitors">
-                                    <h4>A Taste of Time Travel: Back
-                                        to 1870s (Fort Serapong)</h4>
-                                    <p><span class="islander">Islander earns 50 points</span></p>
-                                    <p class="address">
-                                        <span>
-                                            <img src="static/icons/addess.svg" alt="" srcset="">
-                                            500m
-                                        </span>
-                                        <span>
-                                            <img src="static/icons/time.svg" alt="" srcset="">
-                                            5mins
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="slideItme">
-                                <div class="swperimg">
-                                    <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/11/b4/45/48/this-restaurant-is-amazing.jpg?w=1200&h=-1&s=1"
-                                        alt="" srcset="">
-                                </div>
-                                <div class="visitors">
-                                    <h4>A Taste of Time Travel: Back
-                                        to 1870s (Fort Serapong)</h4>
-                                    <p><span class="islander">Islander earns 50 points</span></p>
-                                    <p class="address">
-                                        <span>
-                                            <img src="static/icons/addess.svg" alt="" srcset="">
-                                            500m
-                                        </span>
-                                        <span>
-                                            <img src="static/icons/time.svg" alt="" srcset="">
-                                            5mins
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="swiper-wrapper" id="swiperconent">
                     </div>
                 </div>
             </div>
@@ -202,7 +156,10 @@
            </div>
            <div class="distext">
              <!-- Need to adjust font and layout -->
-             <span id="distanceText"></span>
+              <p>
+                <span id="distanceText" class="number"></span>
+                meters
+              </p>
              <span id="instructionText"></span>
            </div>
         </div>
@@ -220,7 +177,7 @@
                 <h3>2.1</h3>
                 <p>km</p>
             </div>
-            <div>
+            <div class="stopButton">
                 <button id="closedBut" class="closedBut">
                     <p><img src="static/icons/closed.svg" alt="" width="26px" srcset=""></p>
                     <p>Stop</p>
