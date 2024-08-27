@@ -16,6 +16,8 @@ let startMarker;
 let nedMarker;
 let steps;
 let routeIndex = 0;
+let increment = true;
+let currentStepIndex = 0; // Start at the first step of the route
 
 
 // User location
@@ -244,110 +246,38 @@ fetch('/config')
     });
 
 // Navigation Mode 
-function enableNavigationMode(route, instructions) {
+function enableNavigationMode(route, data) {
+    instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
-    let currentStepIndex = 0; // Start at the first step of the route
 
-    // Function to update navigation instructions based on user's current location
-    function updateNavigationInstructions(userLocation) {
-        // Calculate the distance between the user's current location and the next checkpoint
-        const checkpoint = {
-            lng: route.coordinates[currentStepIndex][0],
-            lat: route.coordinates[currentStepIndex][1]
-        };        
-        console.log(checkpoint)
-        const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
+    // Animate the map to tilt and zoom for 3D perspective
+    map.easeTo({
+        pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+        zoom: 20,  // Adjust the zoom level for better street view navigation
+        center: [userLocation.lng, userLocation.lat], // Center map on user's location
+        duration: 500 // Animation duration in milliseconds
+    });
 
-        // If the user is close enough to the checkpoint, move to the next step
-        const thresholdDistance = 10; // meters, adjust this value as needed
-        if (distanceToCheckpoint < thresholdDistance) {
-            currentStepIndex++;
-            if (currentStepIndex < instructions.length) {
-                console.log("Full instructions: " + instructions)
-                const nextInstructionObject = instructions[currentStepIndex].maneuver.instruction;
-                const modifierType = instructions[currentStepIndex].maneuver.modifier;
-                displayInstruction(nextInstructionObject, distanceToCheckpoint, modifierType);
-            } else {
-                console.log("You've reached your destination!");
-                stopNavigation(); // Optionally stop navigation or handle route completion
-            }
-        }
-    }
-
-    // Function to calculate the distance between two points (Haversine formula)
-    function calculateDistance(point1, point2) {
-        const R = 6371000; // Radius of the Earth in meters
-        const toRad = Math.PI / 180;
-        const dLat = (point2.lat - point1.lat) * toRad;
-        const dLng = (point2.lng - point1.lng) * toRad;
-
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(point1.lat * toRad) * Math.cos(point2.lat * toRad) *
-                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }    
-
-    function displayInstruction(instructionTextContent, distanceToCheckpoint, modifier) {
-        // Extract the instruction text from the object    
-        // Get the pop-up elements
-        const instructionPopup = document.getElementById('navigation');
-        const instructionIcon = document.getElementById('distanceIcon');
-        const instructionText = document.getElementById('instructionText');
-        const distanceText = document.getElementById('distanceText');
-        const eta = document.getElementById('journeyETA');
-        const duration = document.getElementById('journeyDuration');
-        const distance = document.getElementById('journeyDistance');
-        if (modifier && modifier.includes === 'left') {
-            instructionIcon.setAttribute('src', 'static/icons/left.svg');
-        } else if (modifier && modifier.includes === 'right') {
-            instructionIcon.setAttribute('src', 'static/icons/right.svg');
-        } else {
-            instructionIcon.setAttribute('src', 'static/icons/lines.svg');
-        }
-        // Update the text content with the extracted instruction
-        instructionText.textContent = instructionTextContent;
-        distanceText.textContent = `Distance to next step: ${distanceToCheckpoint.toFixed(1)} meters`;
-    
-        // Show the pop-up
-        instructionPopup.style.display = 'block';
-    }
+    // Wait for easeTo animation to complete, then start simulation
+    map.once('moveend', startSimulationAfterAnimation);
     // Monitor the user's GPS location
     //navigator.geolocation.watchPosition((position) => {
-    navigator.geolocation.getCurrentPosition((position) => {
-        const userLocation = {
-            lng: position.coords.longitude,
-            lat: position.coords.latitude
-        };
-        const userHeading = position.coords.heading || 0;
+    // navigator.geolocation.getCurrentPosition((position) => {
+    //     // disable tracking of location for simulation.
+    //     // const userLocation = {
+    //     //     lng: position.coords.longitude,
+    //     //     lat: position.coords.latitude
+    //     // };
+    //     // const userHeading = position.coords.heading || 0;
 
-        // Rotate the map to match the user's heading
-        map.rotateTo(userHeading);
+    //     // // Rotate the map to match the user's heading
+    //     // map.rotateTo(userHeading);
 
-        // Update navigation instructions based on the user's location
-        updateNavigationInstructions(userLocation);
+       
 
-        // Perform map animations and start simulation in sequence
-        function startSimulationAfterAnimation() {
-            // Start simulating the user's location along the route
-            simulateUserLocation(route);
-        }
-
-        // Animate the map to tilt and zoom for 3D perspective
-        map.easeTo({
-            pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-            zoom: 20,  // Adjust the zoom level for better street view navigation
-            center: [userLocation.lng, userLocation.lat], // Center map on user's location
-            duration: 500 // Animation duration in milliseconds
-        });
-
-        // Wait for easeTo animation to complete, then start simulation
-        map.once('moveend', startSimulationAfterAnimation);
-
-    }, (error) => {
-        console.error('Error getting user location:', error);
-    });
+    // }, (error) => {
+    //     console.error('Error getting user location:', error);
+    // });
     //, {
     //     enableHighAccuracy: true, // Enable high accuracy mode to use GPS
     //     maximumAge: 0, // Don't use a cached position
@@ -365,6 +295,121 @@ function disableNavigationMode() {
     if (simulationRunning) {
         pauseSimulation();
     }
+}
+function calculateRemainingDistance(routeCoordinates) {
+    let totalRemainingDistance = 0;
+
+    // Iterate over the remaining route coordinates and sum up the distances
+    for (let i = 0; i < routeCoordinates.length - 1; i++) {
+        // Each point should be an object with 'lat' and 'lng' properties
+        const point1 = { lat: routeCoordinates[i][1], lng: routeCoordinates[i][0] };
+        const point2 = { lat: routeCoordinates[i + 1][1], lng: routeCoordinates[i + 1][0] };
+        
+        const distance = calculateDistance(point1, point2);
+        totalRemainingDistance += distance;
+    }
+
+    return totalRemainingDistance;
+}
+
+function displayInstruction(instructionTextContent, distanceToCheckpoint, remainingDistance, modifier) {
+    // Extract the instruction text from the object    
+    // Get the pop-up elements
+    console.log("Modifier: " + modifier);
+    const instructionPopup = document.getElementById('navigation');
+    const instructionIcon = document.getElementById('distanceIcon');
+    const instructionText = document.getElementById('instructionText');
+    const distanceText = document.getElementById('distanceText');
+    if (modifier && modifier.includes('left')) {
+        instructionIcon.setAttribute('src', 'static/icons/left.svg');
+    } else if (modifier && modifier.includes('right')) {
+        instructionIcon.setAttribute('src', 'static/icons/right.svg');
+    } else {
+        instructionIcon.setAttribute('src', 'static/icons/lines.svg');
+    }    
+
+    // Convert remaining distance to kilometers
+    const remainingDistanceKm = (remainingDistance / 1000).toFixed(2);
+    document.querySelector('#journeyDistance h3').textContent = remainingDistanceKm;
+    
+    // Convert total duration to minutes
+    const remainingDuration = calculateRemainingDuration(remainingDistance, 1.4);
+    document.querySelector('#journeyDuration h3').textContent = remainingDuration;
+    // Get the current time
+    const currentTime = new Date();
+
+    // Calculate the ETA by adding the remaining duration (in seconds) to the current time
+    const etaTime = new Date(currentTime.getTime() + remainingDuration * 1000);
+
+    // Format the ETA to show only the hours and minutes
+    const etaHours = etaTime.getHours().toString().padStart(2, '0');
+    const etaMinutes = etaTime.getMinutes().toString().padStart(2, '0');
+    const formattedETA = `${etaHours}:${etaMinutes}`;
+    // Update the ETA in the UI
+    document.querySelector('#journeyETA h3').textContent = formattedETA;
+    // Update the text content with the extracted instruction
+    instructionText.textContent = instructionTextContent;
+    distanceText.textContent = `Distance to next step: ${distanceToCheckpoint.toFixed(1)} meters`;
+
+    // Show the pop-up
+    instructionPopup.style.display = 'block';
+}
+
+// Perform map animations and start simulation in sequence
+function startSimulationAfterAnimation() {
+    // Start simulating the user's location along the route
+    simulateUserLocation(route);
+}
+// Function to calculate the distance between two points (Haversine formula)
+function calculateDistance(point1, point2) {
+    const R = 6371000; // Radius of the Earth in meters
+    const toRad = Math.PI / 180;
+    const dLat = (point2.lat - point1.lat) * toRad;
+    const dLng = (point2.lng - point1.lng) * toRad;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(point1.lat * toRad) * Math.cos(point2.lat * toRad) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}    
+
+// Function to update navigation instructions based on user's current location
+function updateNavigationInstructions(userLocation) {
+    // Calculate the distance between the user's current location and the next checkpoint
+    const checkpoint = {
+        lng: route.coordinates[currentStepIndex + 1][0],
+        lat: route.coordinates[currentStepIndex + 1][1]
+    };        
+    const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
+    console.log("Distance to checkpoint" + distanceToCheckpoint);
+
+    // If the user is close enough to the checkpoint, move to the next step
+    const thresholdDistance = 10; // meters, adjust this value as needed
+    if (distanceToCheckpoint < thresholdDistance) {
+        currentStepIndex++;
+        increment = true;
+        console.log("Threshold met, incrementing step index." + currentStepIndex);
+    }
+
+    if (currentStepIndex < instructions.length && increment == true) {
+        const nextInstructionObject = instructions[currentStepIndex].instruction;
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
+        console.log(remainingDist);
+        // check what modifier represents. Is it the turn at the current location, or the turn at the next checkpoint.
+        // we need the direction to move in for the NEXT checkpoint, so display will show left arrow if turn left at next checkpoint.
+        const modifierType = instructions[currentStepIndex].modifier;
+        displayInstruction(nextInstructionObject, distanceToCheckpoint, remainingDist, modifierType);
+        increment = false;
+    }
+}
+//May need to implement different modes : change walking speed.
+function calculateRemainingDuration(remainingDistance, walkingSpeed) {
+    // Calculate the remaining duration in seconds
+    const remainingDuration = (remainingDistance / walkingSpeed / 60).toFixed(0);
+
+    return remainingDuration;
 }
 
 // Function to start simulating user location along the route with smooth movement
@@ -400,11 +445,11 @@ function simulateUserLocation(route) {
             function animateMarker(interpolatedPosition) {
                 if (!simulationRunning) return; // If not running, do nothing
 
-                // Update marker position
-                userMarker.setLngLat(interpolatedPosition);
-
                 // Update the user's location in your app
                 updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
+
+                // Update marker position
+                userMarker.setLngLat(interpolatedPosition);
 
                 // Calculate remaining distance to next position
                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
@@ -428,6 +473,9 @@ function simulateUserLocation(route) {
                     // Continue animating along the current segment
                     setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
                 }
+                // Update navigation instructions based on the user's location
+                console.log("User location: " + JSON.stringify(userLocation));
+                updateNavigationInstructions(userLocation);
             }
 
             // Start animating along the current segment with initial interpolation
@@ -499,7 +547,7 @@ function interpolate(p1, p2, fraction) {
 
 // Function to update user location in your app
 function updateUserLocation(location) {
-    // Update logic here
+    userLocation = location;
     console.log("User location updated:", location);
 }
 
@@ -1062,6 +1110,40 @@ function showNavSteps(content, messageDiv) {
             modal.style.display = "none";
         }
     };
+}
+
+function getInstructions(data) {
+    const instructions = [];
+
+    data.forEach(step => {
+        // Extract maneuver details
+        const maneuver = step.maneuver || {};
+        const instruction = maneuver.instruction || "";
+        const typeOfManeuver = maneuver.type || "";
+        const bearingBefore = maneuver.bearing_before || "";
+        const bearingAfter = maneuver.bearing_after || "";
+        const modifier = maneuver.modifier || "";
+
+        // Extract distance and duration
+        const distance = step.distance || 0;
+        const duration = step.duration || 0;
+
+        // Create a formatted instruction
+        const formattedInstruction = {
+            instruction: instruction,
+            type: typeOfManeuver,
+            bearingBefore: bearingBefore,
+            bearingAfter: bearingAfter,
+            distance: distance,
+            duration: duration,
+            modifier: modifier
+        };
+        
+        instructions.push(formattedInstruction);
+    });
+    console.log("instructions length: " + instructions.length);
+    console.log("Full instr: " + JSON.stringify(instructions));
+    return instructions;
 }
 
 async function get_coordinates(data) {
