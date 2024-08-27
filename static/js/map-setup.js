@@ -425,7 +425,13 @@ function simulateUserLocation(route) {
 
     // Initialize the user marker if it doesn't exist
     if (!userMarker) {
-        userMarker = new mapboxgl.Marker({ color: 'red' })
+        const el = document.createElement('div');
+        el.insertAdjacentHTML('beforeend',`<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
+        userMarker = new mapboxgl.Marker({
+            color: 'red',
+            // rotation: 45,
+            element: el
+        })
             .setLngLat([route.coordinates[0][0], route.coordinates[0][1]])
             .addTo(map);
     }
