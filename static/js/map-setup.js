@@ -439,6 +439,14 @@ function updateNavigationInstructions(userLocation) {
     };        
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
     console.log("Distance to checkpoint" + distanceToCheckpoint);
+    const userHeading = calculateBearing(userLocation.lat,userLocation.lng,checkpoint.lat,checkpoint.lng);
+    map.easeTo({
+        pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+        zoom: 20,  // Adjust the zoom level for better street view navigation
+        center: [userLocation.lng, userLocation.lat], // Center map on user's location
+        duration: 500, // Animation duration in milliseconds
+        bearing: userHeading 
+    });
 
     // If the user is close enough to the checkpoint, move to the next step
     const thresholdDistance = 10; // meters, adjust this value as needed
@@ -466,7 +474,22 @@ function calculateRemainingDuration(remainingDistance, walkingSpeed) {
 
     return remainingDuration;
 }
+// calculate user bearing;
+function calculateBearing(lat1, lng1, lat2, lng2) {
+    const degToRad = Math.PI / 180.0;
+    const φ1 = lat1 * degToRad;
+    const φ2 = lat2 * degToRad;
+    const λ1 = lng1 * degToRad;
+    const λ2 = lng2 * degToRad;
 
+    const θ = Math.atan2(
+      Math.sin(λ2 - λ1) * Math.cos(φ2),
+      Math.cos(φ1) * Math.sin(φ2) -
+        Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1),
+    );
+
+    return ((θ * 180) / Math.PI + 360) % 360;
+}
 // Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
