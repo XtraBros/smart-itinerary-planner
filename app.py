@@ -73,20 +73,31 @@ def ask_plan():
     
     # Initial messages with RAG data
     messages = [
-        {"role": "system", "content": f"""You are a helpful tour guide who is working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}, form their current location(lng,lat): {user_location}.
-            If the user's request is vague or generic, follow up with a question to get more information about the user's context and interest. Do not repeat your response.
-            Follow these instructions to structure you response:
-            1) Structure your rseponse as a Python dictionary, with the keys "operation" and "message", and respond with only this dictionary and no other text. Ensure your response only contains ONE dictionary.
-            2) "operation" can have the values "message","location" and "route" only. Follow these classifications when deciding the value of "operation". "message" is when your response does not include any locations, and is replying the user directly. "location" is when your response contains locations of places without the need for directions, and "route" is to return a route or to perform wayfinding to the place(s) recommended by you.
-            3) "message" will contain your response. If the key "operation" has the value "message", the key "message" will contain your text response. If the key "opertion" has the value "route" or "location", the key "message" must contain only a Python list containing the names of the places of interest. The names must be exactly the same as given in the database. Use the function fetch_poi_data() to get the names of the locations.
-            4) Two examples: {{"operation":"message","message":"Hi, I am your tour guide for today. How may I help you?"}}, {{"operation":"route","message":["Din Tai Fung", "W Singapore"]}}.
-            5) Always start from the user's location unless specified. When starting from the user's location, your response should only contain the destinations. For example, {{"operation":"route","message":["Din Tai Fung"]}} will route from the user's location to Din Tai Fung.
-            6) Use the names of the places as given in the database. Any variance in the names of locations is not tolerated.
-            7) If asked for nearby POIs, use the find_nearby_pois function.If there are no nearby attractions, recommend some places for the user to go to. Return a response with "operation" = "location". Use a radius of 100 metres if not specified.
-            """},
+        {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}. 
+            Your task is to advise visitors on features and attractions in {sentosa_name}, starting from their current location (lng,lat): {user_location}.
+            
+            Important Guidelines:
+            1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys.
+            2) The "operation" key can only have one of the following values: "message", "location", or "route".
+                - "message": Used when your response does not include locations, and is a direct reply to the user.
+                - "location": Used when your response includes locations without providing directions.
+                - "route": Used when your response involves providing a route or wayfinding to one or more places of interest.
+            3) The "response" key's value depends on the "operation" key:
+                - If "operation" is "message", "response" should contain a single string with your text response.
+                - If "operation" is "location" or "route", "response" should contain a list of the names of the places of interest (matching exactly the names in the database).
+            4) Example responses:
+                - For a greeting: {{"operation":"message","response":"Hi, I am your tour guide for today. How may I assist you?"}}
+                - For providing a route: {{"operation":"route","response":["Din Tai Fung", "W Singapore"]}}
+            5) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
+                - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
+            6) Use the exact names of the places as provided in the database. Variations or errors in the names are not tolerated.
+            7) If the user asks for nearby POIs, use the find_nearby_pois function. If there are no nearby attractions, recommend other places to visit using "operation": "location". Use a radius of 100 meters if not specified.
+            
+            **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure. Do not nest dictionaries or include extra text or structures within "response". Any deviations from the required structure will cause errors in the backend processing.
+        """},
         {"role": "user", "content": user_input}
     ]
+
      
     # Handle function calls and get the final response
     state = {
@@ -102,7 +113,7 @@ def ask_plan():
     try:
         # Parse the message as a Python dictionary
         evaluated_message = json.loads(message)
-        response = evaluated_message['message']
+        response = evaluated_message['response']
         operation = evaluated_message['operation']
         print(f"'response': {response}, 'operation': {operation}")
         return jsonify({'response': response, 'operation': operation})
@@ -119,7 +130,7 @@ def get_text():
     route = request.json['route']
     print(f"route:{route}")
     user_input = request.json['message']
-    if isinstance(route[0],list):
+    if isinstance(route[0], list):
         route = route[0]
     try:
         # Continue with your processing
@@ -127,17 +138,23 @@ def get_text():
             model=model_name,
             messages=[
                 {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
-                 Your task is to guide a visitor, introducing them the attractions they will visit in the sequence given in the following list.
-                 Keep you response succint, and ensure the names of the attractions are as given in the list, and encased in single apostrophies.
-                 Structure your response as a bulleted list only if there are multiple destinations. 
-                 If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map."""},
+                 Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
+                 Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
+                 Structure your response as a bulleted list only if there are multiple destinations.
+                 If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
+                 Please encase the names of the attractions in `~` symbols (e.g., `~Attraction Name~`) to distinguish them."""},
                 {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
         )
+
+        # Create hyperlinks with the route names
         hyperlinks = create_hyperlinks(route)
+
+        # Insert hyperlinks using the `~` delimiter
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
-        return jsonify({'response':response_text})
+
+        return jsonify({'response': response_text})
 
     except ValueError as ve:
         print(f"ValueError: {ve}")
@@ -302,7 +319,8 @@ def solve_tsp(distance_matrix):
             optimal_sequence.append(manager.IndexToNode(index))
             index = solution.Value(routing.NextVar(index))
         optimal_sequence.append(manager.IndexToNode(index))  # Add the start point to complete the loop
-        return optimal_sequence
+        # sentosa use open routing
+        return optimal_sequence[:-2]
     else:
         return None
 
@@ -319,18 +337,18 @@ def create_hyperlinks(place_list):
 
 
 def insertHyperlinks(message, replacements):
-    # Split the message into chunks by single apostrophes
-    chunks = message.split("'")
+    # Split the message into chunks by the `~` delimiter
+    chunks = message.split("~")
     print(f"Chunks: {chunks}")
     # Iterate through the chunks and replace matches
     for i in range(len(chunks)):
         chunk = chunks[i].strip()
         if chunk in replacements:
-            print(chunk)
+            print(f"Replacing: {chunk}")
             chunks[i] = replacements[chunk]
     
     # Reconstruct the message
-    return "'".join(chunks)
+    return "".join(chunks)
 
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
