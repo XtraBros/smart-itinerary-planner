@@ -14,6 +14,7 @@ from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
 from geopy.distance import geodesic
 import certifi
+import re
 
 
 app = Flask(__name__)
@@ -77,7 +78,7 @@ def ask_plan():
             Your task is to advise visitors on features and attractions in {sentosa_name}, starting from their current location (lng,lat): {user_location}.
             
             Important Guidelines:
-            1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys.
+            1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
             2) The "operation" key can only have one of the following values: "message", "location", or "route".
                 - "message": Used when your response does not include locations, and is a direct reply to the user.
                 - "location": Used when your response includes locations without providing directions.
@@ -112,7 +113,7 @@ def ask_plan():
     
     try:
         # Parse the message as a Python dictionary
-        evaluated_message = json.loads(message)
+        evaluated_message = json.loads(remove_dupes(message))
         response = evaluated_message['response']
         operation = evaluated_message['operation']
         print(f"'response': {response}, 'operation': {operation}")
@@ -140,7 +141,7 @@ def get_text():
                 {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
                  Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
-                 Structure your response as a bulleted list only if there are multiple destinations.
+                 Structure your response as a bulleted list only if there are multiple destinations. Ensure all destinations are covered in you response.
                  If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
                  Please encase the names of the attractions in `~` symbols (e.g., `~Attraction Name~`) to distinguish them."""},
                 {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
@@ -334,10 +335,21 @@ def solve_tsp(distance_matrix):
             optimal_sequence.append(manager.IndexToNode(index))
             index = solution.Value(routing.NextVar(index))
         optimal_sequence.append(manager.IndexToNode(index))  # Add the start point to complete the loop
-        # sentosa use open routing
-        return optimal_sequence[:-2]
+        # sentosa use open routing, use set to remove duplicates.
+        return list(set(optimal_sequence))
     else:
         return None
+# Function to handle duplicated GPT output
+def remove_dupes(response_text):
+    # Use a regular expression to find all occurrences of dictionaries
+    matches = re.findall(r'\{.*?\}', response_text)
+    
+    if matches:
+        # Return only the first dictionary
+        return matches[0]
+    else:
+        # If no dictionary is found, return the original response
+        return response_text
 
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list):
@@ -355,15 +367,14 @@ def insertHyperlinks(message, replacements):
     # Split the message into chunks by the `~` delimiter
     chunks = message.split("~")
     print(f"Chunks: {chunks}")
-    # Iterate through the chunks and replace matches
-    for i in range(len(chunks)):
-        chunk = chunks[i].strip()
-        if chunk in replacements:
-            print(f"Replacing: {chunk}")
-            chunks[i] = replacements[chunk]
-    
-    # Reconstruct the message
+
+    # Map over the chunks to replace matches using a lambda function
+    # The lambda function checks if the chunk is in replacements and replaces it, otherwise it returns the chunk unchanged
+    chunks = map(lambda chunk: replacements.get(chunk.strip(), chunk), chunks)
+
+    # Reconstruct the message by joining the mapped chunks
     return "".join(chunks)
+
 
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
