@@ -817,10 +817,10 @@ async function optimizeRoute(placeNames, coordinates) {
 }
 
 // Function to optimize coordinates. should reorder coordinates in optimised order.
-async function getOptimizedSequence(placeNames) {
+async function getOptimizedSequence(placeNames, chatMessages) {
     console.log(placeNames);
     try {
-        //post data to server endpoint
+        // Post data to server endpoint
         const response = await fetch('/optimize_route', {
             method: 'POST',
             headers: {
@@ -834,12 +834,23 @@ async function getOptimizedSequence(placeNames) {
         }
 
         const coordSequence = await response.json();
+
+        // Check if the response contains a message key, indicating an error
+        if (coordSequence.message) {
+            appendMessage(coordSequence.message, 'guide-message', chatMessages, 'message');
+            return;
+        }
+
         return coordSequence;
     } catch (error) {
         console.error('Error optimizing coordinates:', error);
-        return null;
+
+        // Display a generic error message using appendMessage
+        appendMessage('It seems my network connection with you is unstable. Please try sending me your message again.', 'guide-message', chatMessages, 'message');
+        return;
     }
 }
+
 
 function submitChat(event) {
     if (event.key === "Enter") {

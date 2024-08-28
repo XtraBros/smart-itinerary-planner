@@ -189,13 +189,28 @@ def get_coordinates():
 # POST endpoint for optimizing route
 @app.route('/optimize_route', methods=['POST'])
 def optimize_route():
-    data = request.get_json()
-    place_names = data.get('placeNames')
-    print(place_names)
-    # Assuming place_names is a list of names to optimize
-    ordered_place_indexes = solve_route(place_names)
-    print(ordered_place_indexes)
-    return jsonify(ordered_place_indexes)
+    try:
+        # Parse the incoming JSON request
+        data = request.get_json()
+        
+        # Extract the list of place names
+        place_names = data.get('placeNames')
+        print(place_names)
+        
+        # Assuming place_names is a list of names to optimize
+        ordered_place_indexes = solve_route(place_names)
+        print(ordered_place_indexes)
+        
+        # Return the optimized route indexes as a JSON response
+        return jsonify(ordered_place_indexes)
+    
+    except Exception as e:
+        # Log the error for debugging purposes
+        print(f"Error encountered: {e}")
+        
+        # Return a failsafe response indicating a potential network issue
+        return jsonify({"message": "It seems my network connection with you is unstable. Please try sending me your message again."}), 500
+
     
 # enpoint to load POI info from csv file: returns name:description pair
 @app.route('/place_info', methods=['POST'])
