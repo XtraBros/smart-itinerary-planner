@@ -433,8 +433,8 @@ function calculateDistance(point1, point2) {
 function updateNavigationInstructions(userLocation) {
     // Calculate the distance between the user's current location and the next checkpoint
     const checkpoint = {
-        lng: route.coordinates[currentStepIndex + 1][0],
-        lat: route.coordinates[currentStepIndex + 1][1]
+        lng: steps[currentStepIndex].maneuver.location[0],
+        lat: steps[currentStepIndex].maneuver.location[1]
     };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
     console.log("Distance to checkpoint" + distanceToCheckpoint);
@@ -690,7 +690,6 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
         console.log(allCoordinates)
         const coordinates = allCoordinates.map(coord => coord.join(',')).join(';');
         var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-        console.log(url)
         // Fetch directions data from Mapbox Directions API
         fetchDirectionsPromise = fetch(url)
             .then(response => {
