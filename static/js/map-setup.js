@@ -448,7 +448,7 @@ function updateNavigationInstructions(userLocation) {
     });
 
     // If the user is close enough to the checkpoint, move to the next step
-    const thresholdDistance = 10; // meters, adjust this value as needed
+    const thresholdDistance = 5; // meters, adjust this value as needed
     if (distanceToCheckpoint < thresholdDistance) {
         currentStepIndex++;
         increment = true;
@@ -492,7 +492,7 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 // Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
-    const targetDistance = 10; // meters per step for interpolation
+    const targetDistance = 5; // meters per step for interpolation
 
     // Initialize the user marker if it doesn't exist
     if (!userMarker) {
