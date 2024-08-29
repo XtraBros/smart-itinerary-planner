@@ -464,6 +464,9 @@ function updateNavigationInstructions(userLocation) {
         const modifierType = instructions[currentStepIndex].modifier;
         displayInstruction(nextInstructionObject, distanceToCheckpoint, remainingDist, modifierType);
         increment = false;
+    } else {
+        //displayNavDistance();
+        document.getElementById("distanceText").textContent = `${distanceToCheckpoint.toFixed(1)}`;
     }
 }
 //May need to implement different modes : change walking speed.
