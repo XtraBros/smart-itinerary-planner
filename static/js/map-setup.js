@@ -1410,17 +1410,36 @@ function clickMarker(markerId) {
     }
 }
 
-// Add event listeners to the links
+// Add event listeners to the hyperlinks
 function attachEventListeners() {
     document.querySelectorAll('.location-link').forEach(function (link) {
-        link.addEventListener('mouseover', function () {
-            var markerId = this.getAttribute('data-marker-id');
-            clickMarker(markerId);
-        });
+        // change to display the marker on map when clicked instead of hover.
+        // link.addEventListener('mouseover', function () {
+        //     var markerId = this.getAttribute('data-marker-id');
+        //     clickMarker(markerId);
+        // });
 
-        link.addEventListener('mouseout', function () {
+        // link.addEventListener('mouseout', function () {
+        //     var markerId = this.getAttribute('data-marker-id');
+        //     clickMarker(markerId);
+        // });
+        link.addEventListener('click', function () {
             var markerId = this.getAttribute('data-marker-id');
-            clickMarker(markerId);
+            
+            // Hide the popup modal
+            document.getElementById('popupModal').style.display = 'none';
+
+            var markerCoordinates = window.mapMarkers[markerId].getLngLat();
+            // Center the map on the marker's coordinates
+            window.map.flyTo({
+                center: markerCoordinates,
+                zoom: 15, // Adjust the zoom level as needed
+                essential: true // This ensures the animation is considered essential by the browser
+            });
+            // Show the map popup
+            if (window.mapMarkers[markerId]) {
+                window.mapMarkers[markerId].togglePopup();
+            }
         });
     });
 }
