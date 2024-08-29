@@ -58,7 +58,9 @@ async function getPoisByLocation(location) {
         const poisData = await response.json();
         const placeInfoResponse = await fetchPlacesData(poisData)
         const swiperconent = document.getElementById('swiperconent')
+        const poiList = document.getElementById('poiList')
         let contenxt = '';
+        let listCont = '';
         poisData.forEach((placeName, index) => {
             contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                             <div class="slideItme">
@@ -68,7 +70,7 @@ async function getPoisByLocation(location) {
                                 </div>
                                 <div class="visitors">
                                     <h4>${placeName}</h4>
-                                    <p><span class="islander">${placeInfoResponse[placeName]}</span></p>
+                                    <p><span class="islander">Islander earns 50 points</span></p>
                                     <p class="address">
                                         <span>
                                             <img src="static/icons/addess.svg" alt="" srcset="">
@@ -81,14 +83,42 @@ async function getPoisByLocation(location) {
                                     </p>
                                 </div>
                             </div>
-                        </div>`
+                        </div>`;
+            listCont += `<div class="itemSlide" key='${index}' data-name='${placeName}'>
+                            <div class="listimg">
+                                <img src="https://www.bring-you.info/wp-content/uploads/2023/11/Three-Mermaids-Cafe-Restaurant-Pattaya-3.jpg"
+                                    alt="${placeName}" width="100%" srcset="">
+                            </div>
+                            <div class="titleBox">
+                                <div class="title">${placeName}</div>
+                                <div class="rightimg">
+                                    <button onclick="navDitle(event, '${placeName}')">
+                                        <img src="static/icons/navimg.svg" alt="" srcset="">
+                                    </button>
+                                    <span>Wait 5 mins</span>
+                                </div>
+                            </div>
+                            <div class="disqu">
+                                <span class="islander">Islander earns 50 points</span>
+                            </div>
+                        </div>
+                        `;
         });
         swiperconent.innerHTML = contenxt
+        poiList.innerHTML = listCont
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;
     }
 }
+
+const mapEl = document.getElementById('map')
+const poiList = document.getElementById('poiList')
+const tabMap = document.getElementById('tabMap')
+const tabList = document.getElementById('tabList')
+const poiSwiper = document.getElementById('poiSwiper');
+const zoomControls = document.getElementById('zoom-controls');
+const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
     const tishiDom = document.getElementById('tishi')
@@ -99,6 +129,8 @@ window.onload = function () {
 
     stopNav.onclick = function () {
         closedNavfun();
+        poiSwiper.classList.remove('fadeshowin');
+        listButton.style.display = 'block'
         disableNavigationMode();
     }
 
@@ -129,34 +161,61 @@ window.onload = function () {
             el: '.swiper-pagination',
         },
     });
-    swiper.on('click', async function (swiper, event) {
-        if (map.getSource('route')) {
-            map.removeLayer('route');
-            map.removeSource('route');
-            if (map.getLayer('directions')) {
-                map.removeLayer('directions');
-            }
-        }
+    swiper.on('click', function (swiper, event) {
         const swiperconent = document.getElementById('swiperconent');
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
-        let response = await fetch('/get_coordinates', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                places: [place],
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Network response was not ok ' + response.statusText);
-        }
-
-        let responseData = await response.json();
-        let waypoints = responseData.coordinates.map(coord => [coord.lng, coord.lat]);
-        addMarkers([place], waypoints);
+        getPlaceCoordWithName(place);
     });
+}
+
+async function getPlaceCoordWithName(place) {
+    disableNavigationMode();
+    if (map.getSource('route')) {
+        map.removeLayer('route');
+        map.removeSource('route');
+        if (map.getLayer('directions')) {
+            map.removeLayer('directions');
+        }
+    }
+    let response = await fetch('/get_coordinates', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            places: [place],
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error('Network response was not ok ' + response.statusText);
+    }
+
+    let responseData = await response.json();
+    let waypoints = responseData.coordinates.map(coord => [coord.lng, coord.lat]);
+    addMarkers([place], waypoints);
+}
+
+function navDitle(e, name) {
+    getPlaceCoordWithName(name);
+    mapEl.style.display = 'block';
+    poiList.style.display = 'none';
+    tabList.classList.remove('activeButton');
+    tabMap.classList.add('activeButton');
+}
+
+function handerMap(e, type) {
+    if (type === 'list') {
+        tabMap.classList.remove('activeButton');
+        mapEl.style.display = 'none'
+        poiList.style.display = 'block'
+    } else {
+        tabList.classList.remove('activeButton');
+        mapEl.style.display = 'block'
+        poiList.style.display = 'none'
+    }
+    e.preventDefault();
+    e.target.classList.add('activeButton')
 }
 
 const geolocateControl = new mapboxgl.GeolocateControl({
@@ -303,7 +362,9 @@ function enableNavigationMode(route, data) {
     document.getElementById('popupModal').style.display = "none";
     const instructionPopup = document.getElementById('navigation');
     // Show the pop-up
-    instructionPopup.classList.add('fadeshowin')
+    instructionPopup.classList.add('fadeshowin');
+    poiSwiper.classList.add('fadeshowin');
+    listButton.style.display = 'none'
 
     // Animate the map to tilt and zoom for 3D perspective
     map.easeTo({

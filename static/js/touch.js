@@ -33,7 +33,7 @@ document.addEventListener("touchstart", function (e) {
 
 document.addEventListener("touchend", function (e) {
     const popupModal = document.getElementById("popupModal");
-    const poiSwiper = document.getElementById('poiSwiper')
+    // const poiSwiper = document.getElementById('poiSwiper')
     let endx, endy;
     endx = e.changedTouches[0].pageX;
     endy = e.changedTouches[0].pageY;
@@ -49,7 +49,7 @@ document.addEventListener("touchend", function (e) {
             if (popupModal) {
                 popupModal.style.display = "none";
             }
-            poiSwiper.style.display = 'none';
+            // poiSwiper.style.display = 'none';
             // alert("向下！")
             break;
         case 3:

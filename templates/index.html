@@ -95,11 +95,11 @@
                     in the neighbourhoods that I think you'll like.
                     Take a look at them.</div>
                 <button id="robotIcoId" class="robotIco">
-                    <img src="static/icons/choml.png" alt="" srcset="">
+                    <img src="static/icons/morx.svg" alt="" srcset="">
                 </button>
             </div>
             <!-- 推荐poi -->
-            <div id="poiSwiper">
+            <div id="poiSwiper" class="none">
                 <div class="promo">Promo Nearby</div>
                 <div class="swiper">
                     <div class="swiper-wrapper" id="swiperconent">
@@ -107,12 +107,13 @@
                 </div>
             </div>
         </div>
+        <div id="poiList"></div>
         <div class="mapandlistbut">
-            <button>
-                <span>Map</span>
+            <button id="tabMap" class="activeButton" onclick="handerMap(event, 'map')">
+                Map
             </button>
-            <button>
-                <span>List</span>
+            <button id="tabList" onclick="handerMap(event, 'list')">
+                List
             </button>
         </div>
     </div>
