@@ -1403,42 +1403,34 @@ function fetchPlacesData(places) {
 // document.getElementById('zoom-out').addEventListener('click', () => {
 //     map.zoomOut();
 // });
-// Function to simulate click on marker to show popup
-function clickMarker(markerId) {
-    if (window.mapMarkers[markerId]) {
-        window.mapMarkers[markerId].togglePopup();
-    }
-}
 
 // Add event listeners to the hyperlinks
 function attachEventListeners() {
     document.querySelectorAll('.location-link').forEach(function (link) {
-        // change to display the marker on map when clicked instead of hover.
-        // link.addEventListener('mouseover', function () {
-        //     var markerId = this.getAttribute('data-marker-id');
-        //     clickMarker(markerId);
-        // });
-
-        // link.addEventListener('mouseout', function () {
-        //     var markerId = this.getAttribute('data-marker-id');
-        //     clickMarker(markerId);
-        // });
         link.addEventListener('click', function () {
             var markerId = this.getAttribute('data-marker-id');
             
             // Hide the popup modal
             document.getElementById('popupModal').style.display = 'none';
 
-            var markerCoordinates = window.mapMarkers[markerId].getLngLat();
-            // Center the map on the marker's coordinates
-            window.map.flyTo({
-                center: markerCoordinates,
-                zoom: 15, // Adjust the zoom level as needed
-                essential: true // This ensures the animation is considered essential by the browser
-            });
-            // Show the map popup
-            if (window.mapMarkers[markerId]) {
-                window.mapMarkers[markerId].togglePopup();
+            var marker = window.mapMarkers[markerId]; // Get the marker
+
+            if (marker) { // Ensure marker exists
+                var markerCoordinates = marker.getLngLat();
+                
+                // Center the map on the marker's coordinates
+                window.map.flyTo({
+                    center: markerCoordinates,
+                    zoom: 15, // Adjust the zoom level as needed
+                    essential: true // This ensures the animation is considered essential by the browser
+                });
+
+                // Show the map popup if it's not already open
+                if (!marker.getPopup().isOpen()) {
+                    marker.togglePopup(); // Open the popup if it's not already open
+                }
+            } else {
+                console.error('Marker with ID ' + markerId + ' not found.');
             }
         });
     });
