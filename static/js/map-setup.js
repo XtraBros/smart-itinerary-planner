@@ -240,7 +240,7 @@ const geolocateControl = new mapboxgl.GeolocateControl({
         enableHighAccuracy: true
     },
     trackUserLocation: false,
-    showUserHeading: true
+    showUserHeading: false
 });
 
 fetch('/config')
@@ -1413,7 +1413,7 @@ function addMarkers(placeNames, waypoints) {
     fetchPlacesData(placeNames).then(placesData => {
         fetchTemplate('static/html/info-card.html').then(template => {
             var parser = new DOMParser();
-
+            console.log(JSON.stringify(placesData))
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
                 if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
@@ -1424,12 +1424,16 @@ function addMarkers(placeNames, waypoints) {
                 console.log(placeName)
 
                 var place = {
-                    description: placesData[placeName],
+                    description: placesData[placeName]['description'],
                     name: placeName,
                 };
-
-                var name = placeName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                place.thumbnail = `/static/thumbnails/${name}.jpg`;
+                // Use the Base64 thumbnail fetched from the backend
+                var base64Thumbnail = placesData[placeName].thumbnail;  // Update: Access the thumbnail from the nested object
+                if (base64Thumbnail) {
+                    place.thumbnail = `data:image/jpeg;base64,${base64Thumbnail}`;
+                } else {
+                    place.thumbnail = '/static/thumbnails/sentosa/default.jpg'; // Fallback if no thumbnail is found
+                }
 
                 var popupContentString = populateTemplate(template, place);
                 var doc = parser.parseFromString(popupContentString, 'text/html');
