@@ -15,6 +15,8 @@ import requests
 from geopy.distance import geodesic
 import certifi
 import re
+import base64
+import gridfs
 
 
 app = Flask(__name__)
@@ -36,6 +38,8 @@ poi_db = db[config['POI_DB_NAME']]
 poi_db.create_index([('location', '2dsphere')])
 indexes = poi_db.index_information()
 dist_mat = db[config["DISTANCE_MATRIX"]]
+thumbnails_db = db["THUMBNAILS"]
+fs = gridfs.GridFS(db)
 #cluster_loc = db[config['CLUSTER_LOCATIONS']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
 # Load the embedding model for semantic search
@@ -217,19 +221,31 @@ def optimize_route():
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
-    print(places)
-
     place_info = {}
 
     for place in places:
-        # Query the MongoDB database directly
-        result = poi_db.find_one({"name": place.strip()}, {"_id": 0, "name": 1, "description": 1})
+        place = place.strip()
+        result = poi_db.find_one({"name": place}, {"_id": 0, "name": 1, "description": 1})
         if result:
-            place_info[result['name']] = result['description']
+            place_name = result['name']
+            description = result['description']
+            
+            # Try different file extensions to find the corresponding thumbnail
+            thumbnail_data = None
+            file_extensions = ['jpg', 'jpeg', 'png', 'avif']
+            for ext in file_extensions:
+                filename = f"{place_name.lower().replace(' ', '-')}.{ext}"
+                thumbnail_file = fs.find_one({"filename": filename})
+                if thumbnail_file:
+                    thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
+                    break
+            
+            place_info[place_name] = {
+                "description": description,
+                "thumbnail": thumbnail_data,
+            }
 
-    print(f"place_info: {place_info}")
     return jsonify(place_info)
-
 
 @app.route('/weather_icon', methods=['POST'])
 def weather_icon():
