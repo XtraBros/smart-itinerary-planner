@@ -118,6 +118,7 @@ const tabMap = document.getElementById('tabMap')
 const tabList = document.getElementById('tabList')
 const poiSwiper = document.getElementById('poiSwiper');
 const zoomControls = document.getElementById('zoom-controls');
+const pauseAndpaly = document.getElementById('pauseAndpaly');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
@@ -130,8 +131,19 @@ window.onload = function () {
     stopNav.onclick = function () {
         closedNavfun();
         poiSwiper.classList.remove('fadeshowin');
-        listButton.style.display = 'block'
+        listButton.style.display = 'block';
+        pauseAndpaly.style.display = 'none';
         disableNavigationMode();
+    }
+
+    pauseAndpaly.onclick = function () {
+        const imgs = pauseAndpaly.getElementsByTagName('img')[0]
+        imgs.setAttribute('src', `static/icons/${simulationRunning ? 'continue' : 'pause'}.svg`);
+        if (simulationRunning) {
+            pauseSimulation();
+        } else {
+            startSimulationAfterAnimation();
+        }
     }
 
     btn.onclick = function () {
@@ -170,6 +182,7 @@ window.onload = function () {
 
 async function getPlaceCoordWithName(place) {
     disableNavigationMode();
+    closedNavfun();
     if (map.getSource('route')) {
         map.removeLayer('route');
         map.removeSource('route');
@@ -193,6 +206,10 @@ async function getPlaceCoordWithName(place) {
 
     let responseData = await response.json();
     let waypoints = responseData.coordinates.map(coord => [coord.lng, coord.lat]);
+    map.flyTo({
+        center: waypoints[0],
+        essential: true
+    });
     addMarkers([place], waypoints);
 }
 
@@ -364,7 +381,8 @@ function enableNavigationMode(route, data) {
     // Show the pop-up
     instructionPopup.classList.add('fadeshowin');
     poiSwiper.classList.add('fadeshowin');
-    listButton.style.display = 'none'
+    listButton.style.display = 'none';
+    pauseAndpaly.style.display = 'block';
 
     // Animate the map to tilt and zoom for 3D perspective
     map.easeTo({

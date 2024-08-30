@@ -135,7 +135,18 @@ h3 {
   content: "";
   z-index: 9;
 }
-
+.mapboxgl-ctrl-group { border-radius: 20px; }
+.mapboxgl-ctrl-group button {
+  width: 36px; height: 36px;
+}
+.mapboxgl-ctrl-group:not(:empty) {
+  box-shadow: 0px 2px 10px #0000001A;
+}
+#pauseAndpaly {
+  position: absolute; right: 10px; top: 220px;
+  display: none;  background-color: transparent; border: none; width: 36px;
+}
+#pauseAndpaly img {  width: 36px; height: 36px; }
 /* Styles for the Guide's messages */
 .guide-message {
   text-align: left;
