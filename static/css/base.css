@@ -207,7 +207,7 @@ h3 {
 }
 #takeThereBut img, .takeThereBut img  {
   float: right;
-  margin-left: 8px;
+  margin-left: 5px;
 }
 
 /* styles for banner */
@@ -312,7 +312,7 @@ h3 {
   display: none; padding: 70px 15px 0px 15px;
 }
 .itemSlide {
-  margin-bottom: 10px; padding: 12px 12px 16px 12px;
+  margin-bottom: 10px; padding: 12px 12px 14px 12px;
   box-shadow: 0px 2px 8px #00000014; border-radius: 20px; background-color: white;
 }
 .itemSlide .listimg {
@@ -692,6 +692,14 @@ a.mapboxgl-ctrl-logo {
 .fadeshowin {
   display: block;
   animation: fadeshowin 1s;
+}
+.vistDesc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  padding-bottom: 3px;
 }
 /* 移出动画 */
 @keyframes fadeshowout {

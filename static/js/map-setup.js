@@ -70,7 +70,7 @@ async function getPoisByLocation(location) {
                                 </div>
                                 <div class="visitors">
                                     <h4>${placeName}</h4>
-                                    <p><span class="islander">Islander earns 50 points</span></p>
+                                    <p class="vistDesc"><span class="islander">Islander earns 50 points</span></p>
                                     <p class="address">
                                         <span>
                                             <img src="static/icons/addess.svg" alt="" srcset="">
@@ -98,7 +98,7 @@ async function getPoisByLocation(location) {
                                     <span>Wait 5 mins</span>
                                 </div>
                             </div>
-                            <div class="disqu">
+                            <div class="disqu vistDesc">
                                 <span class="islander">Islander earns 50 points</span>
                             </div>
                         </div>
@@ -1120,12 +1120,12 @@ function closedNavfun() {
     const navigation = document.getElementById('navigation');
     navigation.classList.remove('fadeshowin');
     navigation.classList.add('fadeout');
-    // if (map.getLayer('route')) {
-    //     map.removeLayer('route');
-    // }
-    // if (map.getSource('route')) {
-    //     map.removeSource('route');
-    // }
+    if (map.getLayer('route')) {
+        map.removeLayer('route');
+    }
+    if (map.getSource('route')) {
+        map.removeSource('route');
+    }
     // if (map.hasImage('pattern')) {
     //     map.removeImage('pattern');
     // }
@@ -1424,11 +1424,11 @@ function addMarkers(placeNames, waypoints) {
                 console.log(placeName)
 
                 var place = {
-                    description: placesData[placeName]['description'],
+                    description: placesData[placeName] ? placesData[placeName]['description'] : '',
                     name: placeName,
                 };
                 // Use the Base64 thumbnail fetched from the backend
-                var base64Thumbnail = placesData[placeName].thumbnail;  // Update: Access the thumbnail from the nested object
+                var base64Thumbnail = placesData[placeName] ? placesData[placeName].thumbnail : '';  // Update: Access the thumbnail from the nested object
                 if (base64Thumbnail) {
                     place.thumbnail = `data:image/jpeg;base64,${base64Thumbnail}`;
                 } else {
