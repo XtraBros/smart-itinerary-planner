@@ -504,15 +504,18 @@ function calculateDistance(point1, point2) {
 }    
 
 // Function to update navigation instructions based on user's current location
+let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
+
 function updateNavigationInstructions(userLocation) {
+    const thresholdDistance = 5;
     // Calculate the distance between the user's current location and the next checkpoint
     const checkpoint = {
         lng: steps[currentStepIndex].maneuver.location[0],
         lat: steps[currentStepIndex].maneuver.location[1]
     };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
-    console.log("Distance to checkpoint" + distanceToCheckpoint);
-    const userHeading = calculateBearing(userLocation.lat,userLocation.lng,checkpoint.lat,checkpoint.lng);
+    console.log("Distance to checkpoint: " + distanceToCheckpoint);
+    const userHeading = calculateBearing(userLocation.lat, userLocation.lng, checkpoint.lat, checkpoint.lng);
     
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
@@ -524,28 +527,40 @@ function updateNavigationInstructions(userLocation) {
     console.log("Calculated Bearing:", userHeading);
     console.log("Mapbox Bearing After Update:", map.getBearing());
 
-    // If the user is close enough to the checkpoint, move to the next step
-    const thresholdDistance = 5; // meters, adjust this value as needed
-    if (distanceToCheckpoint < thresholdDistance) {
+    // Check if the user is at the start of the navigation and ahead of the first checkpoint
+    if (currentStepIndex === 0 && distanceToCheckpoint > previousDistanceToCheckpoint) {
+        // Skip to the next checkpoint if the user is ahead of the first one
         currentStepIndex++;
+        console.log("User started ahead of the first checkpoint, skipping to step index: " + currentStepIndex);
         increment = true;
-        console.log("Threshold met, incrementing step index." + currentStepIndex);
+    } else if (distanceToCheckpoint > previousDistanceToCheckpoint) {
+        // If distance increases, the user has passed the checkpoint, move to the next step
+        currentStepIndex++;
+        console.log("User passed the checkpoint, incrementing step index to: " + currentStepIndex);
+        increment = true;
+    } else if (distanceToCheckpoint < thresholdDistance) {
+        // If the user is close enough to the checkpoint, move to the next step
+        currentStepIndex++;
+        console.log("Threshold met, incrementing step index to: " + currentStepIndex);
+        increment = true;
     }
 
-    if (currentStepIndex < instructions.length && increment == true) {
+    previousDistanceToCheckpoint = distanceToCheckpoint; // Update the previous distance
+
+    // Load the next instruction if the step index was incremented
+    if (currentStepIndex < instructions.length && increment) {
         const nextInstructionObject = instructions[currentStepIndex].instruction;
         const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
-        console.log(remainingDist);
-        // check what modifier represents. Is it the turn at the current location, or the turn at the next checkpoint.
-        // we need the direction to move in for the NEXT checkpoint, so display will show left arrow if turn left at next checkpoint.
+        console.log("Remaining distance to destination: " + remainingDist);
         const modifierType = instructions[currentStepIndex].modifier;
         displayInstruction(nextInstructionObject, distanceToCheckpoint, remainingDist, modifierType);
         increment = false;
     } else {
-        //displayNavDistance();
         document.getElementById("distanceText").textContent = `${distanceToCheckpoint.toFixed(1)}`;
     }
 }
+
+
 //May need to implement different modes : change walking speed.
 function calculateRemainingDuration(remainingDistance, walkingSpeed) {
     // Calculate the remaining duration in seconds
