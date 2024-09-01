@@ -142,7 +142,7 @@ window.onload = function () {
         if (simulationRunning) {
             pauseSimulation();
         } else {
-            startSimulationAfterAnimation();
+            simulateUserLocation(route);
         }
     }
 
@@ -240,7 +240,7 @@ const geolocateControl = new mapboxgl.GeolocateControl({
         enableHighAccuracy: true
     },
     trackUserLocation: false,
-    showUserHeading: false
+    showUserHeading: true
 });
 
 fetch('/config')
@@ -374,7 +374,7 @@ fetch('/config')
     });
 
 // Navigation Mode 
-function enableNavigationMode(route, data) {
+function enableNavigationMode(data) {
     instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
     const instructionPopup = document.getElementById('navigation');
@@ -393,7 +393,7 @@ function enableNavigationMode(route, data) {
     });
 
     // Wait for easeTo animation to complete, then start simulation
-    map.once('moveend', startSimulationAfterAnimation);
+    map.once('moveend', simulateUserLocation(route));
     // Monitor the user's GPS location
     //navigator.geolocation.watchPosition((position) => {
     // navigator.geolocation.getCurrentPosition((position) => {
@@ -488,11 +488,6 @@ function displayInstruction(instructionTextContent, distanceToCheckpoint, remain
     instructionPopup.classList.add('fadeshowin')
 }
 
-// Perform map animations and start simulation in sequence
-function startSimulationAfterAnimation() {
-    // Start simulating the user's location along the route
-    simulateUserLocation(route);
-}
 // Function to calculate the distance between two points (Haversine formula)
 function calculateDistance(point1, point2) {
     const R = 6371000; // Radius of the Earth in meters
@@ -518,6 +513,7 @@ function updateNavigationInstructions(userLocation) {
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
     console.log("Distance to checkpoint" + distanceToCheckpoint);
     const userHeading = calculateBearing(userLocation.lat,userLocation.lng,checkpoint.lat,checkpoint.lng);
+    
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
         zoom: 20,  // Adjust the zoom level for better street view navigation
@@ -525,6 +521,8 @@ function updateNavigationInstructions(userLocation) {
         duration: 500, // Animation duration in milliseconds
         bearing: userHeading 
     });
+    console.log("Calculated Bearing:", userHeading);
+    console.log("Mapbox Bearing After Update:", map.getBearing());
 
     // If the user is close enough to the checkpoint, move to the next step
     const thresholdDistance = 5; // meters, adjust this value as needed
@@ -1173,7 +1171,7 @@ function appendMessage(text, className, chatMessages, type) {
     if (takeThereBut) {
         takeThereBut.addEventListener("click", function () {
             // Call your function here
-            enableNavigationMode(route, steps);
+            enableNavigationMode(steps);
         });
     }
 
@@ -1190,7 +1188,7 @@ async function loadButtonTemplate(messageDiv, text) {
         const button = buttonDiv.querySelector("button");
         button.addEventListener('click', function () {
             if (!navigationEnabled) {
-                enableNavigationMode(route, text);
+                enableNavigationMode(text);
                 console.log(route)
                 this.textContent = 'Exit Navigation Mode';
             } else {
@@ -1440,7 +1438,7 @@ function addMarkers(placeNames, waypoints) {
                 var popupContent = doc.querySelector('.info-card-content');
                 popupContent.querySelector('button').onclick = async function () {
                     await displayRoute(userLocation, [name], [coord]);
-                    enableNavigationMode(route, steps);
+                    enableNavigationMode(steps);
                 }
                 var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
 
