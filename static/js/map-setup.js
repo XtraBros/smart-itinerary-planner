@@ -504,8 +504,7 @@ function calculateDistance(point1, point2) {
 
 // Function to update navigation instructions based on user's current location
 let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
-
-function updateNavigationInstructions(userLocation) {
+function updateNavigationInstructions(userLocation, nextPosition) {
     const thresholdDistance = 5;
     // Calculate the distance between the user's current location and the next checkpoint
     const checkpoint = {
@@ -513,8 +512,10 @@ function updateNavigationInstructions(userLocation) {
         lat: steps[currentStepIndex].maneuver.location[1]
     };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
-    console.log("Distance to checkpoint: " + distanceToCheckpoint);
-    const userHeading = calculateBearing(userLocation.lat, userLocation.lng, checkpoint.lat, checkpoint.lng);
+    console.log("Currently tracking checkpoint: " + JSON.stringify(checkpoint));
+
+    // Calculate the bearing using the next interpolated position instead of the checkpoint
+    const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
     
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
@@ -523,19 +524,14 @@ function updateNavigationInstructions(userLocation) {
         duration: 500, // Animation duration in milliseconds
         bearing: userHeading 
     });
-    console.log("Calculated Bearing:", userHeading);
-    console.log("Mapbox Bearing After Update:", map.getBearing());
+
+    let increment = false;
 
     // Check if the user is at the start of the navigation and ahead of the first checkpoint
     if (currentStepIndex === 0 && distanceToCheckpoint > previousDistanceToCheckpoint) {
         // Skip to the next checkpoint if the user is ahead of the first one
         currentStepIndex++;
         console.log("User started ahead of the first checkpoint, skipping to step index: " + currentStepIndex);
-        increment = true;
-    } else if (distanceToCheckpoint > previousDistanceToCheckpoint) {
-        // If distance increases, the user has passed the checkpoint, move to the next step
-        currentStepIndex++;
-        console.log("User passed the checkpoint, incrementing step index to: " + currentStepIndex);
         increment = true;
     } else if (distanceToCheckpoint < thresholdDistance) {
         // If the user is close enough to the checkpoint, move to the next step
@@ -558,7 +554,6 @@ function updateNavigationInstructions(userLocation) {
         document.getElementById("distanceText").textContent = `${distanceToCheckpoint.toFixed(1)}`;
     }
 }
-
 
 //May need to implement different modes : change walking speed.
 function calculateRemainingDuration(remainingDistance, walkingSpeed) {
@@ -584,6 +579,7 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     return ((θ * 180) / Math.PI + 360) % 360;
 }
 // Function to start simulating user location along the route with smooth movement
+// Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
     const targetDistance = 5; // meters per step for interpolation
@@ -591,7 +587,7 @@ function simulateUserLocation(route) {
     // Initialize the user marker if it doesn't exist
     if (!userMarker) {
         const el = document.createElement('div');
-        el.insertAdjacentHTML('beforeend',`<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
+        el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
         userMarker = new mapboxgl.Marker({
             color: 'red',
             // rotation: 45,
@@ -650,9 +646,10 @@ function simulateUserLocation(route) {
                     // Continue animating along the current segment
                     setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
                 }
-                // Update navigation instructions based on the user's location
+
+                // Update navigation instructions based on the user's location and the next interpolated position
                 console.log("User location: " + JSON.stringify(userLocation));
-                updateNavigationInstructions(userLocation);
+                updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] }, nextPosition);
             }
 
             // Start animating along the current segment with initial interpolation
@@ -671,6 +668,7 @@ function simulateUserLocation(route) {
     simulationPaused = false;
     updateLocation();
 }
+
 
 function updateWalkedRoute(currentPosition) {
     // Add the current position to the walked route
