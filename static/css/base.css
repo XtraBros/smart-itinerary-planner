@@ -172,7 +172,9 @@ h3 {
   border-radius: 10px;
   position: relative;
 }
-
+.guideText .messageStype a {
+  color: #00ade9;
+}
 .guideText .messageStype:before {
   position: absolute;
   top: 6px;

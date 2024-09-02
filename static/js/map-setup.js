@@ -62,7 +62,7 @@ async function getPoisByLocation(location) {
         let contenxt = '';
         let listCont = '';
         poisData.forEach((placeName, index) => {
-            const base64Thumbnail = placeInfoResponse[placeName] ? `data:image/jpeg;base64,${placeInfoResponse[placeName].thumbnail}` : '/static/thumbnails/sentosa/default.jpg';
+            const base64Thumbnail = placeInfoResponse[placeName] ? `data:image/jpeg;base64,${placeInfoResponse[placeName].thumbnail}` : '/static/icons/default.png';
             contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                             <div class="slideItme">
                                 <div class="swperimg">
@@ -1153,7 +1153,7 @@ function appendMessage(text, className, chatMessages, type) {
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
-                    ${marked.parse(text)}
+                    ${text}
                     <p style='margin-top: 10px;'>
                         <button id="detailsButton">
                             Details
@@ -1172,7 +1172,7 @@ function appendMessage(text, className, chatMessages, type) {
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
-                    ${marked.parse(text)}
+                    ${text}
                 </div>
             </div>
         </div>
@@ -1444,7 +1444,7 @@ function addMarkers(placeNames, waypoints) {
                 if (base64Thumbnail) {
                     place.thumbnail = `data:image/jpeg;base64,${base64Thumbnail}`;
                 } else {
-                    place.thumbnail = '/static/thumbnails/sentosa/default.jpg'; // Fallback if no thumbnail is found
+                    place.thumbnail = '/static/icons/default.png'; // Fallback if no thumbnail is found
                 }
 
                 var popupContentString = populateTemplate(template, place);
@@ -1504,14 +1504,16 @@ function fetchPlacesData(places) {
 // Add event listeners to the hyperlinks
 function attachEventListeners() {
     document.querySelectorAll('.location-link').forEach(function (link) {
-        link.addEventListener('click', function () {
-            var markerId = this.getAttribute('data-marker-id');
-            
+        link.addEventListener('click', function (e) {
+            const markerId = this.getAttribute('data-marker-id');
             // Hide the popup modal
             document.getElementById('popupModal').style.display = 'none';
-
-            var marker = window.mapMarkers[markerId]; // Get the marker
-
+            Object.keys(window.mapMarkers).forEach(item => {
+                if (window.mapMarkers[item].getPopup().isOpen()) {
+                    window.mapMarkers[item].togglePopup()
+                }
+            })
+            const marker = window.mapMarkers[markerId]; // Get the marker
             if (marker) { // Ensure marker exists
                 var markerCoordinates = marker.getLngLat();
                 
@@ -1527,6 +1529,9 @@ function attachEventListeners() {
                     marker.togglePopup(); // Open the popup if it's not already open
                 }
             } else {
+                if (e.target.innerText) {
+                    getPlaceCoordWithName(e.target.innerText);
+                }
                 console.error('Marker with ID ' + markerId + ' not found.');
             }
         });
