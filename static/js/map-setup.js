@@ -62,11 +62,11 @@ async function getPoisByLocation(location) {
         let contenxt = '';
         let listCont = '';
         poisData.forEach((placeName, index) => {
+            const base64Thumbnail = placeInfoResponse[placeName] ? `data:image/jpeg;base64,${placeInfoResponse[placeName].thumbnail}` : '/static/thumbnails/sentosa/default.jpg';
             contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                             <div class="slideItme">
                                 <div class="swperimg">
-                                    <img src="https://dynamic-media-cdn.tripadvisor.com/media/photo-o/11/b4/45/48/this-restaurant-is-amazing.jpg?w=1200&h=-1&s=1"
-                                        alt="${placeName}" srcset="">
+                                    <img src="${base64Thumbnail}" alt="${placeName}" srcset="">
                                 </div>
                                 <div class="visitors">
                                     <h4>${placeName}</h4>
@@ -86,8 +86,7 @@ async function getPoisByLocation(location) {
                         </div>`;
             listCont += `<div class="itemSlide" key='${index}' data-name='${placeName}'>
                             <div class="listimg">
-                                <img src="https://www.bring-you.info/wp-content/uploads/2023/11/Three-Mermaids-Cafe-Restaurant-Pattaya-3.jpg"
-                                    alt="${placeName}" width="100%" srcset="">
+                                <img src="${base64Thumbnail}" alt="${placeName}" width="100%" srcset="">
                             </div>
                             <div class="titleBox">
                                 <div class="title">${placeName}</div>
