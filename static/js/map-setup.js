@@ -551,7 +551,16 @@ function updateNavigationInstructions(userLocation, nextPosition) {
         displayInstruction(nextInstructionObject, distanceToCheckpoint, remainingDist, modifierType);
         increment = false;
     } else {
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
         document.getElementById("distanceText").textContent = `${distanceToCheckpoint.toFixed(1)}`;
+            // Update remaining distance in kilometers
+        const remainingDistanceKm = (remainingDist / 1000).toFixed(2);
+        document.querySelector('#journeyDistance h3').textContent = remainingDistanceKm;
+        
+        // Calculate and update the remaining duration
+        const remainingDuration = calculateRemainingDuration(remainingDist, 1.4);
+        document.querySelector('#journeyDuration h3').textContent = remainingDuration;
+
     }
 }
 
