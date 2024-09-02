@@ -168,7 +168,8 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Zac's additional files
-dashboard/upload_sentosa.py
-graph/distance_matrix_gen.ipynb
+# Zac's misc files
 notes.md
+graph/distance_matrix_gen.ipynb
+dashboard/upload_sentosa.py
+static/thumbnails/sentosa/*
