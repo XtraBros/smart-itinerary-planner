@@ -935,6 +935,7 @@ async function getOptimizedSequence(placeNames, chatMessages) {
         });
 
         if (!response.ok) {
+            appendMessage('It seems my network connection with you is unstable. Please try sending me your message again.', 'guide-message', chatMessages, 'message');
             throw new Error('Network response was not ok');
         }
 
@@ -951,7 +952,6 @@ async function getOptimizedSequence(placeNames, chatMessages) {
         console.error('Error optimizing coordinates:', error);
 
         // Display a generic error message using appendMessage
-        appendMessage('It seems my network connection with you is unstable. Please try sending me your message again.', 'guide-message', chatMessages, 'message');
         return;
     }
 }
@@ -990,7 +990,7 @@ async function postMessage(message, chatMessages) {
         let data = await response.json();
         console.log("GPT response: " + JSON.stringify(data));
         // check for operation type and run route functions if neccesarry.
-        if (data.operation == "route") {
+        if (data.operation == "route" && data.response.length > 1) {
             console.log("PLaces: " + data.response);
             let cleanedPlaceNames = data.response;
 
@@ -1502,7 +1502,7 @@ function addMarkers(placeNames, waypoints) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-                placeName = placeName.replace(/['\[\]]/g, '');
+                placeName = placeName.replace(/[\[\]]/g, '');
                 console.log(placeName)
 
                 var place = {

@@ -59,7 +59,7 @@ zoo_name = "Singapore Zoo"
 zoo_places_list = place_info_df['name'].tolist()
 
 sentosa_name = "Singapore Sentosa Island"
-sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Palawan Beach, Tanjong Beach, Sentosa Golf Club, W Singapore, Capella Singapore, Universal Studios Singapore"
+sentosa_places_list = place_info_df["name"].tolist()
 
 @app.route('/')
 def home():
@@ -79,27 +79,24 @@ def ask_plan():
     # Initial messages with RAG data
     messages = [
         {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}, starting from their current location (lng,lat): {user_location}.
+            Your task is to advise visitors on features and attractions in {sentosa_name}.
             
             Important Guidelines:
             1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
-            2) The "operation" key can only have one of the following values: "message", "location", or "route".
+            2) The "operation" key can only have one of the following values: "message", "location", "route" or "wayfinding".
                 - "message": Used when your response does not include locations, and is a direct reply to the user.
                 - "location": Used when your response includes locations without providing directions.
-                - "route": Used when your response involves providing a route between places of interest, ignoring the user's location.
-                - "wayfinding": Used when your response involves providing directions for the user to navigate through.
+                - "route": Used when your response involves providing a route between multiple places of interest.
+                - "wayfinding": Used when your response involves providing directions for the user to navigate to a destination.
             3) The "response" key's value depends on the "operation" key:
                 - If "operation" is "message", "response" should contain a single string with your text response.
-                - If "operation" is "location" or "route", "response" should contain a list of the names of the places of interest (matching exactly the names in the database).
-            4) Example responses:
-                - For a greeting: {{"operation":"message","response":"Hi, I am your tour guide for today. How may I assist you?"}}
-                - For providing a route: {{"operation":"route","response":["Din Tai Fung", "W Singapore"]}}
-            5) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
+                - If "operation" is "location", "route" or "wayfinding", "response" should contain a list of the names of the places of interest.
+            4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
-            6) Use the exact names of the places as provided in the database. Variations or errors in the names are not tolerated.
-            7) If the user asks for nearby POIs, use the find_nearby_pois function. If there are no nearby attractions, recommend other places to visit using "operation": "location". Use a radius of 100 meters if not specified.
+            5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
+            6) If the user asks for nearby POIs, use the find_nearby_pois function, and classify as "operation" == "location".
             
-            **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure. Do not nest dictionaries or include extra text or structures within "response". Any deviations from the required structure will cause errors in the backend processing.
+            **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
     ]
@@ -233,14 +230,12 @@ def place_info():
             
             # Try different file extensions to find the corresponding thumbnail
             thumbnail_data = None
-            file_extensions = ['jpg', 'jpeg', 'png', 'avif']
-            for ext in file_extensions:
-                filename = f"{place_name.lower().replace(' ', '-')}.{ext}"
-                thumbnail_file = fs.find_one({"filename": filename})
-                if thumbnail_file:
-                    thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
-                    break
-            
+            filename = f"{re.sub(r'[: ,]+', '-', place_name.lower())}.jpg"
+            print(filename)
+            thumbnail_file = fs.find_one({"filename": filename})
+            if thumbnail_file:
+                thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
+        
             place_info[place_name] = {
                 "description": description,
                 "thumbnail": thumbnail_data,
