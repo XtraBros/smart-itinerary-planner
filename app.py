@@ -86,7 +86,8 @@ def ask_plan():
             2) The "operation" key can only have one of the following values: "message", "location", or "route".
                 - "message": Used when your response does not include locations, and is a direct reply to the user.
                 - "location": Used when your response includes locations without providing directions.
-                - "route": Used when your response involves providing a route or wayfinding to one or more places of interest.
+                - "route": Used when your response involves providing a route between places of interest, ignoring the user's location.
+                - "wayfinding": Used when your response involves providing directions for the user to navigate through.
             3) The "response" key's value depends on the "operation" key:
                 - If "operation" is "message", "response" should contain a single string with your text response.
                 - If "operation" is "location" or "route", "response" should contain a list of the names of the places of interest (matching exactly the names in the database).

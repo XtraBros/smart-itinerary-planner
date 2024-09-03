@@ -773,7 +773,7 @@ function updateUserLocation(newLocation) {
     }
 }
 
-function displayRoute(userLocation, placeNames, rawCoordinates) {
+function displayRoute(placeNames, rawCoordinates, fromUser) {
     return new Promise((resolve, reject) => {
         // Clear existing routes
         if (map.getSource('route')) {
@@ -787,8 +787,13 @@ function displayRoute(userLocation, placeNames, rawCoordinates) {
 
         // Check number of waypoints. If less than 25, execute the usual. Else, fetch centroids.
         let fetchDirectionsPromise;
-        const allCoordinates = [[userLocation.lng, userLocation.lat], ...rawCoordinates];
-        console.log(allCoordinates)
+        let allCoordinates;
+        if (fromUser) {
+            allCoordinates = [[userLocation.lng, userLocation.lat], ...rawCoordinates];
+        } else {
+            allCoordinates = rawCoordinates;
+        }
+        console.log("Coordinates to go to: " + allCoordinates)
         const coordinates = allCoordinates.map(coord => coord.join(',')).join(';');
         var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
         // Fetch directions data from Mapbox Directions API
@@ -991,7 +996,7 @@ async function postMessage(message, chatMessages) {
 
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
-            let orderOfVisit = await get_coordinates(cleanedPlaceNames);
+            let orderOfVisit = await get_coordinates(cleanedPlaceNames, false);
             let route = orderOfVisit[0][0];
             let instr = orderOfVisit[1];
             // Send a request to the /get_text endpoint with the route
@@ -1031,12 +1036,37 @@ async function postMessage(message, chatMessages) {
             // Append the response from the /get_text endpoint to the chat
             appendMessage(textData.response, "guide-message", chatMessages, 'location');
             attachEventListeners();
+        } else if (data.operation == "wayfinding") {
+            console.log("PLaces: " + data.response);
+            let cleanedPlaceNames = data.response;
+
+            console.log(cleanedPlaceNames); // Check the cleaned list
+            // Get the route from the get_coordinates function
+            let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
+            let route = orderOfVisit[0][0];
+            let instr = orderOfVisit[1];
+            // Send a request to the /get_text endpoint with the route
+            let textResponse = await fetch('/get_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ route: route, message: message })
+            });
+            if (!textResponse.ok) {
+                throw new Error('Network response was not ok ' + textResponse.statusText);
+            }
+            let textData = await textResponse.json();
+            // Append the response from the /get_text endpoint to the chat
+            appendMessage(textData.response, "guide-message", chatMessages, 'route');
+            //appendMessage(instr, "nav-button", chatMessages);
+            attachEventListeners();
         } else { // return message directly
             appendMessage(data.response, 'guide-message', chatMessages);
         }
     } catch (error) {
         console.error('Error:', JSON.stringify(error));
-    }
+    } 
 }
 
 function navFunc(e, id) {
@@ -1343,43 +1373,77 @@ function getInstructions(data) {
     return instructions;
 }
 
-async function get_coordinates(data) {
+async function get_coordinates(data, fromUser) {
     let placeNames = data;
-    try {
-        // Fetch the user's current location
-        userLocation = await new Promise((resolve, reject) => {
-            getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
-        });
-        // Send the place names and the user's location to the Flask endpoint
-        let response = await fetch('/get_coordinates', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                places: data,
-            })
-        });
+    if (fromUser) {    
+        try {
+            // Fetch the user's current location
+            userLocation = await new Promise((resolve, reject) => {
+                getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
+            });
+            // Send the place names and the user's location to the Flask endpoint
+            let response = await fetch('/get_coordinates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    places: data,
+                })
+            });
 
-        if (!response.ok) {
-            throw new Error('Network response was not ok ' + response.statusText);
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+
+            let responseData = await response.json();
+            let coordinates = responseData.coordinates;
+            placeNames = responseData.places;
+
+            // Map coordinates to waypoints
+            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+
+            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+
+            let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
+            return [orderOfVisit, instr];
+        } catch (error) {
+            console.error('Error fetching coordinates:', error);
         }
+    } else {
+        try {
+            // Send the place names and the user's location to the Flask endpoint
+            let response = await fetch('/get_coordinates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    places: data,
+                })
+            });
 
-        let responseData = await response.json();
-        let coordinates = responseData.coordinates;
-        placeNames = responseData.places;
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
 
-        // Map coordinates to waypoints
-        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+            let responseData = await response.json();
+            let coordinates = responseData.coordinates;
+            placeNames = responseData.places;
 
-        // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+            // Map coordinates to waypoints
+            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
 
-        let instr = await displayRoute(userLocation, orderOfVisit[0], orderOfVisit[1]);
-        return [orderOfVisit, instr];
-    } catch (error) {
-        console.error('Error fetching coordinates:', error);
-    }
+            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+
+            let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], false);
+            return [orderOfVisit, instr];
+        } catch (error) {
+            console.error('Error fetching coordinates:', error);
+        }
+    };
 }
 
 async function get_coordinates_without_route(data) {
@@ -1432,7 +1496,6 @@ function addMarkers(placeNames, waypoints) {
     fetchPlacesData(placeNames).then(placesData => {
         fetchTemplate('static/html/info-card.html').then(template => {
             var parser = new DOMParser();
-            console.log(JSON.stringify(placesData))
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
                 if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
@@ -1458,7 +1521,7 @@ function addMarkers(placeNames, waypoints) {
                 var doc = parser.parseFromString(popupContentString, 'text/html');
                 var popupContent = doc.querySelector('.info-card-content');
                 popupContent.querySelector('button').onclick = async function () {
-                    await displayRoute(userLocation, [name], [coord]);
+                    await displayRoute([name], [coord], true);
                     enableNavigationMode(steps);
                 }
                 var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
