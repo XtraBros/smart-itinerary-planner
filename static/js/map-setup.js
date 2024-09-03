@@ -212,6 +212,11 @@ async function getPlaceCoordWithName(place) {
     addMarkers([place], waypoints);
 }
 
+function systemQuestionFunc(e) {
+    const chatMessages = document.getElementById("chatbot-messages");
+    postMessage(e.target.innerText, chatMessages);
+}
+
 function navDitle(e, name) {
     getPlaceCoordWithName(name);
     mapEl.style.display = 'block';
