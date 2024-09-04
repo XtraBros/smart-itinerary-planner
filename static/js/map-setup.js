@@ -323,18 +323,6 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
-            // Initial setup for route layers
-            map.addSource('walked-route', {
-                "type": "geojson",
-                "data": {
-                    "type": "Feature",
-                    "geometry": {
-                        "type": "LineString",
-                        "coordinates": []
-                    }
-                }
-            });
-
             map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -342,21 +330,6 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
-
-            map.addLayer({
-                "id": "walked-route",
-                "type": "symbol",
-                "source": "walked-route",
-                'layout': {
-                    'symbol-placement': 'line',
-                    'symbol-spacing': 2,
-                    'icon-image': 'walkedArrow',
-                    'icon-size': 0.7,
-                    'icon-allow-overlap': true,
-                },
-            });
-
-
             // user location control
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
@@ -871,6 +844,33 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                         });
                     }
 
+                    if (!map.getSource('walked-route')) {
+                        map.addSource('walked-route', {
+                            "type": "geojson",
+                            "data": {
+                                "type": "Feature",
+                                "geometry": {
+                                    "type": "LineString",
+                                    "coordinates": []
+                                }
+                            }
+                        });    
+                    }
+
+                    if (!map.getLayer('walked-route')) {
+                        map.addLayer({
+                            "id": "walked-route",
+                            "type": "symbol",
+                            "source": "walked-route",
+                            'layout': {
+                                'symbol-placement': 'line',
+                                'symbol-spacing': 2,
+                                'icon-image': 'walkedArrow',
+                                'icon-size': 0.7,
+                                'icon-allow-overlap': true,
+                            },
+                        });
+                    }
                     // Extract route instructions
                     var instructions = extractRouteInstructions(result.legs, placeNames);
                     resolve(instructions);
@@ -1080,94 +1080,94 @@ function navFunc(e, id) {
     navigation.classList.add('fadeshowin')
     popupModal.style.display = 'none';
     return
-    const lineData = {
-        type: 'Feature',
-        geometry: {
-            type: 'LineString',
-            coordinates: [
-                [103.826511, 1.248450],
-                [103.827457, 1.248179],
-                [103.827967, 1.247061],
-                [103.829030, 1.246154],
-                [103.829098, 1.245841],
-                [103.828930, 1.245373],
-                [103.828544, 1.244633],
-                [103.827659, 1.245229],
-            ]
-        },
-        properties: {}
-    };
-    map.addSource('route', {
-        type: 'geojson',
-        data: lineData
-    });
-    map.loadImage(
-        'static/icons/nav.png',
-        (err, image) => {
-            console.log(image)
-            if (err) throw err;
-            map.addImage('pattern', image);
-            map.addLayer({
-                'id': 'route',
-                'type': 'symbol',
-                'source': 'route',
-                'layout': {
-                    'symbol-placement': 'line',
-                    'symbol-spacing': 2,
-                    'icon-image': 'pattern',
-                    'icon-size': 0.5,
-                    'icon-allow-overlap': true,
-                },
-            });
-            map.setPitch(45);
-            // 实时跟踪用户位置
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(position => {
-                    const userLocation = lineData.geometry.coordinates[0]
-                    console.error("asdsdsd", userLocation);
-                    // const userLocation = [position.coords.longitude, position.coords.latitude];
-                    map.setCenter(userLocation);
-                    map.rotateTo(90, { duration: 0 })
-                    map.flyTo({
-                        center: lineData.geometry.coordinates[0],
-                        zoom: 20, // 可设置缩放级别
-                        speed: 1.5 // 飞行速度
-                    });
-                }, error => {
-                    console.error("无法获取当前位置：", error);
-                }, {
-                    enableHighAccuracy: true,
-                    maximumAge: 0,
-                    timeout: 5000
-                });
-            }
-            startMarker = new mapboxgl.Marker({
-                draggable: true,
-                color: '#83f7a0'
-            })
-                .setLngLat(lineData.geometry.coordinates[0])
-                .addTo(map);
-            // if (window.DeviceOrientationEvent) {
-            //     window.addEventListener('deviceorientation', (event) => {
-            //         if (event.alpha !== null) {
-            //             const heading = 360 - event.alpha; // 获取设备的方向
-            //             // 实时旋转地图
-            //             map.rotateTo(heading, {
-            //                 duration: 0 // 禁用动画，使旋转更顺畅
-            //             });
-            //         }
-            //     });
-            // } else {
-            //     console.error("浏览器不支持设备方向事件");
-            // }
-            nedMarker = new mapboxgl.Marker({
-                draggable: true,
-                color: '#ed6461'
-            })
-                .setLngLat(lineData.geometry.coordinates[lineData.geometry.coordinates.length - 1])
-                .addTo(map);
-        }
-    );
+    // const lineData = {
+    //     type: 'Feature',
+    //     geometry: {
+    //         type: 'LineString',
+    //         coordinates: [
+    //             [103.826511, 1.248450],
+    //             [103.827457, 1.248179],
+    //             [103.827967, 1.247061],
+    //             [103.829030, 1.246154],
+    //             [103.829098, 1.245841],
+    //             [103.828930, 1.245373],
+    //             [103.828544, 1.244633],
+    //             [103.827659, 1.245229],
+    //         ]
+    //     },
+    //     properties: {}
+    // };
+    // map.addSource('route', {
+    //     type: 'geojson',
+    //     data: lineData
+    // });
+    // map.loadImage(
+    //     'static/icons/nav.png',
+    //     (err, image) => {
+    //         console.log(image)
+    //         if (err) throw err;
+    //         map.addImage('pattern', image);
+    //         map.addLayer({
+    //             'id': 'route',
+    //             'type': 'symbol',
+    //             'source': 'route',
+    //             'layout': {
+    //                 'symbol-placement': 'line',
+    //                 'symbol-spacing': 2,
+    //                 'icon-image': 'pattern',
+    //                 'icon-size': 0.5,
+    //                 'icon-allow-overlap': true,
+    //             },
+    //         });
+    //         map.setPitch(45);
+    //         // 实时跟踪用户位置
+    //         if (navigator.geolocation) {
+    //             navigator.geolocation.watchPosition(position => {
+    //                 const userLocation = lineData.geometry.coordinates[0]
+    //                 console.error("asdsdsd", userLocation);
+    //                 // const userLocation = [position.coords.longitude, position.coords.latitude];
+    //                 map.setCenter(userLocation);
+    //                 map.rotateTo(90, { duration: 0 })
+    //                 map.flyTo({
+    //                     center: lineData.geometry.coordinates[0],
+    //                     zoom: 20, // 可设置缩放级别
+    //                     speed: 1.5 // 飞行速度
+    //                 });
+    //             }, error => {
+    //                 console.error("无法获取当前位置：", error);
+    //             }, {
+    //                 enableHighAccuracy: true,
+    //                 maximumAge: 0,
+    //                 timeout: 5000
+    //             });
+    //         }
+    //         startMarker = new mapboxgl.Marker({
+    //             draggable: true,
+    //             color: '#83f7a0'
+    //         })
+    //             .setLngLat(lineData.geometry.coordinates[0])
+    //             .addTo(map);
+    //         // if (window.DeviceOrientationEvent) {
+    //         //     window.addEventListener('deviceorientation', (event) => {
+    //         //         if (event.alpha !== null) {
+    //         //             const heading = 360 - event.alpha; // 获取设备的方向
+    //         //             // 实时旋转地图
+    //         //             map.rotateTo(heading, {
+    //         //                 duration: 0 // 禁用动画，使旋转更顺畅
+    //         //             });
+    //         //         }
+    //         //     });
+    //         // } else {
+    //         //     console.error("浏览器不支持设备方向事件");
+    //         // }
+    //         nedMarker = new mapboxgl.Marker({
+    //             draggable: true,
+    //             color: '#ed6461'
+    //         })
+    //             .setLngLat(lineData.geometry.coordinates[lineData.geometry.coordinates.length - 1])
+    //             .addTo(map);
+    //     }
+    // );
 }
 
 function closedNavfun() {
@@ -1179,6 +1179,17 @@ function closedNavfun() {
     }
     if (map.getSource('route')) {
         map.removeSource('route');
+    }
+    if (map.getLayer('walked-route')) {
+        map.removeLayer('walked-route');
+    }
+    if (map.getSource('walked-route')) {
+        map.removeSource('walked-route');
+    }
+    if (window.mapMarkers) {
+        for (const [key, value] of Object.entries(window.mapMarkers)) {
+            value.remove();
+        }
     }
     // if (map.hasImage('pattern')) {
     //     map.removeImage('pattern');
