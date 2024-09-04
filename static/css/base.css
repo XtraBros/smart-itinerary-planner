@@ -538,7 +538,15 @@ h3 {
   left: 10px;
   z-index: 1;
 }
-
+#foodBox {
+  position: absolute;
+  right: 0px;
+  bottom: 60px;
+}
+.domeShowBoot {
+  position: absolute; right: 0px; top: 6px; z-index: 9199; width: 50px; height: 50px; background-color: transparent;
+  border: none;
+}
 #toggle-navigation {
   margin-top: 5px;
   padding: 10px;

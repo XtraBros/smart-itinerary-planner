@@ -118,6 +118,7 @@ const tabList = document.getElementById('tabList')
 const poiSwiper = document.getElementById('poiSwiper');
 const zoomControls = document.getElementById('zoom-controls');
 const pauseAndpaly = document.getElementById('pauseAndpaly');
+const foodBox = document.getElementById('foodBox');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
@@ -149,6 +150,7 @@ window.onload = function () {
         popupModal.style.display = "block";
         tishiDom.style.display = "none";
         localStorage.setItem('isFirstOpen', true)
+        foodBox.classList.remove('fadeshowin');
     }
     window.onclick = function (event) {
         if (event.target === popupModal) {
@@ -177,6 +179,10 @@ window.onload = function () {
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
     });
+}
+
+function domeShowBootFuc() {
+    foodBox.classList.add('fadeshowin');
 }
 
 async function getPlaceCoordWithName(place) {
