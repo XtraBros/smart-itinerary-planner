@@ -289,7 +289,7 @@ def solve_route(place_names):
     # remove first column which contains names of locations.
     distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
     # get index of place from csv file
-    indices = [name_to_index[name.replace("'","")] for name in place_names]
+    indices = [name_to_index[name] for name in place_names]
     # Fetch distance matrix subset
     subset_matrix = distance_matrix.iloc[indices, indices]
     # Run TSP pacakge
