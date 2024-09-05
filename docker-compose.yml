@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  smart-itinerary-planner:
+    image: 770091703903.dkr.ecr.ap-southeast-1.amazonaws.com/smart-itinerary-planner:latest
+    ports:
+      - "3106:3106"
+      - "3000:3000"
+    restart: always

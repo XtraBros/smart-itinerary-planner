@@ -174,5 +174,6 @@ graph/distance_matrix_gen.ipynb
 dashboard/upload_sentosa.py
 static/thumbnails/sentosa/*
 
-# IDE
+# IDE & System
 .idea/
+.DS_Store
