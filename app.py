@@ -79,7 +79,7 @@ def ask_plan():
     # Initial messages with RAG data
     messages = [
         {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}.
+            Your task is to advise visitors on features and attractions in {sentosa_name}. The visitor is currently at {user_location}.
             
             Important Guidelines:
             1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
@@ -95,7 +95,6 @@ def ask_plan():
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
             5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
             6) If the user asks for nearby POIs, use the find_nearby_pois function, and classify as "operation" == "location".
-            
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
@@ -109,15 +108,18 @@ def ask_plan():
     }
     message = handle_function_calls(messages, state)
     print(message)
-    print(state)
     # Initialize operation
     operation = 'message'
     
     try:
         # Parse the message as a Python dictionary
-        evaluated_message = json.loads(remove_dupes(message))
+        evaluated_message = json.loads(message)
         response = evaluated_message['response']
         operation = evaluated_message['operation']
+        if isinstance(response, dict):
+            # If 'response' is a dictionary, set 'response' and 'operation' to its values
+            response = response.get('response', response)
+            operation = response.get('operation', operation)
         print(f"'response': {response}, 'operation': {operation}")
         return jsonify({'response': response, 'operation': operation})
     
@@ -145,7 +147,7 @@ def get_text():
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
                  Structure your response as a bulleted list only if there are multiple destinations. Ensure all destinations are covered in you response.
                  If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
-                 Please encase the names of the attractions in `~` symbols (e.g., `~Attraction Name~`) to distinguish them."""},
+                 Please encase the names of the attractions in `~` symbols (e.g., `~Attraction Name~`) to distinguish them. Use the exact names given in the list."""},
                 {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
@@ -195,6 +197,7 @@ def optimize_route():
     try:
         # Parse the incoming JSON request
         data = request.get_json()
+        print(data)
         
         # Extract the list of place names
         place_names = data.get('placeNames')
@@ -231,7 +234,6 @@ def place_info():
             # Try different file extensions to find the corresponding thumbnail
             thumbnail_data = None
             filename = f"{re.sub(r'[: ,]+', '-', place_name.lower())}.jpg"
-            print(filename)
             thumbnail_file = fs.find_one({"filename": filename})
             if thumbnail_file:
                 thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
@@ -297,9 +299,11 @@ def solve_route(place_names):
     return permutation
 
 def solve_tsp(distance_matrix):
+    # Handle inf values and NA values:
+    distance_matrix = distance_matrix.replace([float('inf'), -float('inf')], 1e9)  # Replace inf with a large value
+    distance_matrix = distance_matrix.fillna(0)  # Replace NaNs with 0 or an appropriate value
     # Create the routing index manager
     scaled_distance_matrix = (distance_matrix * 1000).round().astype(int)
-
     manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0)
 
     # Create the routing model
@@ -371,14 +375,12 @@ def create_hyperlinks(place_list):
         # Create the hyperlink HTML
         hyperlink = f'<a href="#" class="location-link" data-marker-id="{formatted_id}">{name}</a>'
         hyperlinks[name] = hyperlink
-    print(hyperlinks)
     return hyperlinks
 
 
 def insertHyperlinks(message, replacements):
     # Split the message into chunks by the `~` delimiter
     chunks = message.split("~")
-    print(f"Chunks: {chunks}")
 
     # Map over the chunks to replace matches using a lambda function
     # The lambda function checks if the chunk is in replacements and replaces it, otherwise it returns the chunk unchanged
@@ -401,8 +403,8 @@ def fetch_weather_data():
     return response.json() if response.status_code == 200 else {"error": "Unable to fetch weather data"}
 
 def fetch_poi_data():
-    # Connect to MongoDB and fetch all documents with the required fields
-    documents = poi_db.find({}, {"name": 1, "operating_hours": 1, "description": 1})
+    # Connect to MongoDB and fetch all documents with the required fields, skip descriptions to save tokens
+    documents = poi_db.find({}, {"name": 1, "operating_hours": 1})
 
     poi_data = []
     
@@ -417,40 +419,36 @@ def fetch_poi_data():
     
     return poi_data
 
-def find_nearby_pois(user_location, radius_in_meters):
-    results = []
+def find_nearby_pois(user_location, radius_in_meters=100):
     user_lon = user_location['longitude']
     user_lat = user_location['latitude']
+    print(f"User location in find_nearby_pois: {user_location}")
     try:
         # Convert radius to radians (radius of Earth is approximately 6378100 meters)
         radius_in_radians = radius_in_meters / 6378100.0
-        print(f"centerSphre: {[user_lon, user_lat], radius_in_radians}")
-
-        # Perform a geospatial query to find POIs within the radius
+        
+        # Perform a geospatial query to find POIs directly within the radius
         nearby_pois = poi_db.find({
             "location": {
                 "$geoWithin": {
                     "$centerSphere": [[user_lon, user_lat], radius_in_radians]
                 }
             }
-        })
+        }).limit(10)  # Limit results to a maximum of 10 POIs
+        
         # Convert the cursor to a list to check what is returned
         nearby_pois_list = list(nearby_pois)
         print(f"Found POIs: {nearby_pois_list}")
 
-        # # Sort POIs by distance from the user
-        # sorted_pois = sorted(
-        #     nearby_pois,
-        #     key=lambda poi: geodesic((user_lat, user_lon), (poi['latitude'], poi['longitude'])).meters
-        # )
-        for place in nearby_pois_list:
-            results.append(place['name'])
+        # Extract POI names from the results
+        results = [poi['name'] for poi in nearby_pois_list]
 
         return results
 
     except Exception as e:
         print(f"Error: {e}")
-        return results
+        return []
+
 
 '''
 Function Mapping: map the function names to the function, so that it can be identified and called in handle_function_calls()
@@ -575,7 +573,6 @@ def handle_function_calls(messages, state):
                 })
 
                 # Recursive call to handle further function calls
-                print(state['called_functions'])
                 return handle_function_calls(messages, state)
             else:
                 messages.append({
