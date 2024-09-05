@@ -151,6 +151,7 @@ window.onload = function () {
         tishiDom.style.display = "none";
         localStorage.setItem('isFirstOpen', true)
         foodBox.classList.remove('fadeshowin');
+        getSuggestion();
     }
     window.onclick = function (event) {
         if (event.target === popupModal) {
@@ -1624,6 +1625,9 @@ function attachEventListeners() {
 // Suggestion Button:
 // EXAMPLE usage of endpoint:
 async function getSuggestion() {
+    if (!chatMessages){
+        var chatMessages = document.getElementById("chatbot-messages");
+    };
     try {
         // Send a POST request to the /suggestion endpoint
         const response = await fetch('/suggestion', {
@@ -1641,10 +1645,10 @@ async function getSuggestion() {
         // Parse the JSON response
         const data = await response.json();
         // Check response in console:
-        console.log('Response from /suggestion: ', response);
+        console.log('Response from /suggestion: ', data);
 
         //Post the message in chatbox:
-        appendMessage(response, 'guide-message', chatMessages, 'message');
+        appendMessage(data, 'guide-message', chatMessages, 'message');
         // Subsequently, can display yes/no option, and use postMessage to process the subsequent routing functions.
         // Problem will occur is user just says "yes", because it does not specify where to go
     } catch (error) {
