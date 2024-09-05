@@ -273,7 +273,7 @@ def find_nearby():
     return jsonify(nearby_pois)
 
 # Temporary endpoint for random suggestion message
-@app.route('/suggestion', method=['POST'])
+@app.route('/suggestion', methods=['POST'])
 def suggest():
     import random
     samples = {1:"It’s almost time for lunch, and there is a popular Chinese restaurant, Feng Shui Inn, nearby. Would you like me to direct you there? ",
