@@ -1584,15 +1584,6 @@ function fetchPlacesData(places) {
         });
 }
 
-// Zoom button scripts
-// document.getElementById('zoom-in').addEventListener('click', () => {
-//     map.zoomIn();
-// });
-
-// document.getElementById('zoom-out').addEventListener('click', () => {
-//     map.zoomOut();
-// });
-
 // Add event listeners to the hyperlinks
 function attachEventListeners() {
     document.querySelectorAll('.location-link').forEach(function (link) {
@@ -1628,4 +1619,35 @@ function attachEventListeners() {
             }
         });
     });
+}
+
+// Suggestion Button:
+// EXAMPLE usage of endpoint:
+async function getSuggestion() {
+    try {
+        // Send a POST request to the /suggestion endpoint
+        const response = await fetch('/suggestion', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Check if the response is OK (status code 200-299)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Parse the JSON response
+        const data = await response.json();
+        // Check response in console:
+        console.log('Response from /suggestion: ', response);
+
+        //Post the message in chatbox:
+        appendMessage(response, 'guide-message', chatMessages, 'message');
+        // Subsequently, can display yes/no option, and use postMessage to process the subsequent routing functions.
+        // Problem will occur is user just says "yes", because it does not specify where to go
+    } catch (error) {
+        console.error('Error fetching suggestion:', error);
+    }
 }
