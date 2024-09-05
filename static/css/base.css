@@ -565,6 +565,29 @@ h3 {
   border: none;
   padding: 0px;
   margin: 0px;
+  position: relative;
+}
+.robot-eye {
+  border-top-left-radius: 50% 60%;
+  border-top-right-radius: 50% 60%;
+  border-bottom-right-radius: 50% 40%;
+  border-bottom-left-radius: 50% 40%;
+  --position: 3rem;
+  z-index: 5;
+  top: 27px;
+  position: absolute;
+  height: 0.4rem;
+  width: 0.3rem;
+  transform-origin: center 70%;
+  background-color: #11EBFA;
+  -webkit-animation: blinky 7s infinite;
+  animation: blinky 7s infinite;
+}
+.robot-eye-left {
+  left: 25px
+}
+.robot-eye-right {
+  right: 25px;
 }
 #zoom-controls button.robotIco img {
   width: 70px;
@@ -735,5 +758,25 @@ a.mapboxgl-ctrl-logo {
   }
   100% {
     opacity: 1;
+  }
+}
+
+@-webkit-keyframes blinky {
+  0%,9%,11%,19%,21%,69%,71%,100% {
+      transform: scaleY(1)
+  }
+
+  10%,20%,70% {
+      transform: scaleY(0)
+  }
+}
+
+@keyframes blinky {
+  0%,9%,11%,19%,21%,69%,71%,100% {
+      transform: scaleY(1)
+  }
+
+  10%,20%,70% {
+      transform: scaleY(0)
   }
 }
