@@ -6,6 +6,10 @@ h4,
 h3 {
   padding: 0px;
   margin: 0px;
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif,'Apple Color Emoji', 'Microsoft YaHei';
+}
+* {
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif,'Apple Color Emoji', 'Microsoft YaHei';
 }
 #container {
   width: 100%;
@@ -169,6 +173,7 @@ h3 {
   color: #2c2c2c;
   padding: 6px 8px;
   margin-left: 5px;
+  line-height: 24px;
   border-radius: 10px;
   position: relative;
 }
