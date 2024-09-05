@@ -173,3 +173,6 @@ notes.md
 graph/distance_matrix_gen.ipynb
 dashboard/upload_sentosa.py
 static/thumbnails/sentosa/*
+
+# IDE
+.idea/

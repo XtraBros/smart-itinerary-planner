@@ -75,12 +75,12 @@ def ask_plan():
     user_input = request.json['message']
     user_location = request.json['userLocation']
     print(request)
-    
+
     # Initial messages with RAG data
     messages = [
-        {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}. The visitor is currently at {user_location}.
-            
+        {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}.
+            Your task is to advise visitors on features and attractions in {sentosa_name}.
+
             Important Guidelines:
             1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
             2) The "operation" key can only have one of the following values: "message", "location", "route" or "wayfinding".
@@ -94,13 +94,14 @@ def ask_plan():
             4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
             5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
+            6) If the user asks for nearby POIs, use the find_nearby_pois function, and classify as "operation" == "location".
+
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
     ]
 
-     
+
     # Handle function calls and get the final response
     state = {
         "called_functions": set(),
@@ -110,7 +111,7 @@ def ask_plan():
     print(message)
     # Initialize operation
     operation = 'message'
-    
+
     try:
         # Parse the message as a Python dictionary
         evaluated_message = json.loads(remove_dupes(message))
@@ -122,7 +123,7 @@ def ask_plan():
             operation = response.get('operation', operation)
         print(f"'response': {response}, 'operation': {operation}")
         return jsonify({'response': response, 'operation': operation})
-    
+
     except (ValueError, SyntaxError, json.JSONDecodeError) as e:
         print(f"Error parsing message: {e}")
         # If parsing fails, keep operation as 'message' and return the raw message
@@ -142,7 +143,7 @@ def get_text():
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
+                {"role": "system", "content": f"""You are a tour guide at {sentosa_name}.
                  Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
                  Structure your response as a bulleted list only if there are multiple destinations. Ensure all destinations are covered in you response.
@@ -197,27 +198,26 @@ def optimize_route():
     try:
         # Parse the incoming JSON request
         data = request.get_json()
-        print(data)
-        
+
         # Extract the list of place names
         place_names = data.get('placeNames')
         print(place_names)
-        
+
         # Assuming place_names is a list of names to optimize
         ordered_place_indexes = solve_route(place_names)
         print(ordered_place_indexes)
-        
+
         # Return the optimized route indexes as a JSON response
         return jsonify(ordered_place_indexes)
-    
+
     except Exception as e:
         # Log the error for debugging purposes
         print(f"Error encountered: {e}")
-        
+
         # Return a failsafe response indicating a potential network issue
         return jsonify({"message": "It seems my network connection with you is unstable. Please try sending me your message again."}), 500
 
-    
+
 # enpoint to load POI info from csv file: returns name:description pair
 @app.route('/place_info', methods=['POST'])
 def place_info():
@@ -230,14 +230,14 @@ def place_info():
         if result:
             place_name = result['name']
             description = result['description']
-            
+
             # Try different file extensions to find the corresponding thumbnail
             thumbnail_data = None
             filename = f"{re.sub(r'[: ,]+', '-', place_name.lower())}.jpg"
             thumbnail_file = fs.find_one({"filename": filename})
             if thumbnail_file:
                 thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
-        
+
             place_info[place_name] = {
                 "description": description,
                 "thumbnail": thumbnail_data,
@@ -258,17 +258,17 @@ def weather_icon():
 @app.route('/find_nearby_pois', methods=['POST'])
 def find_nearby():
     data = request.get_json()  # Parse the JSON data from the request
-    
+
     # Extract the required arguments
     user_location = data.get('user_location')
     radius_in_meters = data.get('radius_in_meters')
-    
+
     if user_location is None or radius_in_meters is None:
         return jsonify({'error': 'Missing required parameters'}), 400
-    
+
     # Call the find_nearby_pois function with the provided arguments
     nearby_pois = find_nearby_pois(user_location, radius_in_meters)
-    
+
     # Return the result as JSON
     return jsonify(nearby_pois)
 
@@ -299,8 +299,8 @@ def suggest():
 #     return jsonify({'centroids': coords_str})
 
 ###########################################################################################################
-# route optimisation function: 
-# input: list of place names from CSV. 
+# route optimisation function:
+# input: list of place names from CSV.
 # output: permutation of indexes based on input e.g. [0,2,3,5,1,4]
 def solve_route(place_names):
     # fetch distance matrix
@@ -376,7 +376,7 @@ def solve_tsp(distance_matrix):
 def remove_dupes(response_text):
     # Use a regular expression to find all occurrences of dictionaries
     matches = re.findall(r'\{.*?\}', response_text)
-    
+
     if matches:
         # Return only the first dictionary
         return matches[0]
@@ -424,7 +424,7 @@ def fetch_poi_data():
     documents = poi_db.find({}, {"name": 1, "operating_hours": 1})
 
     poi_data = []
-    
+
     for doc in documents:
         # Collect the required fields from each document
         poi = {
@@ -433,7 +433,7 @@ def fetch_poi_data():
             "description": doc.get("description", "")
         }
         poi_data.append(poi)
-    
+
     return poi_data
 
 def find_nearby_pois(user_location, radius_in_meters=100):
@@ -557,7 +557,7 @@ def handle_function_calls(messages, state):
         functions=function_schemas,
         function_call="auto"
     )
-    
+
     message = response.choices[0].message
     if hasattr(message, 'function_call') and message.function_call:
         function_name = message.function_call.name
@@ -567,7 +567,7 @@ def handle_function_calls(messages, state):
         function_args = {}
         if function_args_str:
             function_args = json.loads(function_args_str)
-        
+
         if function_name not in state["called_functions"]:
             function_to_call = function_mapping.get(function_name)
             if function_to_call:
@@ -575,7 +575,7 @@ def handle_function_calls(messages, state):
                     function_result = function_to_call(**function_args)
                 except TypeError as e:
                     function_result = {"error": f"Function call error: {str(e)}"}
-                
+
                 state["called_functions"].add(function_name)
                 state["function_results"][function_name] = function_result
 
@@ -584,8 +584,8 @@ def handle_function_calls(messages, state):
                 #     return function_result['clarifying_question']
 
                 messages.append({
-                    "role": "function", 
-                    "name": function_name, 
+                    "role": "function",
+                    "name": function_name,
                     "content": json.dumps(function_result)  # Ensure content is JSON encoded
                 })
 
@@ -593,8 +593,8 @@ def handle_function_calls(messages, state):
                 return handle_function_calls(messages, state)
             else:
                 messages.append({
-                    "role": "function", 
-                    "name": function_name, 
+                    "role": "function",
+                    "name": function_name,
                     "content": json.dumps({"error": "Function not implemented"})
                 })
                 return handle_function_calls(messages, state)
@@ -604,4 +604,4 @@ def handle_function_calls(messages, state):
 
 ###########################################################################################################
 if __name__ == '__main__':
-    app.run(debug=True, port=3106)
+    app.run(debug=True, host="0.0.0.0", port=3106)
