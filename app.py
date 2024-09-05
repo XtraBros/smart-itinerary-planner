@@ -94,7 +94,7 @@ def ask_plan():
             4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
             5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            6) If the user asks for nearby POIs, use the find_nearby_pois function, and classify as "operation" == "location".
+            6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
@@ -113,7 +113,7 @@ def ask_plan():
     
     try:
         # Parse the message as a Python dictionary
-        evaluated_message = json.loads(message)
+        evaluated_message = json.loads(remove_dupes(message))
         response = evaluated_message['response']
         operation = evaluated_message['operation']
         if isinstance(response, dict):
