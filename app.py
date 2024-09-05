@@ -78,9 +78,9 @@ def ask_plan():
 
     # Initial messages with RAG data
     messages = [
-        {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}.
-            Your task is to advise visitors on features and attractions in {sentosa_name}.
-
+        {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}. 
+            Your task is to advise visitors on features and attractions in {sentosa_name}. The visitor is currently at {user_location}.
+            
             Important Guidelines:
             1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
             2) The "operation" key can only have one of the following values: "message", "location", "route" or "wayfinding".
@@ -94,8 +94,7 @@ def ask_plan():
             4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
             5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            6) If the user asks for nearby POIs, use the find_nearby_pois function, and classify as "operation" == "location".
-
+            6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
@@ -143,7 +142,7 @@ def get_text():
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"""You are a tour guide at {sentosa_name}.
+                {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
                  Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
                  Structure your response as a bulleted list only if there are multiple destinations. Ensure all destinations are covered in you response.
@@ -198,6 +197,7 @@ def optimize_route():
     try:
         # Parse the incoming JSON request
         data = request.get_json()
+        print(data)
 
         # Extract the list of place names
         place_names = data.get('placeNames')
@@ -249,10 +249,10 @@ def place_info():
 def weather_icon():
     forecast = request.json
     lib = ["Fair", "Fair (Day)", "Fair (Night)", "Fair and Warm", "Partly Cloudy",
-        "Partly Cloudy (Day)", "Partly Cloudy (Night)", "Cloudy", "Hazy", "Slightly Hazy",
-        "Windy", "Mist", "Fog", "Light Rain", "Moderate Rain", "Heavy Rain", "Passing Showers",
-        "Light Showers", "Showers", "Heavy Showers", "Thundery Showers", "Heavy Thundery Showers",
-        "Heavy Thundery Showers with Gusty Winds"]
+           "Partly Cloudy (Day)", "Partly Cloudy (Night)", "Cloudy", "Hazy", "Slightly Hazy",
+           "Windy", "Mist", "Fog", "Light Rain", "Moderate Rain", "Heavy Rain", "Passing Showers",
+           "Light Showers", "Showers", "Heavy Showers", "Thundery Showers", "Heavy Thundery Showers",
+           "Heavy Thundery Showers with Gusty Winds"]
     return jsonify(process.extractOne(forecast,lib)[0])
 
 @app.route('/find_nearby_pois', methods=['POST'])
@@ -443,7 +443,7 @@ def find_nearby_pois(user_location, radius_in_meters=100):
     try:
         # Convert radius to radians (radius of Earth is approximately 6378100 meters)
         radius_in_radians = radius_in_meters / 6378100.0
-        
+
         # Perform a geospatial query to find POIs directly within the radius
         nearby_pois = poi_db.find({
             "location": {
@@ -452,7 +452,7 @@ def find_nearby_pois(user_location, radius_in_meters=100):
                 }
             }
         }).limit(10)  # Limit results to a maximum of 10 POIs
-        
+
         # Convert the cursor to a list to check what is returned
         nearby_pois_list = list(nearby_pois)
         print(f"Found POIs: {nearby_pois_list}")
@@ -487,11 +487,11 @@ function_schemas = [
         "parameters": {}
     },
     {
-    "name": "fetch_poi_data",
-    "description": '''Fetches the name, operating hours, and description of all attractions,
+        "name": "fetch_poi_data",
+        "description": '''Fetches the name, operating hours, and description of all attractions,
                     ammenities, and places of interest in Sentosa from the MongoDB database.
                     Always call this function if recommending attractions or places, or trying to locate a place of interest.''',
-    "parameters": {}
+        "parameters": {}
     },
     {
         "name": "find_nearby_pois",
