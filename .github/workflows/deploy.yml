@@ -60,7 +60,7 @@ jobs:
           key: ${{ env.AWS_SSH_KEY }}
           script: |
             cd /opt/app
-            aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin ${{ env.REGISTRY_URL }}
-            docker compose down --rmi all
-            docker compose up --build -d
-            docker compose logs
+            aws ecr get-login-password --region ap-southeast-1 | sudo docker login --username AWS --password-stdin ${{ env.REGISTRY_URL }}
+            sudo docker-compose down --rmi all
+            sudo docker-compose up --build -d
+            sudo docker-compose logs

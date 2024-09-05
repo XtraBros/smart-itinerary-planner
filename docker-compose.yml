@@ -1,4 +1,4 @@
-version: '3.8'
+name: smart-itinerary-planner
 
 services:
   smart-itinerary-planner:
