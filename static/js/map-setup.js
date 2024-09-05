@@ -1026,7 +1026,7 @@ async function postMessage(message, chatMessages) {
             // Append the response from the /get_text endpoint to the chat
             appendMessage(textData.response, "guide-message", chatMessages, 'route');
             //appendMessage(instr, "nav-button", chatMessages);
-            attachEventListeners();
+            attachEventListenersToHyperlinks();
         } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
 
@@ -1047,7 +1047,7 @@ async function postMessage(message, chatMessages) {
             let textData = await textResponse.json();
             // Append the response from the /get_text endpoint to the chat
             appendMessage(textData.response, "guide-message", chatMessages, 'location');
-            attachEventListeners();
+            attachEventListenersToHyperlinks();
         } else if (data.operation == "wayfinding") {
             console.log("PLaces: " + data.response);
             let cleanedPlaceNames = data.response;
@@ -1072,7 +1072,7 @@ async function postMessage(message, chatMessages) {
             // Append the response from the /get_text endpoint to the chat
             appendMessage(textData.response, "guide-message", chatMessages, 'route');
             //appendMessage(instr, "nav-button", chatMessages);
-            attachEventListeners();
+            attachEventListenersToHyperlinks();
         } else { // return message directly
             appendMessage(data.response, 'guide-message', chatMessages);
         }
@@ -1586,7 +1586,7 @@ function fetchPlacesData(places) {
 }
 
 // Add event listeners to the hyperlinks
-function attachEventListeners() {
+function attachEventListenersToHyperlinks() {
     document.querySelectorAll('.location-link').forEach(function (link) {
         link.addEventListener('click', function (e) {
             const markerId = this.getAttribute('data-marker-id');
@@ -1622,12 +1622,27 @@ function attachEventListeners() {
     });
 }
 
+function awaitGetPlaceCoordWithName(place) {
+    // Return a promise that resolves when the getPlaceCoordWithName function completes
+    return new Promise((resolve, reject) => {
+        getPlaceCoordWithName(place)
+            .then(() => resolve()) // Resolve the promise when getPlaceCoordWithName completes
+            .catch(error => reject(error)); // Reject the promise if there’s an error
+    });
+}
+
+
 // Suggestion Button:
 // EXAMPLE usage of endpoint:
 async function getSuggestion() {
     if (!chatMessages){
         var chatMessages = document.getElementById("chatbot-messages");
-    };
+    }
+    if (window.mapMarkers) {
+        for (const [key, value] of Object.entries(window.mapMarkers)) {
+            value.remove();
+        }
+    }
     try {
         // Send a POST request to the /suggestion endpoint
         const response = await fetch('/suggestion', {
@@ -1646,11 +1661,11 @@ async function getSuggestion() {
         const data = await response.json();
         // Check response in console:
         console.log('Response from /suggestion: ', data);
-
+        // Get info of poi and make marker
+        await awaitGetPlaceCoordWithName(data.POI);
         //Post the message in chatbox:
-        appendMessage(data, 'guide-message', chatMessages, 'message');
-        // Subsequently, can display yes/no option, and use postMessage to process the subsequent routing functions.
-        // Problem will occur is user just says "yes", because it does not specify where to go
+        appendMessage(data.message, 'guide-message', chatMessages, 'location');
+        attachEventListenersToHyperlinks();
     } catch (error) {
         console.error('Error fetching suggestion:', error);
     }

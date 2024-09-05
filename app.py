@@ -276,11 +276,18 @@ def find_nearby():
 @app.route('/suggestion', methods=['POST'])
 def suggest():
     import random
-    samples = {1:"It’s almost time for lunch, and there is a popular Chinese restaurant, Feng Shui Inn, nearby. Would you like me to direct you there? ",
-               2:"There is a popular adventure activity (iFly Singapore) near you which is highly rated on Xiaohongshu, would you like to try it out?"}
+    samples = {1:"It’s almost time for lunch, and there is a popular Chinese restaurant, ~Feng Shui Inn~, nearby. Would you like me to direct you there? ",
+               2:"There is a popular adventure activity (~iFly Singapore~) near you which is highly rated on Xiaohongshu, would you like to try it out?"}
+    sample_pois = {1:"Feng Shui Inn", 2:"iFly Singapore"}
     choice = random.randint(1, 2)
     response = samples[choice]
-    return jsonify(response)
+    poi = sample_pois[choice]
+    # Create hyperlinks with the route names
+    hyperlinks = create_hyperlinks([poi])
+
+    # Insert hyperlinks using the `~` delimiter
+    response_text = insertHyperlinks(response, hyperlinks)
+    return jsonify({"message":response_text, "POI": poi})
 
 # Not needed in sentosa variant right now.
 # @app.route('/get_centroids', methods=['POST'])
