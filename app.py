@@ -278,7 +278,7 @@ def suggest():
     import random
     samples = {1:"It’s almost time for lunch, and there is a popular Chinese restaurant, Feng Shui Inn, nearby. Would you like me to direct you there? ",
                2:"There is a popular adventure activity (iFly Singapore) near you which is highly rated on Xiaohongshu, would you like to try it out?"}
-    choice = random.uniform(1, 2)
+    choice = random.randint(1, 2)
     response = samples[choice]
     return jsonify(response)
 
