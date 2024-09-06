@@ -1443,7 +1443,7 @@ async function get_coordinates_without_route(data) {
             map.removeSource('route');
         }
         addMarkers(placeNames, waypoints);
-        let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
+        //let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
         return orderOfVisit;
     } catch (error) {
         console.error('Error fetching coordinates:', error);
