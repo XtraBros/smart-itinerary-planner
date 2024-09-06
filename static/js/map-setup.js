@@ -19,7 +19,6 @@ let routeIndex = 0;
 let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
-let placeLocation;
 let thumbnailURI;
 
 
@@ -129,6 +128,8 @@ const zoomControls = document.getElementById('zoom-controls');
 const pauseAndpaly = document.getElementById('pauseAndpaly');
 const foodBox = document.getElementById('foodBox');
 const startNav = document.getElementById('startNav');
+const totMinus = document.getElementById('totMinus');
+const totDist = document.getElementById('totDist');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
@@ -778,6 +779,9 @@ function updateUserLocation(newLocation) {
 }
 
 function setMapRoute(resRoute) {
+    if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
+        setUserLocationMark(resRoute.coordinates[0])
+    }
     // Add route to map
     if (!map.getSource('route')) {
         map.addSource('route', {
@@ -887,7 +891,12 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 if (data.routes && data.routes.length > 0) {
                     var legs = data.routes[0].legs;
                     api_response = data.routes[0]
-                    // console.log('------aaa->>>>>>>>>', data)
+                    const totalDistance = legs[0].distance.toFixed(2);
+                    const totalDuration = legs[0].duration;
+                    if (totMinus && totDist) {
+                        totMinus.innerText = `${Math.ceil(totalDuration / 60)}min`
+                        totDist.innerText =  totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
+                    }
                     route = data.routes[0].geometry;
                     steps = data.routes[0].legs[0].steps;
                     return { legs, route };
@@ -903,7 +912,6 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
                     // console.log('------result->>>>>>>>>', result)
-                    // setMapRoute(result.route)
                     // Extract route instructions
                     if (result.route.coordinates && result.route.coordinates.length) {
                         cneterPot = result.route.coordinates[Math.floor(result.route.coordinates.length * 0.5)]
