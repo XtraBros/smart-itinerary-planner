@@ -171,7 +171,9 @@ h3 {
   display: inline-block;
   background-color: #f6f6f6;
   color: #2c2c2c;
+  width: 100%; box-sizing: border-box;
   padding: 6px 8px;
+  min-height: 40px;
   margin-left: 5px;
   line-height: 24px;
   border-radius: 10px;
@@ -800,5 +802,38 @@ a.mapboxgl-ctrl-logo {
 
   10%,20%,70% {
       transform: scaleY(0)
+  }
+}
+
+.dots {
+  width: 2.6em;
+  display: flex; padding-top: 8px;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dots div {
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 50%;
+  background-color: #7b7b7b;
+  animation: fade 0.8s ease-in-out alternate infinite;
+}
+
+.dots div:nth-of-type(1) {
+  animation-delay: -0.4s;
+}
+
+.dots div:nth-of-type(2) {
+  animation-delay: -0.2s;
+}
+
+@keyframes fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }

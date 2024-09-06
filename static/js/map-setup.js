@@ -1075,6 +1075,7 @@ function submitChat(event) {
 async function postMessage(message, chatMessages) {
     // Append the visitor's message
     appendMessage(message, "visitor-message", chatMessages);
+    appendMessage(null, "guide-message", chatMessages);
     try {
         // Send message to Flask endpoint and get the response
         let response = await fetch('/ask_plan', {
@@ -1218,6 +1219,27 @@ function closedNavfun() {
 // creaate template and styles for each visitor/guide message.
 function appendMessage(text, className, chatMessages, type, suggestion) {
     if (className == "guide-message") {
+        if (!text) {
+            chatMessages.innerHTML += `<div id='loading' class='chat-message ${className}'>
+                <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
+                <div class='guideText'>
+                    <div class='messageStype'>
+                        <div class="dots">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `
+            return;
+        } else {
+            const bloaDox =document.getElementById("loading");
+            if (bloaDox) {
+                bloaDox.remove();
+            }
+        }
         if (type === 'route' || type === 'location') {
             chatMessages.innerHTML += `<div class='chat-message ${className}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
