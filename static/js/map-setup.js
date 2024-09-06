@@ -186,6 +186,11 @@ window.onload = function () {
         },
     });
     swiper.on('click', function (swiper, event) {
+        if (window.mapMarkers) {
+            for (const [key, value] of Object.entries(window.mapMarkers)) {
+                value.remove();
+            }
+        }
         pauseAndpaly.style.display = 'none';
         const swiperconent = document.getElementById('swiperconent');
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
@@ -816,6 +821,14 @@ function setMapRoute(resRoute) {
                 'symbol-spacing': 2,
                 'icon-image': 'arrow',
                 'icon-size': 0.5,
+                // 'icon-size': [
+                //     'interpolate',
+                //     ['linear'],
+                //     ['zoom'],
+                //     14, 0.4,
+                //     16, 0.6,     // 缩放级别 10 时图标大小为 1
+                //     17, 0.7    // 缩放级别 15 时图标大小为 1.5
+                // ],
                 'icon-allow-overlap': true,
             },
         });
@@ -856,6 +869,43 @@ function setMapRoute(resRoute) {
     }
 }
 
+function paintLine(resRoute) {
+    if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
+        setUserLocationMark(resRoute.coordinates[0])
+    }
+    if (!map.getSource('previewRoute')) {
+        map.addSource('previewRoute', {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'properties': {},
+                'geometry': resRoute,
+            }
+        });
+    } else {
+        map.getSource('previewRoute').setData({
+            "type": "Feature",
+            "geometry": resRoute,
+        });
+    }
+    if (!map.getLayer('prewroute')) {
+        map.addLayer({
+            id: 'prewroute',
+            type: 'line',
+            source: 'previewRoute',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-color': '#e286aa',
+                'line-width': 8,
+                'line-opacity': 1,
+            }
+        });
+    }
+}
+
 function displayRoute(placeNames, rawCoordinates, fromUser) {
     return new Promise((resolve, reject) => {
         // Clear existing routes
@@ -891,6 +941,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 if (data.routes && data.routes.length > 0) {
                     var legs = data.routes[0].legs;
                     api_response = data.routes[0]
+                    // console.log('------data->>>>>>>>>', data)
                     const totalDistance = legs[0].distance.toFixed(2);
                     const totalDuration = legs[0].duration;
                     if (totMinus && totDist) {
@@ -1070,6 +1121,7 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
+            await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
             // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
@@ -1123,17 +1175,13 @@ async function navFunc(e, id, typeSuge) {
     popupModal.style.display = 'none';
     if (simulationRunning) return;
     startNav.classList.add('fadeshowin');
-    // const navigation = document.getElementById('navigation');
-    // navigation.classList.add('fadeshowin')
     if (typeSuge && typeSuge === 'suggestion' && suggestionData) {
         let waypoints = suggestionData.coordinates.map(coord => [coord.lng, coord.lat]);
         if (suggestionData && waypoints && waypoints.length) {
             await displayRoute(suggestionData.places, waypoints, true);
         }
     }
-    if (!map.getSource('walked-route')) {
-        setMapRoute(route)
-    }
+    paintLine(route)
 }
 
 function closedNavfun() {
@@ -1151,6 +1199,9 @@ function closedNavfun() {
     }
     if (map.getSource('walked-route')) {
         map.removeSource('walked-route');
+    }
+    if (map.getLayer('prewroute')) {
+        map.removeLayer('prewroute');
     }
     if (window.mapMarkers) {
         for (const [key, value] of Object.entries(window.mapMarkers)) {
@@ -1500,7 +1551,8 @@ function addMarkers(placeNames, waypoints) {
                     startNav.classList.add('fadeshowin');
                     poiSwiper.classList.remove('fadeshowin');
                     await displayRoute([placeName], [coord], true);
-                    setMapRoute(route)
+                    paintLine(route)
+                    // setMapRoute(route)
                 }
     
                 // Create a popup and marker for the map
@@ -1630,6 +1682,10 @@ async function getSuggestion() {
 // start
 function startUserNav() {
     console.log('-----steps-->>>', steps)
+    if (map.getLayer('prewroute')) {
+        map.removeLayer('prewroute');
+    }
+    setMapRoute(route)
     startNav.classList.remove('fadeshowin');
     enableNavigationMode(steps);
 }
