@@ -147,7 +147,7 @@ def get_text():
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
                  Structure your response as a bulleted list only if there are multiple destinations. Ensure all destinations are covered in you response.
                  If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
-                 Please encase the names of the attractions in `~` symbols (e.g., `~Attraction Name~`) to distinguish them. Use the exact names given in the list."""},
+                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list."""},
                 {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
@@ -155,7 +155,7 @@ def get_text():
 
         # Create hyperlinks with the route names
         hyperlinks = create_hyperlinks(route)
-
+        print(hyperlinks)
         # Insert hyperlinks using the `~` delimiter
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
 
@@ -232,15 +232,15 @@ def place_info():
             description = result['description']
 
             # Try different file extensions to find the corresponding thumbnail
-            thumbnail_data = None
-            filename = f"{re.sub(r'[: ,]+', '-', place_name.lower())}.jpg"
-            thumbnail_file = fs.find_one({"filename": filename})
-            if thumbnail_file:
-                thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
+            #thumbnail_data = None
+            # filename = f"{re.sub(r'[: ,]+', '-', place_name.lower())}.jpg"
+            # thumbnail_file = fs.find_one({"filename": filename})
+            # if thumbnail_file:
+            #     thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
 
             place_info[place_name] = {
                 "description": description,
-                "thumbnail": thumbnail_data,
+                #"thumbnail": thumbnail_data,
             }
 
     return jsonify(place_info)

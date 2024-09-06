@@ -18,6 +18,7 @@ let steps;
 let routeIndex = 0;
 let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
+let thumbnailURI;
 
 
 // User location
@@ -56,17 +57,21 @@ async function getPoisByLocation(location) {
         }
 
         const poisData = await response.json();
-        const placeInfoResponse = await fetchPlacesData(poisData)
-        const swiperconent = document.getElementById('swiperconent')
-        const poiList = document.getElementById('poiList')
+        const placeInfoResponse = await fetchPlacesData(poisData);
+        const swiperconent = document.getElementById('swiperconent');
+        const poiList = document.getElementById('poiList');
+
         let contenxt = '';
         let listCont = '';
         poisData.forEach((placeName, index) => {
-            const base64Thumbnail = placeInfoResponse[placeName] ? `data:image/jpeg;base64,${placeInfoResponse[placeName].thumbnail}` : '/static/icons/default.png';
+            // Construct the Google Cloud thumbnail URL
+            const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}/${formattedPlaceName}.jpg` : '/static/icons/default.png';
+
             contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                             <div class="slideItme">
                                 <div class="swperimg">
-                                    <img src="${base64Thumbnail}" alt="${placeName}" srcset="">
+                                    <img src="${thumbnailUrl}" alt="${placeName}" srcset="">
                                 </div>
                                 <div class="visitors">
                                     <h4>${placeName}</h4>
@@ -84,9 +89,10 @@ async function getPoisByLocation(location) {
                                 </div>
                             </div>
                         </div>`;
+
             listCont += `<div class="itemSlide" key='${index}' data-name='${placeName}'>
                             <div class="listimg">
-                                <img src="${base64Thumbnail}" alt="${placeName}" width="100%" srcset="">
+                                <img src="${thumbnailUrl}" alt="${placeName}" width="100%" srcset="">
                             </div>
                             <div class="titleBox">
                                 <div class="title">${placeName}</div>
@@ -100,11 +106,12 @@ async function getPoisByLocation(location) {
                             <div class="disqu vistDesc">
                                 <span class="islander">Islander earns 50 points</span>
                             </div>
-                        </div>
-                        `;
+                        </div>`;
         });
-        swiperconent.innerHTML = contenxt
-        poiList.innerHTML = listCont
+        
+        swiperconent.innerHTML = contenxt;
+        poiList.innerHTML = listCont;
+
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;
@@ -257,7 +264,7 @@ fetch('/config')
     .then(data => {
         // Assuming the response contains a JSON object with an 'accessToken' property
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
-
+        thumbnailURI = data.config.GOOGLE_CLOUD_URI;
         map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v12',
@@ -1447,41 +1454,46 @@ function addMarkers(placeNames, waypoints) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
+                
+                // Remove unwanted characters from placeName
                 placeName = placeName.replace(/[\[\]]/g, '');
-                console.log(placeName)
-
+                console.log(placeName);
+    
+                // Set up the basic place information
                 var place = {
                     description: placesData[placeName] ? placesData[placeName]['description'] : '',
                     name: placeName,
                 };
-                // Use the Base64 thumbnail fetched from the backend
-                var base64Thumbnail = placesData[placeName] ? placesData[placeName].thumbnail : '';  // Update: Access the thumbnail from the nested object
-                if (base64Thumbnail) {
-                    place.thumbnail = `data:image/jpeg;base64,${base64Thumbnail}`;
-                } else {
-                    place.thumbnail = '/static/icons/default.png'; // Fallback if no thumbnail is found
-                }
-
+    
+                // Create the thumbnail URL using Google Cloud Storage
+                const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
+                place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
+    
+                // Generate the popup content using the template
                 var popupContentString = populateTemplate(template, place);
                 var doc = parser.parseFromString(popupContentString, 'text/html');
                 var popupContent = doc.querySelector('.info-card-content');
+    
+                // Add functionality for the button in the popup
                 popupContent.querySelector('button').onclick = async function () {
-                    await displayRoute([name], [coord], true);
+                    await displayRoute([placeName], [coord], true);
                     enableNavigationMode(steps);
                 }
+    
+                // Create a popup and marker for the map
                 var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
-
                 var popup = new mapboxgl.Popup().setDOMContent(popupContent);
-
                 var marker = new mapboxgl.Marker()
                     .setLngLat([coord[0], coord[1]])
                     .setPopup(popup)
                     .addTo(map);
-
-                window.mapMarkers[popupId] = marker;  // Store marker by ID
+    
+                // Store marker by ID
+                window.mapMarkers[popupId] = marker;
             });
         });
-    });
+    });    
 }
 
 
