@@ -745,6 +745,22 @@ a.mapboxgl-ctrl-logo {
   -webkit-line-clamp: 1;
   padding-bottom: 3px;
 }
+#startNav {
+  position: absolute; width: 100%; z-index: 999;
+  bottom: 0px; height: auto; background-color: white; border-top-left-radius: 20px;
+  border-top-right-radius: 20px; padding: 16px; box-sizing: border-box;
+}
+.startBottm, .cancelBottm {
+  background-color: #FF8A00; color: white; text-align: center; border: none; height: 44px;
+  line-height: 44px; width: 100%; border-radius: 40px; margin-top: 16px;
+}
+.infoWilk, .funcBot {
+  display: flex; justify-content: center; gap: 15px; align-items: center; font-size: 13px; color: #666; line-height: 20px;
+}
+.cancelBottm {
+  background-color: white; border: 1px solid #FF8A00; color: #FF8A00;
+}
+.minumts { color: #2C2C2C; font-weight: 600; font-size: 18px; padding: 3px 0px; }
 /* 移出动画 */
 @keyframes fadeshowout {
   0% {
