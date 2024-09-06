@@ -66,7 +66,7 @@ async function getPoisByLocation(location) {
         poisData.forEach((placeName, index) => {
             // Construct the Google Cloud thumbnail URL
             const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}/${formattedPlaceName}.jpg` : '/static/icons/default.png';
+            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
 
             contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                             <div class="slideItme">
@@ -1431,7 +1431,7 @@ async function get_coordinates_without_route(data) {
             map.removeSource('route');
         }
         addMarkers(placeNames, waypoints);
-        let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
+        //let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
         return orderOfVisit;
     } catch (error) {
         console.error('Error fetching coordinates:', error);
