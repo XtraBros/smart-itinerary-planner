@@ -67,7 +67,7 @@ async function getPoisByLocation(location) {
         poisData.forEach((placeName, index) => {
             // Construct the Google Cloud thumbnail URL
             const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}/${formattedPlaceName}.jpg` : '/static/icons/default.png';
+            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
 
             contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                             <div class="slideItme">
