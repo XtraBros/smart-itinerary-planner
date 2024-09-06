@@ -151,7 +151,6 @@ window.onload = function () {
         tishiDom.style.display = "none";
         localStorage.setItem('isFirstOpen', true)
         foodBox.classList.remove('fadeshowin');
-        getSuggestion();
     }
     window.onclick = function (event) {
         if (event.target === popupModal) {
@@ -184,6 +183,7 @@ window.onload = function () {
 
 function domeShowBootFuc() {
     foodBox.classList.add('fadeshowin');
+    getSuggestion();
 }
 
 async function getPlaceCoordWithName(place) {
