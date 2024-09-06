@@ -361,14 +361,8 @@ fetch('/config')
             map.addControl(geolocateControl);
 
             // Override the geolocate event to use navigator.geolocation
-            geolocateControl.on('geolocate', () => {
-                getUserCurrentPosition((userLoc) => {
-                    // Set the user's location on the map
-                    map.flyTo({
-                        center: [userLoc.lng, userLoc.lat],
-                        essential: true // this animation is considered essential with respect to prefers-reduced-motion
-                    });
-                });
+            geolocateControl.on('geolocate', (e) => {
+                setUserLocationMark([e.coords.longitude, e.coords.latitude]);
             });
         });
     })
@@ -420,6 +414,19 @@ function enableNavigationMode(data) {
     //     maximumAge: 0, // Don't use a cached position
     //     timeout: 10000 // Set a timeout for getting the location
     // });
+}
+
+function setUserLocationMark(coord) {
+    if (!userMarker) {
+        const el = document.createElement('div');
+        el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
+        userMarker = new mapboxgl.Marker({
+            color: 'red',
+            element: el
+        })
+            .setLngLat(coord)
+            .addTo(map);
+    }
 }
 
 function disableNavigationMode() {
@@ -599,18 +606,7 @@ function simulateUserLocation(route) {
     imgs.setAttribute('src', `static/icons/pause.svg`);
     const targetDistance = 5; // meters per step for interpolation
 
-    // Initialize the user marker if it doesn't exist
-    if (!userMarker) {
-        const el = document.createElement('div');
-        el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
-        userMarker = new mapboxgl.Marker({
-            color: 'red',
-            // rotation: 45,
-            element: el
-        })
-            .setLngLat([route.coordinates[0][0], route.coordinates[0][1]])
-            .addTo(map);
-    }
+    setUserLocationMark([route.coordinates[0][0], route.coordinates[0][1]])
 
     function updateLocation() {
         if (!simulationRunning) return; // If not running, do nothing
@@ -1118,7 +1114,6 @@ async function navFunc(e, id, typeSuge) {
     const popupModal = document.getElementById('popupModal');
     popupModal.style.display = 'none';
     if (simulationRunning) return;
-    
     startNav.classList.add('fadeshowin');
     // const navigation = document.getElementById('navigation');
     // navigation.classList.add('fadeshowin')

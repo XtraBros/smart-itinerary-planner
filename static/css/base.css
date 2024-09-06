@@ -760,6 +760,7 @@ a.mapboxgl-ctrl-logo {
 .cancelBottm {
   background-color: white; border: 1px solid #FF8A00; color: #FF8A00;
 }
+.mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { display: none; }
 .minumts { color: #2C2C2C; font-weight: 600; font-size: 18px; padding: 3px 0px; }
 /* 移出动画 */
 @keyframes fadeshowout {
