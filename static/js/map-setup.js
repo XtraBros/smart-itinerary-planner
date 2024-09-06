@@ -18,6 +18,7 @@ let steps;
 let routeIndex = 0;
 let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
+let suggestionData;
 
 
 // User location
@@ -134,6 +135,8 @@ window.onload = function () {
         listButton.style.display = 'block';
         pauseAndpaly.style.display = 'none';
         disableNavigationMode();
+        simulationRunning = false;
+        clearTimeout(simulationTimeout);
     }
 
     pauseAndpaly.onclick = function () {
@@ -184,8 +187,10 @@ function domeShowBootFuc() {
     getSuggestion();
 }
 
-async function getPlaceCoordWithName(place) {
-    disableNavigationMode();
+async function getPlaceCoordWithName(place, isNotMarker) {
+    if (!isNotMarker) {
+        disableNavigationMode();
+    }
     closedNavfun();
     if (map.getSource('route')) {
         map.removeLayer('route');
@@ -210,11 +215,14 @@ async function getPlaceCoordWithName(place) {
 
     let responseData = await response.json();
     let waypoints = responseData.coordinates.map(coord => [coord.lng, coord.lat]);
-    map.flyTo({
-        center: waypoints[0],
-        essential: true
-    });
-    addMarkers([place], waypoints);
+    if (!isNotMarker) {
+        map.flyTo({
+            center: waypoints[0],
+            essential: true
+        });
+        addMarkers([place], waypoints);
+    }
+    return responseData
 }
 
 function systemQuestionFunc(e) {
@@ -274,10 +282,13 @@ fetch('/config')
         });
         // variable to allow resizing function
         window.mapboxMap = map;
+        const bounds = [
+            [103.6, 1.2],  // 西南角 (大致在西南海域)
+            [104.1, 1.5]   // 东北角 (大致在东北海域)
+        ];
+        map.setMaxBounds(bounds);
         map.on('load', function () {
             // Define and set bounds for the map
-            // var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
-            // map.setMaxBounds(bounds);
 
             // Add custom tiles
             // map.addSource('custom-tiles', {
@@ -1087,11 +1098,23 @@ async function postMessage(message, chatMessages) {
     } 
 }
 
-function navFunc(e, id) {
+async function navFunc(e, id, typeSuge) {
     const popupModal = document.getElementById('popupModal');
     const navigation = document.getElementById('navigation');
     navigation.classList.add('fadeshowin')
     popupModal.style.display = 'none';
+    // Call your function here
+    if (simulationRunning) return;
+    if (!map.getSource('walked-route')) {
+        setMapRoute(route)
+    }
+    if (typeSuge && typeSuge === 'suggestion' && suggestionData) {
+        let waypoints = suggestionData.coordinates.map(coord => [coord.lng, coord.lat]);
+        if (suggestionData && waypoints && waypoints.length) {
+            await displayRoute(suggestionData.places, waypoints, true);
+        }
+    }
+    enableNavigationMode(steps);
 }
 
 function closedNavfun() {
@@ -1123,7 +1146,7 @@ function closedNavfun() {
 }
 
 // creaate template and styles for each visitor/guide message.
-function appendMessage(text, className, chatMessages, type) {
+function appendMessage(text, className, chatMessages, type, suggestion) {
     if (className == "guide-message") {
         if (type === 'route' || type === 'location') {
             chatMessages.innerHTML += `<div class='chat-message ${className}'>
@@ -1132,10 +1155,7 @@ function appendMessage(text, className, chatMessages, type) {
                 <div class='messageStype'>
                     ${text}
                     <p style='margin-top: 10px;'>
-                        <button id="detailsButton">
-                            Details
-                        </button>
-                        <button id="takeThereBut" onclick="navFunc(event, '${className}')">
+                        <button id="takeThereBut" onclick="navFunc(event, '${className}', '${suggestion}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>
@@ -1158,18 +1178,6 @@ function appendMessage(text, className, chatMessages, type) {
     } else {
         chatMessages.innerHTML += `<div class='chat-message ${className}'>${marked.parse(text)}</div>`
     }
-    var takeThereBut = document.getElementById("takeThereBut");
-    if (takeThereBut) {
-        takeThereBut.addEventListener("click", function () {
-            // Call your function here
-            if (simulationRunning) return;
-            if (!map.getSource('walked-route')) {
-                setMapRoute(route)
-            }
-            enableNavigationMode(steps);
-        });
-    }
-
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -1547,8 +1555,8 @@ function attachEventListenersToHyperlinks() {
 function awaitGetPlaceCoordWithName(place) {
     // Return a promise that resolves when the getPlaceCoordWithName function completes
     return new Promise((resolve, reject) => {
-        getPlaceCoordWithName(place)
-            .then(() => resolve()) // Resolve the promise when getPlaceCoordWithName completes
+        getPlaceCoordWithName(place, true)
+            .then((res) => resolve(res)) // Resolve the promise when getPlaceCoordWithName completes
             .catch(error => reject(error)); // Reject the promise if there’s an error
     });
 }
@@ -1584,10 +1592,10 @@ async function getSuggestion() {
         // Check response in console:
         console.log('Response from /suggestion: ', data);
         // Get info of poi and make marker
-        await awaitGetPlaceCoordWithName(data.POI);
+        suggestionData = await awaitGetPlaceCoordWithName(data.POI);
         //Post the message in chatbox:
-        appendMessage(data.message, 'guide-message', chatMessages, 'location');
-        attachEventListenersToHyperlinks();
+        appendMessage(data.message, 'guide-message', chatMessages, 'location', 'suggestion');
+        // attachEventListenersToHyperlinks();
     } catch (error) {
         console.error('Error fetching suggestion:', error);
     }

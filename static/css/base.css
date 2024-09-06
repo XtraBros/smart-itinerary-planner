@@ -206,7 +206,7 @@ h3 {
   border: 1px solid #ff8a00;
   border: none;
   border-radius: 20px;
-  margin-left: 10px;
+  /* margin-left: 10px; */
   line-height: 18px;
   padding: 6px 16px;
   color: white;
