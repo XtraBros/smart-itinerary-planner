@@ -203,6 +203,24 @@
             </div>
         </div>
     </div>
+
+    <!-- 预览导航 -->
+     <div id="startNav" class="none">
+        <div class="infoWilk">
+            <div>
+                <img src="static/icons/walk.svg" alt="" srcset="">
+            </div>
+            <div>
+                <p>walk</p>
+                <p class="minumts">30min</p>
+                <p>2.4km</p>
+            </div>
+        </div>
+        <div class="funcBot">
+            <button class="cancelBottm" onclick="cancelNav()">Cancel</button>
+            <button class="startBottm" onclick="startUserNav()">Start</button>
+        </div>
+     </div>
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
     <script src="{{ url_for('static', filename='js/language.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>

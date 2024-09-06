@@ -18,6 +18,8 @@ let steps;
 let routeIndex = 0;
 let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
+let suggestionData;
+let placeLocation;
 let thumbnailURI;
 
 
@@ -126,6 +128,7 @@ const poiSwiper = document.getElementById('poiSwiper');
 const zoomControls = document.getElementById('zoom-controls');
 const pauseAndpaly = document.getElementById('pauseAndpaly');
 const foodBox = document.getElementById('foodBox');
+const startNav = document.getElementById('startNav');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
@@ -141,6 +144,8 @@ window.onload = function () {
         listButton.style.display = 'block';
         pauseAndpaly.style.display = 'none';
         disableNavigationMode();
+        simulationRunning = false;
+        clearTimeout(simulationTimeout);
     }
 
     pauseAndpaly.onclick = function () {
@@ -180,6 +185,7 @@ window.onload = function () {
         },
     });
     swiper.on('click', function (swiper, event) {
+        pauseAndpaly.style.display = 'none';
         const swiperconent = document.getElementById('swiperconent');
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
@@ -191,8 +197,10 @@ function domeShowBootFuc() {
     getSuggestion();
 }
 
-async function getPlaceCoordWithName(place) {
-    disableNavigationMode();
+async function getPlaceCoordWithName(place, isNotMarker) {
+    if (!isNotMarker) {
+        disableNavigationMode();
+    }
     closedNavfun();
     if (map.getSource('route')) {
         map.removeLayer('route');
@@ -217,11 +225,14 @@ async function getPlaceCoordWithName(place) {
 
     let responseData = await response.json();
     let waypoints = responseData.coordinates.map(coord => [coord.lng, coord.lat]);
-    map.flyTo({
-        center: waypoints[0],
-        essential: true
-    });
-    addMarkers([place], waypoints);
+    if (!isNotMarker) {
+        map.flyTo({
+            center: waypoints[0],
+            essential: true
+        });
+        addMarkers([place], waypoints);
+    }
+    return responseData
 }
 
 function systemQuestionFunc(e) {
@@ -281,10 +292,13 @@ fetch('/config')
         });
         // variable to allow resizing function
         window.mapboxMap = map;
+        const bounds = [
+            [103.6, 1.2],  // 西南角 (大致在西南海域)
+            [104.1, 1.5]   // 东北角 (大致在东北海域)
+        ];
+        map.setMaxBounds(bounds);
         map.on('load', function () {
             // Define and set bounds for the map
-            // var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
-            // map.setMaxBounds(bounds);
 
             // Add custom tiles
             // map.addSource('custom-tiles', {
@@ -801,7 +815,7 @@ function setMapRoute(resRoute) {
                 'symbol-placement': 'line',
                 'symbol-spacing': 2,
                 'icon-image': 'arrow',
-                'icon-size': 0.7,
+                'icon-size': 0.5,
                 'icon-allow-overlap': true,
             },
         });
@@ -835,7 +849,7 @@ function setMapRoute(resRoute) {
                 'symbol-placement': 'line',
                 'symbol-spacing': 2,
                 'icon-image': 'walkedArrow',
-                'icon-size': 0.7,
+                'icon-size': 0.5,
                 'icon-allow-overlap': true,
             },
         });
@@ -877,6 +891,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 if (data.routes && data.routes.length > 0) {
                     var legs = data.routes[0].legs;
                     api_response = data.routes[0]
+                    // console.log('------aaa->>>>>>>>>', data)
                     route = data.routes[0].geometry;
                     steps = data.routes[0].legs[0].steps;
                     return { legs, route };
@@ -889,9 +904,14 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
         // Process fetched directions data or centroids
         fetchDirectionsPromise
             .then(result => {
+                let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
-                    setMapRoute(result.route)
+                    // console.log('------result->>>>>>>>>', result)
+                    // setMapRoute(result.route)
                     // Extract route instructions
+                    if (result.route.coordinates && result.route.coordinates.length) {
+                        cneterPot = result.route.coordinates[Math.floor(result.route.coordinates.length * 0.5)]
+                    }
                     var instructions = extractRouteInstructions(result.legs, placeNames);
                     resolve(instructions);
                 } else if (result.newUrl) {
@@ -901,9 +921,9 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                     throw new Error('Invalid data received');
                 }
                 map.flyTo({
-                    center: [userLocation.lng, userLocation.lat],
+                    center: cneterPot,
                     essential: true, // This ensures the animation happens even with prefers-reduced-motion
-                    zoom: 15 // Increase the zoom level as needed
+                    zoom: 14 // Increase the zoom level as needed
                 });
             })
             .catch(error => {
@@ -1094,11 +1114,23 @@ async function postMessage(message, chatMessages) {
     } 
 }
 
-function navFunc(e, id) {
+async function navFunc(e, id, typeSuge) {
     const popupModal = document.getElementById('popupModal');
-    const navigation = document.getElementById('navigation');
-    navigation.classList.add('fadeshowin')
     popupModal.style.display = 'none';
+    if (simulationRunning) return;
+    
+    startNav.classList.add('fadeshowin');
+    // const navigation = document.getElementById('navigation');
+    // navigation.classList.add('fadeshowin')
+    if (typeSuge && typeSuge === 'suggestion' && suggestionData) {
+        let waypoints = suggestionData.coordinates.map(coord => [coord.lng, coord.lat]);
+        if (suggestionData && waypoints && waypoints.length) {
+            await displayRoute(suggestionData.places, waypoints, true);
+        }
+    }
+    if (!map.getSource('walked-route')) {
+        setMapRoute(route)
+    }
 }
 
 function closedNavfun() {
@@ -1130,7 +1162,7 @@ function closedNavfun() {
 }
 
 // creaate template and styles for each visitor/guide message.
-function appendMessage(text, className, chatMessages, type) {
+function appendMessage(text, className, chatMessages, type, suggestion) {
     if (className == "guide-message") {
         if (type === 'route' || type === 'location') {
             chatMessages.innerHTML += `<div class='chat-message ${className}'>
@@ -1139,10 +1171,7 @@ function appendMessage(text, className, chatMessages, type) {
                 <div class='messageStype'>
                     ${text}
                     <p style='margin-top: 10px;'>
-                        <button id="detailsButton">
-                            Details
-                        </button>
-                        <button id="takeThereBut" onclick="navFunc(event, '${className}')">
+                        <button id="takeThereBut" onclick="navFunc(event, '${className}', '${suggestion}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>
@@ -1165,18 +1194,6 @@ function appendMessage(text, className, chatMessages, type) {
     } else {
         chatMessages.innerHTML += `<div class='chat-message ${className}'>${marked.parse(text)}</div>`
     }
-    var takeThereBut = document.getElementById("takeThereBut");
-    if (takeThereBut) {
-        takeThereBut.addEventListener("click", function () {
-            // Call your function here
-            if (simulationRunning) return;
-            if (!map.getSource('walked-route')) {
-                setMapRoute(route)
-            }
-            enableNavigationMode(steps);
-        });
-    }
-
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -1477,8 +1494,10 @@ function addMarkers(placeNames, waypoints) {
     
                 // Add functionality for the button in the popup
                 popupContent.querySelector('button').onclick = async function () {
+                    startNav.classList.add('fadeshowin');
+                    poiSwiper.classList.remove('fadeshowin');
                     await displayRoute([placeName], [coord], true);
-                    enableNavigationMode(steps);
+                    setMapRoute(route)
                 }
     
                 // Create a popup and marker for the map
@@ -1559,8 +1578,8 @@ function attachEventListenersToHyperlinks() {
 function awaitGetPlaceCoordWithName(place) {
     // Return a promise that resolves when the getPlaceCoordWithName function completes
     return new Promise((resolve, reject) => {
-        getPlaceCoordWithName(place)
-            .then(() => resolve()) // Resolve the promise when getPlaceCoordWithName completes
+        getPlaceCoordWithName(place, true)
+            .then((res) => resolve(res)) // Resolve the promise when getPlaceCoordWithName completes
             .catch(error => reject(error)); // Reject the promise if there’s an error
     });
 }
@@ -1596,11 +1615,28 @@ async function getSuggestion() {
         // Check response in console:
         console.log('Response from /suggestion: ', data);
         // Get info of poi and make marker
-        await awaitGetPlaceCoordWithName(data.POI);
+        suggestionData = await awaitGetPlaceCoordWithName(data.POI);
         //Post the message in chatbox:
-        appendMessage(data.message, 'guide-message', chatMessages, 'location');
-        attachEventListenersToHyperlinks();
+        appendMessage(data.message, 'guide-message', chatMessages, 'location', 'suggestion');
+        // attachEventListenersToHyperlinks();
     } catch (error) {
         console.error('Error fetching suggestion:', error);
     }
+}
+
+// start
+function startUserNav() {
+    console.log('-----steps-->>>', steps)
+    startNav.classList.remove('fadeshowin');
+    enableNavigationMode(steps);
+}
+function cancelNav() {
+    closedNavfun();
+    map.easeTo({
+        pitch: 0, // Back to 2D top-down view
+        bearing: 0,
+        zoom: 13, // Adjust zoom level if needed
+        duration: 1000
+    });
+    startNav.classList.remove('fadeshowin');
 }
