@@ -869,8 +869,27 @@ function setMapRoute(resRoute) {
     }
 }
 
+function userCalculate(start, end) {
+    const startLat = start[1] * Math.PI / 180;
+    const startLng = start[0] * Math.PI / 180;
+    const endLat = end[1] * Math.PI / 180;
+    const endLng = end[0] * Math.PI / 180;
+
+    const dJiaodiLng = endLng - startLng;
+    const y = Math.sin(dJiaodiLng) * Math.cos(endLat);
+    const x = Math.cos(startLat) * Math.sin(endLat) - 
+              Math.sin(startLat) * Math.cos(endLat) * Math.cos(dJiaodiLng);
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
+    
+    return (bearing + 360) % 360; // 确保角度在0-360之间
+}
+
 function paintLine(resRoute) {
+    let bers = null;
+    let cneterPot = [userLocation.lng, userLocation.lat]
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
+        bers = userCalculate(resRoute.coordinates[0], resRoute.coordinates[resRoute.coordinates.length - 1]);
+        cneterPot = resRoute.coordinates[Math.floor(resRoute.coordinates.length * 0.5)]
         setUserLocationMark(resRoute.coordinates[0])
     }
     if (!map.getSource('previewRoute')) {
@@ -902,6 +921,14 @@ function paintLine(resRoute) {
                 'line-width': 8,
                 'line-opacity': 1,
             }
+        });
+    }
+    if (bers) {
+        map.easeTo({
+            bearing: bers,
+            zoom: 15,
+            duration: 1000,
+            center: cneterPot,
         });
     }
 }
@@ -1574,7 +1601,6 @@ function addMarkers(placeNames, waypoints) {
                     poiSwiper.classList.remove('fadeshowin');
                     await displayRoute([placeName], [coord], true);
                     paintLine(route)
-                    // setMapRoute(route)
                 }
     
                 // Create a popup and marker for the map
