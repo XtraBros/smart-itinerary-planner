@@ -7,6 +7,6 @@
   "POI_DB_NAME": "POIDATA",
   "DISTANCE_MATRIX": "DISTANCEMATRIX",
   "CLUSTER_LOCATIONS": "CLUSTERLOCATIONS",
-  "OPENAI_API_KEY": "@OPENAI_API_KEY@"
+  "OPENAI_API_KEY": "@OPENAI_API_KEY@",
   "GOOGLE_CLOUD_URI": "https://storage.googleapis.com/sentosa-thumbnails/sentosa/"
 }
