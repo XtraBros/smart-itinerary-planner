@@ -217,19 +217,19 @@ function exitNavFunc() {
 
 function domeShowBootFuc() {
     foodBox.classList.add('fadeshowin');
-    getSuggestion();
+    getSuggestion(1);
 }
 
 async function getPlaceCoordWithName(place, isNotMarker) {
     if (!isNotMarker) {
         disableNavigationMode();
-    }
-    closedNavfun();
-    if (map.getSource('route')) {
-        map.removeLayer('route');
-        map.removeSource('route');
-        if (map.getLayer('directions')) {
-            map.removeLayer('directions');
+        closedNavfun();
+        if (map.getSource('route')) {
+            map.removeLayer('route');
+            map.removeSource('route');
+            if (map.getLayer('directions')) {
+                map.removeLayer('directions');
+            }
         }
     }
     let response = await fetch('/get_coordinates', {
@@ -253,8 +253,8 @@ async function getPlaceCoordWithName(place, isNotMarker) {
             center: waypoints[0],
             essential: true
         });
-        addMarkers([place], waypoints);
     }
+    addMarkers([place], waypoints);
     return responseData
 }
 
@@ -1599,8 +1599,6 @@ async function get_coordinates_without_route(data) {
             map.removeLayer('directions');
             map.removeSource('route');
         }
-        // addMarkers(placeNames, waypoints);
-        //let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
         return orderOfVisit;
     } catch (error) {
         console.error('Error fetching coordinates:', error);
@@ -1737,25 +1735,29 @@ function awaitGetPlaceCoordWithName(place) {
     });
 }
 
+function getPromo() {
+    getSuggestion(2)
+}
 
 // Suggestion Button:
 // EXAMPLE usage of endpoint:
-async function getSuggestion() {
+async function getSuggestion(type) {
     if (!chatMessages){
         var chatMessages = document.getElementById("chatbot-messages");
     }
-    if (window.mapMarkers) {
-        for (const [key, value] of Object.entries(window.mapMarkers)) {
-            value.remove();
-        }
-    }
+    // if (window.mapMarkers) {
+    //     for (const [key, value] of Object.entries(window.mapMarkers)) {
+    //         value.remove();
+    //     }
+    // }
     try {
         // Send a POST request to the /suggestion endpoint
         const response = await fetch('/suggestion', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({choice: type})
         });
 
         // Check if the response is OK (status code 200-299)
