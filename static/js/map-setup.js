@@ -131,9 +131,11 @@ const startNav = document.getElementById('startNav');
 const totMinus = document.getElementById('totMinus');
 const totDist = document.getElementById('totDist');
 const chatbotArea = document.getElementById('chatbot-area');
+const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
+    window.mapMarkers = {};
     const tishiDom = document.getElementById('tishi')
     isFirstOpen = localStorage.getItem('isFirstOpen')
     const popupModal = document.getElementById('popupModal');
@@ -141,13 +143,7 @@ window.onload = function () {
     const stopNav = document.getElementById('closedBut')
 
     stopNav.onclick = function () {
-        closedNavfun();
-        poiSwiper.classList.remove('fadeshowin');
-        listButton.style.display = 'block';
-        pauseAndpaly.style.display = 'none';
-        disableNavigationMode();
-        simulationRunning = false;
-        clearTimeout(simulationTimeout);
+        stopNavFunc();
     }
 
     pauseAndpaly.onclick = function () {
@@ -198,6 +194,25 @@ window.onload = function () {
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
     });
+}
+
+function stopNavFunc() {
+    closedNavfun();
+    poiSwiper.classList.remove('fadeshowin');
+    listButton.style.display = 'block';
+    pauseAndpaly.style.display = 'none';
+    disableNavigationMode();
+    simulationRunning = false;
+    clearTimeout(simulationTimeout);
+}
+
+function exitNavFunc() {
+    closedNavfun();
+    poiSwiper.classList.remove('fadeshowin');
+    listButton.style.display = 'block';
+    navcompleted.classList.remove('fadeshowin');
+    navcompleted.classList.add('fadeout');
+    disableNavigationMode();
 }
 
 function domeShowBootFuc() {
@@ -658,8 +673,12 @@ function simulateUserLocation(route) {
                     if (routeIndex < route.coordinates.length - 1) {
                         setTimeout(updateLocation, 100); // Continue to the next point
                     } else {
-                        console.log("Route simulation completed");
+                        closedNavfun();
+                        navcompleted.classList.add('fadeshowin');
+                        pauseAndpaly.style.display = 'none';
                         simulationRunning = false;
+                        clearTimeout(simulationTimeout);
+                        console.log("Route simulation completed");
                     }
                 } else {
                     // Calculate the new interpolated position
@@ -1082,7 +1101,9 @@ async function getOptimizedSequence(placeNames, chatMessages) {
         });
 
         if (!response.ok) {
-            appendMessage('It seems my network connection with you is unstable. Please try sending me your message again.', 'guide-message', chatMessages, 'message');
+            appendMessage({
+                text: 'It seems my network connection with you is unstable. Please try sending me your message again.', chatMessages, type: 'message',
+            });
             throw new Error('Network response was not ok');
         }
 
@@ -1090,7 +1111,7 @@ async function getOptimizedSequence(placeNames, chatMessages) {
 
         // Check if the response contains a message key, indicating an error
         if (coordSequence.message) {
-            appendMessage(coordSequence.message, 'guide-message', chatMessages, 'message');
+            appendMessage({ text: coordSequence.message, chatMessages, type: 'message' });
             return;
         }
 
@@ -1120,9 +1141,8 @@ function submitChat(event) {
 }
 
 async function postMessage(message, chatMessages) {
-    // Append the visitor's message
-    appendMessage(message, "visitor-message", chatMessages);
-    appendMessage(null, "guide-message", chatMessages);
+    appendMessage({ text: message, className: 'visitor-message', chatMessages });
+    appendMessage({ text: null, chatMessages });
     try {
         // Send message to Flask endpoint and get the response
         let response = await fetch('/ask_plan', {
@@ -1159,9 +1179,12 @@ async function postMessage(message, chatMessages) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
             }
             let textData = await textResponse.json();
-            // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages, 'route');
-            //appendMessage(instr, "nav-button", chatMessages);
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'route',
+                placeNames: orderOfVisit[0][0],
+            });
             attachEventListenersToHyperlinks();
         } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
@@ -1182,8 +1205,12 @@ async function postMessage(message, chatMessages) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
             }
             let textData = await textResponse.json();
-            // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages, 'location');
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'location',
+                placeNames: orderOfVisit[0],
+            });
             attachEventListenersToHyperlinks();
         } else if (data.operation == "wayfinding") {
             console.log("PLaces: " + data.response);
@@ -1206,12 +1233,15 @@ async function postMessage(message, chatMessages) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
             }
             let textData = await textResponse.json();
-            // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages, 'route');
-            //appendMessage(instr, "nav-button", chatMessages);
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'route',
+                placeNames: orderOfVisit[0][0],
+            });
             attachEventListenersToHyperlinks();
-        } else { // return message directly
-            appendMessage(data.response, 'guide-message', chatMessages);
+        } else {
+            appendMessage({ text: data.response, chatMessages });
         }
     } catch (error) {
         console.error('Error:', JSON.stringify(error));
@@ -1262,10 +1292,11 @@ function closedNavfun() {
 }
 
 // creaate template and styles for each visitor/guide message.
-function appendMessage(text, className, chatMessages, type, suggestion) {
-    if (className == "guide-message") {
+function appendMessage({ text, className, chatMessages, type, suggestion, placeNames }) {
+    const currClass = className || 'guide-message'
+    if (!className) {
         if (!text) {
-            chatMessages.innerHTML += `<div id='loading' class='chat-message ${className}'>
+            chatMessages.innerHTML += `<div id='loading' class='chat-message ${currClass}'>
                 <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
                 <div class='guideText'>
                     <div class='messageStype'>
@@ -1285,14 +1316,14 @@ function appendMessage(text, className, chatMessages, type, suggestion) {
                 bloaDox.remove();
             }
         }
-        if (type === 'route' || type === 'location') {
-            chatMessages.innerHTML += `<div class='chat-message ${className}'>
+        if ((type === 'route' || type === 'location') && !(placeNames && placeNames.length > 1)) {
+            chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
                     ${text}
                     <p style='margin-top: 10px;'>
-                        <button id="takeThereBut" onclick="navFunc(event, '${className}', '${suggestion}')">
+                        <button id="takeThereBut" onclick="navFunc(event, '${currClass}', '${suggestion}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>
@@ -1302,7 +1333,7 @@ function appendMessage(text, className, chatMessages, type, suggestion) {
         </div>
         `
         } else {
-            chatMessages.innerHTML += `<div class='chat-message ${className}'>
+            chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
@@ -1313,7 +1344,7 @@ function appendMessage(text, className, chatMessages, type, suggestion) {
         `
         }
     } else {
-        chatMessages.innerHTML += `<div class='chat-message ${className}'>${marked.parse(text)}</div>`
+        chatMessages.innerHTML += `<div class='chat-message ${currClass}'>${marked.parse(text)}</div>`
     }
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -1739,8 +1770,13 @@ async function getSuggestion() {
         // Get info of poi and make marker
         suggestionData = await awaitGetPlaceCoordWithName(data.POI);
         //Post the message in chatbox:
-        appendMessage(data.message, 'guide-message', chatMessages, 'location', 'suggestion');
-        // attachEventListenersToHyperlinks();
+        appendMessage({
+            text: data.message,
+            chatMessages,
+            type: 'location',
+            suggestion: 'suggestion',
+        });
+        attachEventListenersToHyperlinks();
     } catch (error) {
         console.error('Error fetching suggestion:', error);
     }

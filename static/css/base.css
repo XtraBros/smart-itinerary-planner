@@ -433,7 +433,7 @@ h3 {
   margin-top: 1px;
   margin-right: 5px;
 }
-#navigation {
+#navigation, #navcompleted {
   position: fixed;
   top: 10px;
   left: 10px;
@@ -445,7 +445,16 @@ h3 {
   height: auto;
   background-color: #183140;
   padding: 16px;
-  /* display: none; */
+}
+#navcompleted { padding: 16px 30px; }
+.youdestination {
+  display: flex; justify-content: center; gap: 20px; align-items: center; color: white;
+  font-size: 20px; font-weight: 700; padding-top: 12px;
+}
+.exitClass {
+  background-color: #D9D9D9; border: none; border-radius: 50px; text-align: center;
+  color: #0F2431; height: 44px; line-height: 44px; font-size: 15px; font-weight: 700;
+  width: 100%; margin-top: 20px; margin-bottom: 10px;
 }
 .datelInfo {
   display: flex;
