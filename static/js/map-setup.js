@@ -1179,6 +1179,7 @@ async function postMessage(message, chatMessages) {
                 type: 'route',
                 placeNames: orderOfVisit[0],
                 longAndlat: orderOfVisit[1],
+                fromUser: '1',
             });
             attachEventListenersToHyperlinks();
         } else if (data.operation == "location") {
@@ -1243,13 +1244,14 @@ async function postMessage(message, chatMessages) {
     } 
 }
 
-async function navFunc(e, typeSuge, place, longAndlat) {
+async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     const popupModal = document.getElementById('popupModal');
     popupModal.style.display = 'none';
     if (simulationRunning) return;
     startNav.classList.add('fadeshowin');
     let places = []
     let waypoints = []
+    let isfromUser = fromUser && fromUser === '1' ? false : true
     if (place && longAndlat) {
         places = [place]
         waypoints = [longAndlat.split(',')]
@@ -1259,7 +1261,7 @@ async function navFunc(e, typeSuge, place, longAndlat) {
         places = suggestionData.places;
     }
     if (waypoints.length && places.length) {
-        await displayRoute(places, waypoints, true);
+        await displayRoute(places, waypoints, isfromUser);
     }
     paintLine(route)
 }
@@ -1294,7 +1296,7 @@ function closedNavfun() {
 }
 
 // creaate template and styles for each visitor/guide message.
-function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat }) {
+function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat, fromUser }) {
     let long = ''
     if (longAndlat && Array.isArray(longAndlat) && longAndlat.length && Array.isArray(longAndlat[0])) {
         long = longAndlat[0].join(',')
@@ -1329,7 +1331,7 @@ function appendMessage({ text, className, chatMessages, type, suggestion, placeN
                 <div class='messageStype'>
                     ${text}
                     <p style='margin-top: 10px;'>
-                        <button id="takeThereBut" onclick="navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}')">
+                        <button id="takeThereBut" onclick="navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}', '${fromUser}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>
