@@ -711,7 +711,6 @@ function simulateUserLocation(route) {
     updateLocation();
 }
 
-
 function updateWalkedRoute(currentPosition) {
     // Add the current position to the walked route
     walkedRoute.push([currentPosition.lng, currentPosition.lat]);
@@ -768,7 +767,6 @@ function updateUserLocation(location) {
     console.log("User location updated:", location);
 }
 
-
 // Function to pause the simulation
 function pauseSimulation() {
     console.log(route)
@@ -790,7 +788,6 @@ function stopSimulation() {
     clearTimeout(simulationTimeout); // Stop any ongoing timeout
     console.log("Simulation stopped");
 }
-
 
 function updateUserLocation(newLocation) {
     userLocation = newLocation;
@@ -1124,7 +1121,6 @@ async function getOptimizedSequence(placeNames, chatMessages) {
     }
 }
 
-
 function submitChat(event) {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -1165,8 +1161,7 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, false);
-            let route = orderOfVisit[0][0];
-            let instr = orderOfVisit[1];
+            let route = orderOfVisit[0];
             // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
@@ -1183,7 +1178,8 @@ async function postMessage(message, chatMessages) {
                 text: textData.response,
                 chatMessages,
                 type: 'route',
-                placeNames: orderOfVisit[0][0],
+                placeNames: orderOfVisit[0],
+                longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
         } else if (data.operation == "location") {
@@ -1192,7 +1188,6 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
-            await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
             // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
@@ -1210,6 +1205,7 @@ async function postMessage(message, chatMessages) {
                 chatMessages,
                 type: 'location',
                 placeNames: orderOfVisit[0],
+                longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
         } else if (data.operation == "wayfinding") {
@@ -1219,8 +1215,7 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
-            let route = orderOfVisit[0][0];
-            let instr = orderOfVisit[1];
+            const route = orderOfVisit[0];
             // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
@@ -1237,7 +1232,8 @@ async function postMessage(message, chatMessages) {
                 text: textData.response,
                 chatMessages,
                 type: 'route',
-                placeNames: orderOfVisit[0][0],
+                placeNames: route,
+                longAndlat: orderOfVisit[0],
             });
             attachEventListenersToHyperlinks();
         } else {
@@ -1248,16 +1244,23 @@ async function postMessage(message, chatMessages) {
     } 
 }
 
-async function navFunc(e, id, typeSuge) {
+async function navFunc(e, typeSuge, place, longAndlat) {
     const popupModal = document.getElementById('popupModal');
     popupModal.style.display = 'none';
     if (simulationRunning) return;
     startNav.classList.add('fadeshowin');
+    let places = []
+    let waypoints = []
+    if (place && longAndlat) {
+        places = [place]
+        waypoints = [longAndlat.split(',')]
+    }
     if (typeSuge && typeSuge === 'suggestion' && suggestionData) {
-        let waypoints = suggestionData.coordinates.map(coord => [coord.lng, coord.lat]);
-        if (suggestionData && waypoints && waypoints.length) {
-            await displayRoute(suggestionData.places, waypoints, true);
-        }
+        waypoints = suggestionData.coordinates.map(coord => [coord.lng, coord.lat]);
+        places = suggestionData.places;
+    }
+    if (waypoints.length && places.length) {
+        await displayRoute(places, waypoints, true);
     }
     paintLine(route)
 }
@@ -1292,7 +1295,11 @@ function closedNavfun() {
 }
 
 // creaate template and styles for each visitor/guide message.
-function appendMessage({ text, className, chatMessages, type, suggestion, placeNames }) {
+function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat }) {
+    let long = ''
+    if (longAndlat && Array.isArray(longAndlat) && longAndlat.length && Array.isArray(longAndlat[0])) {
+        long = longAndlat[0].join(',')
+    }
     const currClass = className || 'guide-message'
     if (!className) {
         if (!text) {
@@ -1323,7 +1330,7 @@ function appendMessage({ text, className, chatMessages, type, suggestion, placeN
                 <div class='messageStype'>
                     ${text}
                     <p style='margin-top: 10px;'>
-                        <button id="takeThereBut" onclick="navFunc(event, '${currClass}', '${suggestion}')">
+                        <button id="takeThereBut" onclick="navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>
@@ -1493,90 +1500,16 @@ function getInstructions(data) {
     return instructions;
 }
 
-async function get_coordinates(data, fromUser) {
-    let placeNames = data;
-    if (fromUser) {    
-        try {
-            // Fetch the user's current location
-            userLocation = await new Promise((resolve, reject) => {
-                getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
-            });
-            // Send the place names and the user's location to the Flask endpoint
-            let response = await fetch('/get_coordinates', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    places: data,
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-
-            let responseData = await response.json();
-            let coordinates = responseData.coordinates;
-            placeNames = responseData.places;
-
-            // Map coordinates to waypoints
-            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-
-            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
-
-            let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
-            return [orderOfVisit, instr];
-        } catch (error) {
-            console.error('Error fetching coordinates:', error);
-        }
-    } else {
-        try {
-            // Send the place names and the user's location to the Flask endpoint
-            let response = await fetch('/get_coordinates', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    places: data,
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-
-            let responseData = await response.json();
-            let coordinates = responseData.coordinates;
-            placeNames = responseData.places;
-
-            // Map coordinates to waypoints
-            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-
-            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
-
-            let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], false);
-            return [orderOfVisit, instr];
-        } catch (error) {
-            console.error('Error fetching coordinates:', error);
-        }
-    };
-}
-
-async function get_coordinates_without_route(data) {
-    let placeNames = data;
+async function getCoordinatesWithPlace(places) {
+    console.log('===places=>>>', places);
     try {
-        // Send the place names and the user's location to the Flask endpoint
-        let response = await fetch('/get_coordinates', {
+        const response = await fetch('/get_coordinates', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                places: data,
+                places,
             })
         });
 
@@ -1584,25 +1517,41 @@ async function get_coordinates_without_route(data) {
             throw new Error('Network response was not ok ' + response.statusText);
         }
 
-        let responseData = await response.json();
-        let coordinates = responseData.coordinates;
-        placeNames = responseData.places && responseData.places.length ? responseData.places : data;
+        const responseData = await response.json();
+        const coordinates = responseData.coordinates;
+        const placeNames = responseData.places && responseData.places.length ? responseData.places : places;
 
         // Map coordinates to waypoints
-        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+        const waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
 
         // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
         let orderOfVisit = await optimizeRoute(placeNames, waypoints);
-        console.log(orderOfVisit);
-        if (map.getSource('route')) {
-            map.removeLayer('route');
-            map.removeLayer('directions');
-            map.removeSource('route');
-        }
+        console.log('===orderOfVisit=>>>', orderOfVisit);
         return orderOfVisit;
     } catch (error) {
         console.error('Error fetching coordinates:', error);
     }
+}
+
+async function get_coordinates(data, fromUser) {
+    if (fromUser) {    
+        // Fetch the user's current location
+        userLocation = await new Promise((resolve, reject) => {
+            getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
+        });
+    }
+    const orderOfVisit = await getCoordinatesWithPlace(data);
+    return orderOfVisit;
+}
+
+async function get_coordinates_without_route(data) {
+    if (!simulationRunning && map.getSource('route')) {
+        map.removeLayer('route');
+        map.removeLayer('directions');
+        map.removeSource('route');
+    }
+    const orderOfVisit = await getCoordinatesWithPlace(data);
+    return orderOfVisit;
 }
 
 function addMarkers(placeNames, waypoints) {
@@ -1693,6 +1642,7 @@ function attachEventListenersToHyperlinks() {
     document.querySelectorAll('.location-link').forEach(function (link) {
         link.addEventListener('click', function (e) {
             showMapTab();
+            pauseAndpaly.style.display = 'none';
             const markerId = this.getAttribute('data-marker-id');
             // Hide the popup modal
             document.getElementById('popupModal').style.display = 'none';
@@ -1745,11 +1695,6 @@ async function getSuggestion(type) {
     if (!chatMessages){
         var chatMessages = document.getElementById("chatbot-messages");
     }
-    // if (window.mapMarkers) {
-    //     for (const [key, value] of Object.entries(window.mapMarkers)) {
-    //         value.remove();
-    //     }
-    // }
     try {
         // Send a POST request to the /suggestion endpoint
         const response = await fetch('/suggestion', {

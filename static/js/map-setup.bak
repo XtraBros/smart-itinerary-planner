@@ -19,7 +19,6 @@ let routeIndex = 0;
 let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
-let currentCoordinates;
 let thumbnailURI;
 
 
@@ -131,9 +130,12 @@ const foodBox = document.getElementById('foodBox');
 const startNav = document.getElementById('startNav');
 const totMinus = document.getElementById('totMinus');
 const totDist = document.getElementById('totDist');
+const chatbotArea = document.getElementById('chatbot-area');
+const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
+    window.mapMarkers = {};
     const tishiDom = document.getElementById('tishi')
     isFirstOpen = localStorage.getItem('isFirstOpen')
     const popupModal = document.getElementById('popupModal');
@@ -141,13 +143,7 @@ window.onload = function () {
     const stopNav = document.getElementById('closedBut')
 
     stopNav.onclick = function () {
-        closedNavfun();
-        poiSwiper.classList.remove('fadeshowin');
-        listButton.style.display = 'block';
-        pauseAndpaly.style.display = 'none';
-        disableNavigationMode();
-        simulationRunning = false;
-        clearTimeout(simulationTimeout);
+        stopNavFunc();
     }
 
     pauseAndpaly.onclick = function () {
@@ -163,6 +159,7 @@ window.onload = function () {
         tishiDom.style.display = "none";
         localStorage.setItem('isFirstOpen', true)
         foodBox.classList.remove('fadeshowin');
+        chatbotArea.scrollTop = chatbotArea.scrollHeight;
     }
     window.onclick = function (event) {
         if (event.target === popupModal) {
@@ -199,21 +196,40 @@ window.onload = function () {
     });
 }
 
+function stopNavFunc() {
+    closedNavfun();
+    poiSwiper.classList.remove('fadeshowin');
+    listButton.style.display = 'block';
+    pauseAndpaly.style.display = 'none';
+    disableNavigationMode();
+    simulationRunning = false;
+    clearTimeout(simulationTimeout);
+}
+
+function exitNavFunc() {
+    closedNavfun();
+    poiSwiper.classList.remove('fadeshowin');
+    listButton.style.display = 'block';
+    navcompleted.classList.remove('fadeshowin');
+    navcompleted.classList.add('fadeout');
+    disableNavigationMode();
+}
+
 function domeShowBootFuc() {
     foodBox.classList.add('fadeshowin');
-    getSuggestion();
+    getSuggestion(1);
 }
 
 async function getPlaceCoordWithName(place, isNotMarker) {
     if (!isNotMarker) {
         disableNavigationMode();
-    }
-    closedNavfun();
-    if (map.getSource('route')) {
-        map.removeLayer('route');
-        map.removeSource('route');
-        if (map.getLayer('directions')) {
-            map.removeLayer('directions');
+        closedNavfun();
+        if (map.getSource('route')) {
+            map.removeLayer('route');
+            map.removeSource('route');
+            if (map.getLayer('directions')) {
+                map.removeLayer('directions');
+            }
         }
     }
     let response = await fetch('/get_coordinates', {
@@ -237,8 +253,8 @@ async function getPlaceCoordWithName(place, isNotMarker) {
             center: waypoints[0],
             essential: true
         });
-        addMarkers([place], waypoints);
     }
+    addMarkers([place], waypoints);
     return responseData
 }
 
@@ -247,12 +263,16 @@ function systemQuestionFunc(e) {
     postMessage(e.target.innerText, chatMessages);
 }
 
-function navDitle(e, name) {
-    getPlaceCoordWithName(name);
+function showMapTab() {
     mapEl.style.display = 'block';
     poiList.style.display = 'none';
     tabList.classList.remove('activeButton');
     tabMap.classList.add('activeButton');
+}
+
+function navDitle(e, name) {
+    getPlaceCoordWithName(name);
+    showMapTab();
 }
 
 function handerMap(e, type) {
@@ -653,8 +673,12 @@ function simulateUserLocation(route) {
                     if (routeIndex < route.coordinates.length - 1) {
                         setTimeout(updateLocation, 100); // Continue to the next point
                     } else {
-                        console.log("Route simulation completed");
+                        closedNavfun();
+                        navcompleted.classList.add('fadeshowin');
+                        pauseAndpaly.style.display = 'none';
                         simulationRunning = false;
+                        clearTimeout(simulationTimeout);
+                        console.log("Route simulation completed");
                     }
                 } else {
                     // Calculate the new interpolated position
@@ -686,7 +710,6 @@ function simulateUserLocation(route) {
     simulationPaused = false;
     updateLocation();
 }
-
 
 function updateWalkedRoute(currentPosition) {
     // Add the current position to the walked route
@@ -743,7 +766,6 @@ function updateUserLocation(location) {
     userLocation = location;
     console.log("User location updated:", location);
 }
-
 
 // Function to pause the simulation
 function pauseSimulation() {
@@ -886,11 +908,13 @@ function userCalculate(start, end) {
 }
 
 function paintLine(resRoute) {
-    let bers = null;
-    let cneterPot = [userLocation.lng, userLocation.lat]
+    showMapTab();
+    let bers = 0;
+    const startPrit = [userLocation.lng, userLocation.lat];
+    let endProit = []
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
-        bers = userCalculate(resRoute.coordinates[0], resRoute.coordinates[resRoute.coordinates.length - 1]);
-        cneterPot = resRoute.coordinates[Math.floor(resRoute.coordinates.length * 0.5)]
+        endProit = resRoute.coordinates[resRoute.coordinates.length - 1]
+        bers = userCalculate(resRoute.coordinates[0], endProit);
         setUserLocationMark(resRoute.coordinates[0])
     }
     if (!map.getSource('previewRoute')) {
@@ -909,6 +933,20 @@ function paintLine(resRoute) {
         });
     }
     if (!map.getLayer('prewroute')) {
+        // 添加边框图层
+        map.addLayer({
+            id: 'lineBorder',
+            type: 'line',
+            source: 'previewRoute',
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+               'line-color': '#fff',
+               'line-width': 12
+            }
+        });
         map.addLayer({
             id: 'prewroute',
             type: 'line',
@@ -918,20 +956,18 @@ function paintLine(resRoute) {
                 'line-cap': 'round'
             },
             paint: {
-                'line-color': '#e286aa',
-                'line-width': 8,
+                'line-color': '#00ADE9',
+                'line-width': 7,
                 'line-opacity': 1,
             }
         });
     }
-    if (bers) {
-        map.easeTo({
-            bearing: bers,
-            zoom: 15,
-            duration: 1000,
-            center: cneterPot,
-        });
-    }
+    map.fitBounds([startPrit, endProit], {
+        // bearing: bers,
+        padding: 30, // 距离屏幕边缘的内边距（以像素为单位）
+        maxZoom: 17,
+        duration: 1000
+    });
 }
 
 function displayRoute(placeNames, rawCoordinates, fromUser) {
@@ -1063,7 +1099,9 @@ async function getOptimizedSequence(placeNames, chatMessages) {
         });
 
         if (!response.ok) {
-            appendMessage('It seems my network connection with you is unstable. Please try sending me your message again.', 'guide-message', chatMessages, 'message');
+            appendMessage({
+                text: 'It seems my network connection with you is unstable. Please try sending me your message again.', chatMessages, type: 'message',
+            });
             throw new Error('Network response was not ok');
         }
 
@@ -1071,7 +1109,7 @@ async function getOptimizedSequence(placeNames, chatMessages) {
 
         // Check if the response contains a message key, indicating an error
         if (coordSequence.message) {
-            appendMessage(coordSequence.message, 'guide-message', chatMessages, 'message');
+            appendMessage({ text: coordSequence.message, chatMessages, type: 'message' });
             return;
         }
 
@@ -1101,9 +1139,8 @@ function submitChat(event) {
 }
 
 async function postMessage(message, chatMessages) {
-    // Append the visitor's message
-    appendMessage(message, "visitor-message", chatMessages);
-    appendMessage(null, "guide-message", chatMessages);
+    appendMessage({ text: message, className: 'visitor-message', chatMessages });
+    appendMessage({ text: null, chatMessages });
     try {
         // Send message to Flask endpoint and get the response
         let response = await fetch('/ask_plan', {
@@ -1140,9 +1177,12 @@ async function postMessage(message, chatMessages) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
             }
             let textData = await textResponse.json();
-            // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages, 'route');
-            //appendMessage(instr, "nav-button", chatMessages);
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'route',
+                placeNames: orderOfVisit[0][0],
+            });
             attachEventListenersToHyperlinks();
         } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
@@ -1163,8 +1203,12 @@ async function postMessage(message, chatMessages) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
             }
             let textData = await textResponse.json();
-            // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages, 'location');
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'location',
+                placeNames: orderOfVisit[0],
+            });
             attachEventListenersToHyperlinks();
         } else if (data.operation == "wayfinding") {
             console.log("PLaces: " + data.response);
@@ -1187,12 +1231,15 @@ async function postMessage(message, chatMessages) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
             }
             let textData = await textResponse.json();
-            // Append the response from the /get_text endpoint to the chat
-            appendMessage(textData.response, "guide-message", chatMessages, 'route');
-            //appendMessage(instr, "nav-button", chatMessages);
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'route',
+                placeNames: orderOfVisit[0][0],
+            });
             attachEventListenersToHyperlinks();
-        } else { // return message directly
-            appendMessage(data.response, 'guide-message', chatMessages);
+        } else {
+            appendMessage({ text: data.response, chatMessages });
         }
     } catch (error) {
         console.error('Error:', JSON.stringify(error));
@@ -1232,6 +1279,9 @@ function closedNavfun() {
     if (map.getLayer('prewroute')) {
         map.removeLayer('prewroute');
     }
+    if (map.getLayer('lineBorder')) {
+        map.removeLayer('lineBorder');
+    }
     if (window.mapMarkers) {
         for (const [key, value] of Object.entries(window.mapMarkers)) {
             value.remove();
@@ -1240,10 +1290,11 @@ function closedNavfun() {
 }
 
 // creaate template and styles for each visitor/guide message.
-function appendMessage(text, className, chatMessages, type, suggestion) {
-    if (className == "guide-message") {
+function appendMessage({ text, className, chatMessages, type, suggestion, placeNames }) {
+    const currClass = className || 'guide-message'
+    if (!className) {
         if (!text) {
-            chatMessages.innerHTML += `<div id='loading' class='chat-message ${className}'>
+            chatMessages.innerHTML += `<div id='loading' class='chat-message ${currClass}'>
                 <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
                 <div class='guideText'>
                     <div class='messageStype'>
@@ -1263,14 +1314,14 @@ function appendMessage(text, className, chatMessages, type, suggestion) {
                 bloaDox.remove();
             }
         }
-        if (type === 'route' || type === 'location') {
-            chatMessages.innerHTML += `<div class='chat-message ${className}'>
+        if ((type === 'route' || type === 'location') && !(placeNames && placeNames.length > 1)) {
+            chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
                     ${text}
                     <p style='margin-top: 10px;'>
-                        <button id="takeThereBut" onclick="navFunc(event, '${className}', '${suggestion}')">
+                        <button id="takeThereBut" onclick="navFunc(event, '${currClass}', '${suggestion}')">
                             <img src="static/icons/daohang.svg" alt="" srcset="">
                             <span>Take me there</span>
                         </button>
@@ -1280,7 +1331,7 @@ function appendMessage(text, className, chatMessages, type, suggestion) {
         </div>
         `
         } else {
-            chatMessages.innerHTML += `<div class='chat-message ${className}'>
+            chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
@@ -1291,7 +1342,7 @@ function appendMessage(text, className, chatMessages, type, suggestion) {
         `
         }
     } else {
-        chatMessages.innerHTML += `<div class='chat-message ${className}'>${marked.parse(text)}</div>`
+        chatMessages.innerHTML += `<div class='chat-message ${currClass}'>${marked.parse(text)}</div>`
     }
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -1440,39 +1491,6 @@ function getInstructions(data) {
     return instructions;
 }
 
-async function getCoordinatesWithPlace(places) {
-    console.log('===places=>>>', places);
-    try {
-        const response = await fetch('/get_coordinates', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                places,
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Network response was not ok ' + response.statusText);
-        }
-
-        const responseData = await response.json();
-        const coordinates = responseData.coordinates;
-        const placeNames = responseData.places && responseData.places.length ? responseData.places : places;
-
-        // Map coordinates to waypoints
-        const waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-
-        // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
-        console.log('===orderOfVisit=>>>', orderOfVisit);
-        return orderOfVisit;
-    } catch (error) {
-        console.error('Error fetching coordinates:', error);
-    }
-}
-
 async function get_coordinates(data, fromUser) {
     let placeNames = data;
     if (fromUser) {    
@@ -1481,7 +1499,31 @@ async function get_coordinates(data, fromUser) {
             userLocation = await new Promise((resolve, reject) => {
                 getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
             });
-            const orderOfVisit = await getCoordinatesWithPlace(data);
+            // Send the place names and the user's location to the Flask endpoint
+            let response = await fetch('/get_coordinates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    places: data,
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+
+            let responseData = await response.json();
+            let coordinates = responseData.coordinates;
+            placeNames = responseData.places;
+
+            // Map coordinates to waypoints
+            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+
+            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+
             let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
             return [orderOfVisit, instr];
         } catch (error) {
@@ -1489,7 +1531,30 @@ async function get_coordinates(data, fromUser) {
         }
     } else {
         try {
-            const orderOfVisit = await getCoordinatesWithPlace(data);
+            // Send the place names and the user's location to the Flask endpoint
+            let response = await fetch('/get_coordinates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    places: data,
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+
+            let responseData = await response.json();
+            let coordinates = responseData.coordinates;
+            placeNames = responseData.places;
+
+            // Map coordinates to waypoints
+            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+
+            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
 
             let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], false);
             return [orderOfVisit, instr];
@@ -1502,7 +1567,31 @@ async function get_coordinates(data, fromUser) {
 async function get_coordinates_without_route(data) {
     let placeNames = data;
     try {
-        const orderOfVisit = await getCoordinatesWithPlace(data);
+        // Send the place names and the user's location to the Flask endpoint
+        let response = await fetch('/get_coordinates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                places: data,
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+
+        let responseData = await response.json();
+        let coordinates = responseData.coordinates;
+        placeNames = responseData.places && responseData.places.length ? responseData.places : data;
+
+        // Map coordinates to waypoints
+        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+
+        // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+        console.log(orderOfVisit);
         if (map.getSource('route')) {
             map.removeLayer('route');
             map.removeLayer('directions');
@@ -1601,6 +1690,7 @@ function fetchPlacesData(places) {
 function attachEventListenersToHyperlinks() {
     document.querySelectorAll('.location-link').forEach(function (link) {
         link.addEventListener('click', function (e) {
+            showMapTab();
             const markerId = this.getAttribute('data-marker-id');
             // Hide the popup modal
             document.getElementById('popupModal').style.display = 'none';
@@ -1643,25 +1733,29 @@ function awaitGetPlaceCoordWithName(place) {
     });
 }
 
+function getPromo() {
+    getSuggestion(2)
+}
 
 // Suggestion Button:
 // EXAMPLE usage of endpoint:
-async function getSuggestion() {
+async function getSuggestion(type) {
     if (!chatMessages){
         var chatMessages = document.getElementById("chatbot-messages");
     }
-    if (window.mapMarkers) {
-        for (const [key, value] of Object.entries(window.mapMarkers)) {
-            value.remove();
-        }
-    }
+    // if (window.mapMarkers) {
+    //     for (const [key, value] of Object.entries(window.mapMarkers)) {
+    //         value.remove();
+    //     }
+    // }
     try {
         // Send a POST request to the /suggestion endpoint
         const response = await fetch('/suggestion', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({choice: type})
         });
 
         // Check if the response is OK (status code 200-299)
@@ -1676,8 +1770,13 @@ async function getSuggestion() {
         // Get info of poi and make marker
         suggestionData = await awaitGetPlaceCoordWithName(data.POI);
         //Post the message in chatbox:
-        appendMessage(data.message, 'guide-message', chatMessages, 'location', 'suggestion');
-        // attachEventListenersToHyperlinks();
+        appendMessage({
+            text: data.message,
+            chatMessages,
+            type: 'location',
+            suggestion: 'suggestion',
+        });
+        attachEventListenersToHyperlinks();
     } catch (error) {
         console.error('Error fetching suggestion:', error);
     }
@@ -1688,6 +1787,9 @@ function startUserNav() {
     console.log('-----steps-->>>', steps)
     if (map.getLayer('prewroute')) {
         map.removeLayer('prewroute');
+    }
+    if (map.getLayer('lineBorder')) {
+        map.removeLayer('lineBorder');
     }
     setMapRoute(route)
     startNav.classList.remove('fadeshowin');
