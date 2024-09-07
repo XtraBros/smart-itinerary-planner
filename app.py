@@ -132,11 +132,14 @@ def ask_plan():
 @app.route('/get_text', methods=['POST'])
 def get_text():
     # Get the 'route' data from the request JSON
+    print(request.json)
     route = request.json['route']
+    coordinates = request.json['coordinates']
     print(f"route:{route}")
     user_input = request.json['message']
-    if isinstance(route[0], list):
-        route = route[0]
+    if route[0]:
+        if isinstance(route[0], list):
+            route = route[0]
     try:
         # Continue with your processing
         response = client.chat.completions.create(
@@ -145,16 +148,16 @@ def get_text():
                 {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
                  Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
-                 Structure your response as a bulleted list only if there are multiple destinations. Ensure all destinations are covered in you response.
+                 Structure your response as a bulleted list if there are multiple attractions/POIs. Ensure all destinations are covered in your response.
                  If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list."""},
-                {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
+                {"role": "user", "content": f'Attractions: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
         )
 
         # Create hyperlinks with the route names
-        hyperlinks = create_hyperlinks(route)
+        hyperlinks = create_hyperlinks(route, coordinates)
         print(hyperlinks)
         # Insert hyperlinks using the `~` delimiter
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
@@ -275,24 +278,16 @@ def find_nearby():
 # Temporary endpoint for random suggestion message
 @app.route('/suggestion', methods=['POST'])
 def suggest():
-    data = request.get_json()
-    choice = int(data.get('choice', 1))
-
-    samples = {
-        1: "Lunchtime is just around the corner, and I have some perfect places for you! ~Feng Shui Inn~, is a top-rated Chinese restaurant where you can find all Chinese cuisines. Ready to experience its delicious, authentic flavors? Click and let me guide you there!",
-        2: "Hot deals alert! ~The Forum~ is having a flash sale now on luxury products at unbeatable prices, just around the corner. Want to score big on highj-end goods for less? Click now, and I will show you the way to massive savings!"
-        }
-    sample_pois = {
-        1: "Feng Shui Inn",
-        2: "The Forum"
-        }
-    if choice not in samples:
-        return jsonify({"error": "Invalid choice provided. Please use 1 or 2."}), 400
-    
+    import random
+    samples = {1:"It’s almost time for lunch, and there is a popular Chinese restaurant, ~Feng Shui Inn~, nearby. Would you like me to direct you there? ",
+               2:"There is a popular adventure activity (~iFly Singapore~) near you which is highly rated on Xiaohongshu, would you like to try it out?"}
+    sample_pois = {1:"Feng Shui Inn", 2:"iFly Singapore"}
+    choice = random.randint(1, 2)
     response = samples[choice]
     poi = sample_pois[choice]
+    coordinate = poi_db.find_one({"name": poi.strip()}, {"_id": 0, "longitude": 1, "latitude": 1})
     # Create hyperlinks with the route names
-    hyperlinks = create_hyperlinks([poi])
+    hyperlinks = create_hyperlinks([poi], coordinate)
 
     # Insert hyperlinks using the `~` delimiter
     response_text = insertHyperlinks(response, hyperlinks)
@@ -394,12 +389,14 @@ def remove_dupes(response_text):
         return response_text
 
 # Function to create hyperlinks for places
-def create_hyperlinks(place_list):
+def create_hyperlinks(place_list, coordinates):
     hyperlinks = {}
-    for name in place_list:
+    for index, name in enumerate(place_list):
         formatted_id = name.replace('"', '').replace(' ', '-').lower()
+        # Create a dictionary for coordinates with 'lng' and 'lat' keys
+        coord_dict = {"lng": coordinates[index][0], "lat": coordinates[index][1]}
         # Create the hyperlink HTML
-        hyperlink = f'<a href="#" class="location-link" data-marker-id="{formatted_id}">{name}</a>'
+        hyperlink = f'<a href="#" class="location-link" data-coordinates="{coord_dict}" data-marker-id="{formatted_id}">{name}</a>'
         hyperlinks[name] = hyperlink
     return hyperlinks
 

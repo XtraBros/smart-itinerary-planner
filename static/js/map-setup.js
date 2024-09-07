@@ -1167,13 +1167,12 @@ async function postMessage(message, chatMessages) {
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, false);
             let route = orderOfVisit[0][0];
             let instr = orderOfVisit[1];
-            // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message })
+                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[0][1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1192,14 +1191,14 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
-            await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
-            // Send a request to the /get_text endpoint with the route
+            console.log("Location op POIs: " + orderOfVisit)
+            //await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: orderOfVisit, message: message })
+                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1221,13 +1220,12 @@ async function postMessage(message, chatMessages) {
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
             let route = orderOfVisit[0][0];
             let instr = orderOfVisit[1];
-            // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message })
+                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[0][1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1592,14 +1590,14 @@ async function get_coordinates_without_route(data) {
         let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
 
         // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
-        console.log(orderOfVisit);
+        //let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+        //console.log(orderOfVisit);
         if (map.getSource('route')) {
             map.removeLayer('route');
             map.removeLayer('directions');
             map.removeSource('route');
         }
-        return orderOfVisit;
+        return [placeNames,waypoints];
     } catch (error) {
         console.error('Error fetching coordinates:', error);
     }
