@@ -46,9 +46,9 @@ document.addEventListener("touchend", function (e) {
             // alert("向上！")
             break;
         case 2:
-            if (popupModal) {
-                popupModal.style.display = "none";
-            }
+            // if (popupModal) {
+            //     popupModal.style.display = "none";
+            // }
             // poiSwiper.style.display = 'none';
             // alert("向下！")
             break;

@@ -130,6 +130,7 @@ const foodBox = document.getElementById('foodBox');
 const startNav = document.getElementById('startNav');
 const totMinus = document.getElementById('totMinus');
 const totDist = document.getElementById('totDist');
+const chatbotArea = document.getElementById('chatbot-area');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
 window.onload = function () {
@@ -162,6 +163,7 @@ window.onload = function () {
         tishiDom.style.display = "none";
         localStorage.setItem('isFirstOpen', true)
         foodBox.classList.remove('fadeshowin');
+        chatbotArea.scrollTop = chatbotArea.scrollHeight;
     }
     window.onclick = function (event) {
         if (event.target === popupModal) {
@@ -246,12 +248,16 @@ function systemQuestionFunc(e) {
     postMessage(e.target.innerText, chatMessages);
 }
 
-function navDitle(e, name) {
-    getPlaceCoordWithName(name);
+function showMapTab() {
     mapEl.style.display = 'block';
     poiList.style.display = 'none';
     tabList.classList.remove('activeButton');
     tabMap.classList.add('activeButton');
+}
+
+function navDitle(e, name) {
+    getPlaceCoordWithName(name);
+    showMapTab();
 }
 
 function handerMap(e, type) {
@@ -885,6 +891,7 @@ function userCalculate(start, end) {
 }
 
 function paintLine(resRoute) {
+    showMapTab();
     let bers = 0;
     const startPrit = [userLocation.lng, userLocation.lat];
     let endProit = []
@@ -1656,6 +1663,7 @@ function fetchPlacesData(places) {
 function attachEventListenersToHyperlinks() {
     document.querySelectorAll('.location-link').forEach(function (link) {
         link.addEventListener('click', function (e) {
+            showMapTab();
             const markerId = this.getAttribute('data-marker-id');
             // Hide the popup modal
             document.getElementById('popupModal').style.display = 'none';
