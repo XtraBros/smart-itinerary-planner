@@ -919,7 +919,7 @@ function paintLine(resRoute) {
                 'line-cap': 'round'
             },
             paint: {
-               'line-color': '#049acf',
+               'line-color': '#fff',
                'line-width': 12
             }
         });
