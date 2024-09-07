@@ -16,7 +16,7 @@ h3 {
   height: calc(100vh);
 }
 #map {
-  height: 100%;
+  height: calc(100vh);
   width: 100%;
 }
 #zoom-controls {

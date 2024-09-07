@@ -19,6 +19,7 @@ let routeIndex = 0;
 let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
+let currentCoordinates;
 let thumbnailURI;
 
 
@@ -885,12 +886,11 @@ function userCalculate(start, end) {
 }
 
 function paintLine(resRoute) {
-    let bers = 0;
-    const startPrit = [userLocation.lng, userLocation.lat];
-    let endProit = []
+    let bers = null;
+    let cneterPot = [userLocation.lng, userLocation.lat]
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
-        endProit = resRoute.coordinates[resRoute.coordinates.length - 1]
-        bers = userCalculate(resRoute.coordinates[0], endProit);
+        bers = userCalculate(resRoute.coordinates[0], resRoute.coordinates[resRoute.coordinates.length - 1]);
+        cneterPot = resRoute.coordinates[Math.floor(resRoute.coordinates.length * 0.5)]
         setUserLocationMark(resRoute.coordinates[0])
     }
     if (!map.getSource('previewRoute')) {
@@ -909,20 +909,6 @@ function paintLine(resRoute) {
         });
     }
     if (!map.getLayer('prewroute')) {
-        // 添加边框图层
-        map.addLayer({
-            id: 'lineBorder',
-            type: 'line',
-            source: 'previewRoute',
-            layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
-            },
-            paint: {
-               'line-color': '#049acf',
-               'line-width': 12
-            }
-        });
         map.addLayer({
             id: 'prewroute',
             type: 'line',
@@ -932,18 +918,20 @@ function paintLine(resRoute) {
                 'line-cap': 'round'
             },
             paint: {
-                'line-color': '#00ADE9',
-                'line-width': 7,
+                'line-color': '#e286aa',
+                'line-width': 8,
                 'line-opacity': 1,
             }
         });
     }
-    map.fitBounds([startPrit, endProit], {
-        // bearing: bers,
-        padding: 30, // 距离屏幕边缘的内边距（以像素为单位）
-        maxZoom: 17,
-        duration: 1000
-    });
+    if (bers) {
+        map.easeTo({
+            bearing: bers,
+            zoom: 15,
+            duration: 1000,
+            center: cneterPot,
+        });
+    }
 }
 
 function displayRoute(placeNames, rawCoordinates, fromUser) {
@@ -1244,9 +1232,6 @@ function closedNavfun() {
     if (map.getLayer('prewroute')) {
         map.removeLayer('prewroute');
     }
-    if (map.getLayer('lineBorder')) {
-        map.removeLayer('lineBorder');
-    }
     if (window.mapMarkers) {
         for (const [key, value] of Object.entries(window.mapMarkers)) {
             value.remove();
@@ -1455,6 +1440,39 @@ function getInstructions(data) {
     return instructions;
 }
 
+async function getCoordinatesWithPlace(places) {
+    console.log('===places=>>>', places);
+    try {
+        const response = await fetch('/get_coordinates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                places,
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+
+        const responseData = await response.json();
+        const coordinates = responseData.coordinates;
+        const placeNames = responseData.places && responseData.places.length ? responseData.places : places;
+
+        // Map coordinates to waypoints
+        const waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
+
+        // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
+        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+        console.log('===orderOfVisit=>>>', orderOfVisit);
+        return orderOfVisit;
+    } catch (error) {
+        console.error('Error fetching coordinates:', error);
+    }
+}
+
 async function get_coordinates(data, fromUser) {
     let placeNames = data;
     if (fromUser) {    
@@ -1463,31 +1481,7 @@ async function get_coordinates(data, fromUser) {
             userLocation = await new Promise((resolve, reject) => {
                 getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
             });
-            // Send the place names and the user's location to the Flask endpoint
-            let response = await fetch('/get_coordinates', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    places: data,
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-
-            let responseData = await response.json();
-            let coordinates = responseData.coordinates;
-            placeNames = responseData.places;
-
-            // Map coordinates to waypoints
-            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-
-            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
-
+            const orderOfVisit = await getCoordinatesWithPlace(data);
             let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
             return [orderOfVisit, instr];
         } catch (error) {
@@ -1495,30 +1489,7 @@ async function get_coordinates(data, fromUser) {
         }
     } else {
         try {
-            // Send the place names and the user's location to the Flask endpoint
-            let response = await fetch('/get_coordinates', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    places: data,
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-
-            let responseData = await response.json();
-            let coordinates = responseData.coordinates;
-            placeNames = responseData.places;
-
-            // Map coordinates to waypoints
-            let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-
-            // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-            let orderOfVisit = await optimizeRoute(placeNames, waypoints);
+            const orderOfVisit = await getCoordinatesWithPlace(data);
 
             let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], false);
             return [orderOfVisit, instr];
@@ -1531,38 +1502,12 @@ async function get_coordinates(data, fromUser) {
 async function get_coordinates_without_route(data) {
     let placeNames = data;
     try {
-        // Send the place names and the user's location to the Flask endpoint
-        let response = await fetch('/get_coordinates', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                places: data,
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Network response was not ok ' + response.statusText);
-        }
-
-        let responseData = await response.json();
-        let coordinates = responseData.coordinates;
-        placeNames = responseData.places && responseData.places.length ? responseData.places : data;
-
-        // Map coordinates to waypoints
-        let waypoints = coordinates.map(coord => [coord.lng, coord.lat]);
-
-        // Optimize the route: input: (placeNames, waypoints) output: re-ordered version of input in sequence of visit
-        let orderOfVisit = await optimizeRoute(placeNames, waypoints);
-        console.log(orderOfVisit);
+        const orderOfVisit = await getCoordinatesWithPlace(data);
         if (map.getSource('route')) {
             map.removeLayer('route');
             map.removeLayer('directions');
             map.removeSource('route');
         }
-        // addMarkers(placeNames, waypoints);
-        //let instr = await displayRoute(orderOfVisit[0], orderOfVisit[1], true);
         return orderOfVisit;
     } catch (error) {
         console.error('Error fetching coordinates:', error);
@@ -1743,9 +1688,6 @@ function startUserNav() {
     console.log('-----steps-->>>', steps)
     if (map.getLayer('prewroute')) {
         map.removeLayer('prewroute');
-    }
-    if (map.getLayer('lineBorder')) {
-        map.removeLayer('lineBorder');
     }
     setMapRoute(route)
     startNav.classList.remove('fadeshowin');

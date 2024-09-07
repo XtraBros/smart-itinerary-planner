@@ -39,7 +39,8 @@
 }
 .info-card-thumbnail {
     width: 100%;
-    height: 100px;
+    height: 100%;
+    object-fit: cover;
 }
 .additional-info {
     margin-top: 10px;
