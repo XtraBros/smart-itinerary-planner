@@ -1162,13 +1162,12 @@ async function postMessage(message, chatMessages) {
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, false);
             let route = orderOfVisit[0];
-            // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message })
+                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[0][1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1189,12 +1188,13 @@ async function postMessage(message, chatMessages) {
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
             // Send a request to the /get_text endpoint with the route
+            console.log("Location op POIs: " + orderOfVisit)
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: orderOfVisit, message: message })
+                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1216,13 +1216,12 @@ async function postMessage(message, chatMessages) {
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
             const route = orderOfVisit[0];
-            // Send a request to the /get_text endpoint with the route
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message })
+                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[0][1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
