@@ -555,10 +555,15 @@ h3 {
   left: 10px;
   z-index: 1;
 }
-#foodBox {
+#foodBox, #idaeBox {
   position: absolute;
   right: 0px;
   bottom: 60px;
+  animation: 1.2s ease 0s infinite backwards bounce;
+  animation-iteration-count:1;
+  -moz-animation-iteration-count:1;
+  -webkit-animation-iteration-count:1;
+  -o-animation-iteration-count:1;
 }
 .domeShowBoot {
   position: absolute; right: 0px; top: 6px; z-index: 9199; width: 50px; height: 50px; background-color: transparent;
@@ -845,5 +850,52 @@ a.mapboxgl-ctrl-logo {
   }
   to {
     opacity: 0;
+  }
+}
+
+
+@keyframes bounce {
+  0% {
+      transform: translateY(-64px);
+      animation-timing-function: ease-in;
+      opacity: 1;
+  }
+
+  24% {
+      opacity: 1;
+  }
+
+  40% {
+      transform: translateY(-32px);
+      animation-timing-function: ease-in;
+  }
+
+  62% {
+      transform: translateY(-16px);
+      animation-timing-function: ease-in;
+  }
+
+  82% {
+      transform: translateY(-8px);
+      animation-timing-function: ease-in;
+  }
+
+  92% {
+      transform: translateY(-4px);
+      animation-timing-function: ease-in;
+  }
+
+  25%,
+  55%,
+  75%,
+  90% {
+      transform: translateY(0);
+      animation-timing-function: ease-out;
+  }
+
+  100% {
+      transform: translateY(0);
+      animation-timing-function: ease-out;
+      opacity: 1;
   }
 }

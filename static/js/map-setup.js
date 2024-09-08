@@ -127,6 +127,7 @@ const poiSwiper = document.getElementById('poiSwiper');
 const zoomControls = document.getElementById('zoom-controls');
 const pauseAndpaly = document.getElementById('pauseAndpaly');
 const foodBox = document.getElementById('foodBox');
+const idaeBox = document.getElementById('idaeBox');
 const startNav = document.getElementById('startNav');
 const totMinus = document.getElementById('totMinus');
 const totDist = document.getElementById('totDist');
@@ -159,6 +160,7 @@ window.onload = function () {
         tishiDom.style.display = "none";
         localStorage.setItem('isFirstOpen', true)
         foodBox.classList.remove('fadeshowin');
+        idaeBox.classList.remove('fadeshowin');
         chatbotArea.scrollTop = chatbotArea.scrollHeight;
     }
     window.onclick = function (event) {
@@ -1688,6 +1690,7 @@ function awaitGetPlaceCoordWithName(place) {
 }
 
 function getPromo() {
+    idaeBox.classList.add('fadeshowin');
     getSuggestion(2)
 }
 
