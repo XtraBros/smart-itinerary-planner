@@ -208,6 +208,7 @@ function stopNavFunc() {
     pauseAndpaly.style.display = 'none';
     disableNavigationMode();
     simulationRunning = false;
+    simulationPaused = false;
     clearTimeout(simulationTimeout);
 }
 
@@ -1253,7 +1254,7 @@ async function postMessage(message, chatMessages) {
 async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     const popupModal = document.getElementById('popupModal');
     popupModal.style.display = 'none';
-    // console.log('-------->>>>>>', simulationRunning, simulationPaused)
+    console.log('-------->>>>>>', simulationRunning, simulationPaused)
     if (simulationRunning || simulationPaused) return;
     startNav.classList.add('fadeshowin');
     poiSwiper.classList.remove('fadeshowin');
