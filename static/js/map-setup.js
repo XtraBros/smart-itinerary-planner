@@ -1537,12 +1537,13 @@ async function getCoordinatesWithPlace(places) {
 }
 
 async function get_coordinates(data, fromUser) {
-    if (fromUser) {    
-        // Fetch the user's current location
-        userLocation = await new Promise((resolve, reject) => {
-            getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
-        });
-    }
+    // Start from tracked user location instead of gps location.
+    // if (fromUser) {    
+    //     // Fetch the user's current location
+    //     userLocation = await new Promise((resolve, reject) => {
+    //         getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
+    //     });
+    // }
     const orderOfVisit = await getCoordinatesWithPlace(data);
     return orderOfVisit;
 }
