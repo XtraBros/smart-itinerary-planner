@@ -684,6 +684,7 @@ function simulateUserLocation(route) {
                         pauseAndpaly.style.display = 'none';
                         simulationRunning = false;
                         simulationPaused = false;
+                        routeIndex = 0;
                         clearTimeout(simulationTimeout);
                         console.log("Route simulation completed");
                     }
