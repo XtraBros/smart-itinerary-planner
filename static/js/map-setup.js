@@ -1167,7 +1167,7 @@ async function postMessage(message, chatMessages) {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[0][1] })
+                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1223,7 +1223,7 @@ async function postMessage(message, chatMessages) {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[0][1] })
+                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
