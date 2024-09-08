@@ -188,6 +188,7 @@ window.onload = function () {
         },
     });
     swiper.on('click', function (swiper, event) {
+        simulationPaused = false;
         if (window.mapMarkers) {
             for (const [key, value] of Object.entries(window.mapMarkers)) {
                 value.remove();
@@ -1251,8 +1252,10 @@ async function postMessage(message, chatMessages) {
 async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     const popupModal = document.getElementById('popupModal');
     popupModal.style.display = 'none';
-    if (simulationRunning) return;
+    // console.log('-------->>>>>>', simulationRunning, simulationPaused)
+    if (simulationRunning || simulationPaused) return;
     startNav.classList.add('fadeshowin');
+    poiSwiper.classList.remove('fadeshowin');
     let places = []
     let waypoints = []
     let isfromUser = fromUser && fromUser === '1' ? false : true
