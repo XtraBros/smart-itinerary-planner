@@ -353,7 +353,8 @@ h3 {
   top: -45px;
   font-size: 15px;
   color: #2c2c2c;
-  width: 120px;
+  width: 160px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
   height: 30px;
   text-align: center;
   line-height: 30px;
