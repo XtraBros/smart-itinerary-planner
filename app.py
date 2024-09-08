@@ -293,9 +293,10 @@ def suggest():
         return jsonify({"error": "Invalid choice provided. Please use 1 or 2."}), 400
     response = samples[choice]
     poi = sample_pois[choice]
-    coordinate = poi_db.find_one({"name": poi.strip()}, {"_id": 0, "longitude": 1, "latitude": 1})
+    coordinate = poi_db.find_one({"name": poi}, {"_id": 0, "longitude": 1, "latitude": 1})
+    coord_data = [[coordinate['longitude'],coordinate["latitude"]]]
     # Create hyperlinks with the route names
-    hyperlinks = create_hyperlinks([poi], coordinate)
+    hyperlinks = create_hyperlinks([poi], coord_data)
 
     # Insert hyperlinks using the `~` delimiter
     response_text = insertHyperlinks(response, hyperlinks)
