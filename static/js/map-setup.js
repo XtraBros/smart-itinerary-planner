@@ -162,6 +162,8 @@ window.onload = function () {
         foodBox.classList.remove('fadeshowin');
         idaeBox.classList.remove('fadeshowin');
         chatbotArea.scrollTop = chatbotArea.scrollHeight;
+        const chatMessagesBox = document.getElementById("chatbot-messages");
+        chatMessagesBox.scrollTop = chatMessagesBox.scrollHeight;
     }
     window.onclick = function (event) {
         if (event.target === popupModal) {
