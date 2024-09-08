@@ -682,6 +682,7 @@ function simulateUserLocation(route) {
                         navcompleted.classList.add('fadeshowin');
                         pauseAndpaly.style.display = 'none';
                         simulationRunning = false;
+                        simulationPaused = false;
                         clearTimeout(simulationTimeout);
                         console.log("Route simulation completed");
                     }
