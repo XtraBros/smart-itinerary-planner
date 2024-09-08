@@ -1251,13 +1251,19 @@ async function postMessage(message, chatMessages) {
     } 
 }
 
+function disminiNav() {
+    startNav.classList.add('fadeshowin');
+    poiSwiper.classList.remove('fadeshowin');
+    navcompleted.classList.remove('fadeshowin');
+    navcompleted.classList.add('fadeout');
+}
+
 async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     const popupModal = document.getElementById('popupModal');
     popupModal.style.display = 'none';
     console.log('-------->>>>>>', simulationRunning, simulationPaused)
     if (simulationRunning || simulationPaused) return;
-    startNav.classList.add('fadeshowin');
-    poiSwiper.classList.remove('fadeshowin');
+    disminiNav();
     let places = []
     let waypoints = []
     let isfromUser = fromUser && fromUser === '1' ? false : true
@@ -1604,8 +1610,7 @@ function addMarkers(placeNames, waypoints) {
     
                 // Add functionality for the button in the popup
                 popupContent.querySelector('button').onclick = async function () {
-                    startNav.classList.add('fadeshowin');
-                    poiSwiper.classList.remove('fadeshowin');
+                    disminiNav();
                     await displayRoute([placeName], [coord], true);
                     paintLine(route)
                 }
@@ -1762,5 +1767,6 @@ function cancelNav() {
         zoom: 13, // Adjust zoom level if needed
         duration: 1000
     });
+    listButton.style.display = 'block';
     startNav.classList.remove('fadeshowin');
 }
