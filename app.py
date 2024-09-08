@@ -278,11 +278,19 @@ def find_nearby():
 # Temporary endpoint for random suggestion message
 @app.route('/suggestion', methods=['POST'])
 def suggest():
-    import random
-    samples = {1:"It’s almost time for lunch, and there is a popular Chinese restaurant, ~Feng Shui Inn~, nearby. Would you like me to direct you there? ",
-               2:"There is a popular adventure activity (~iFly Singapore~) near you which is highly rated on Xiaohongshu, would you like to try it out?"}
-    sample_pois = {1:"Feng Shui Inn", 2:"iFly Singapore"}
-    choice = random.randint(1, 2)
+    data = request.get_json()
+    choice = int(data.get('choice', 1))
+
+    samples = {
+        1: "Lunchtime is just around the corner, and I have some perfect places for you! ~Feng Shui Inn~, is a top-rated Chinese restaurant where you can find all Chinese cuisines. Ready to experience its delicious, authentic flavors? Click and let me guide you there!",
+        2: "Hot deals alert! ~The Forum~ is having a flash sale now on luxury products at unbeatable prices, just around the corner. Want to score big on highj-end goods for less? Click now, and I will show you the way to massive savings!"
+        }
+    sample_pois = {
+        1: "Feng Shui Inn",
+        2: "The Forum"
+        }
+    if choice not in samples:
+        return jsonify({"error": "Invalid choice provided. Please use 1 or 2."}), 400
     response = samples[choice]
     poi = sample_pois[choice]
     coordinate = poi_db.find_one({"name": poi.strip()}, {"_id": 0, "longitude": 1, "latitude": 1})
