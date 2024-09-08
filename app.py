@@ -148,7 +148,7 @@ def get_text():
                 {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
                  Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
-                 Structure your response as a bulleted list if there are multiple attractions/POIs. Ensure all destinations are covered in your response.
+                 Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
                  If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list."""},
                 {"role": "user", "content": f'Attractions: {str(route)}. User query: {user_input}'}
