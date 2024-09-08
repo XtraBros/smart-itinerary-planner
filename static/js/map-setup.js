@@ -1551,11 +1551,11 @@ async function get_coordinates(data, fromUser) {
 }
 
 async function get_coordinates_without_route(data) {
-    if (!simulationRunning && map.getSource('route')) {
-        map.removeLayer('route');
-        map.removeLayer('directions');
-        map.removeSource('route');
-    }
+    // if (!simulationRunning && map.getSource('route')) {
+    //     map.removeLayer('route');
+    //     map.removeLayer('directions');
+    //     map.removeSource('route');
+    // }
     const orderOfVisit = await getCoordinatesWithPlace(data);
     return orderOfVisit;
 }
