@@ -856,46 +856,12 @@ a.mapboxgl-ctrl-logo {
 
 @keyframes bounce {
   0% {
-      transform: translateY(-64px);
-      animation-timing-function: ease-in;
-      opacity: 1;
+    transform: scale(0);
   }
-
-  24% {
-      opacity: 1;
+  50% {
+     transform: scale(1.2);
   }
-
-  40% {
-      transform: translateY(-32px);
-      animation-timing-function: ease-in;
-  }
-
-  62% {
-      transform: translateY(-16px);
-      animation-timing-function: ease-in;
-  }
-
-  82% {
-      transform: translateY(-8px);
-      animation-timing-function: ease-in;
-  }
-
-  92% {
-      transform: translateY(-4px);
-      animation-timing-function: ease-in;
-  }
-
-  25%,
-  55%,
-  75%,
-  90% {
-      transform: translateY(0);
-      animation-timing-function: ease-out;
-  }
-
   100% {
-      transform: translateY(0);
-      animation-timing-function: ease-out;
-      opacity: 1;
+    transform: scale(1);
   }
 }
