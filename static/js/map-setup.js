@@ -1306,11 +1306,12 @@ function closedNavfun() {
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
-    if (window.mapMarkers) {
-        for (const [key, value] of Object.entries(window.mapMarkers)) {
-            value.remove();
-        }
-    }
+    // Keep map markers after cancelling navigation view.
+    // if (window.mapMarkers) {
+    //     for (const [key, value] of Object.entries(window.mapMarkers)) {
+    //         value.remove();
+    //     }
+    // }
 }
 
 // creaate template and styles for each visitor/guide message.
