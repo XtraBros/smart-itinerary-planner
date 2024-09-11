@@ -1197,6 +1197,7 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
+            addMarkers(orderOfVisit[0],orderOfVisit[1]);
             // Send a request to the /get_text endpoint with the route
             console.log("Location op POIs: " + orderOfVisit)
             let textResponse = await fetch('/get_text', {
