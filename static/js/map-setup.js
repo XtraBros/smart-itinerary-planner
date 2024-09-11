@@ -1170,13 +1170,12 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, false);
-            let route = orderOfVisit[0];
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[1] })
+                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1226,13 +1225,13 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
-            const route = orderOfVisit[0];
+            addMarkers(orderOfVisit[0],orderOfVisit[1]);
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ route: route, message: message, coordinates: orderOfVisit[1] })
+                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
             });
             if (!textResponse.ok) {
                 throw new Error('Network response was not ok ' + textResponse.statusText);
@@ -1242,8 +1241,8 @@ async function postMessage(message, chatMessages) {
                 text: textData.response,
                 chatMessages,
                 type: 'route',
-                placeNames: route,
-                longAndlat: orderOfVisit[0],
+                placeNames: orderOfVisit[0],
+                longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
         } else {
