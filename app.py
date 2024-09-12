@@ -34,6 +34,7 @@ model_name = config['GPT_MODEL']
 mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
 db = mongo_client[config['MONGO_DB_NAME']]
 poi_db = db[config['POI_DB_NAME']]
+events_db = db[config['EVENTS_DB_NAME']]
 # create geosphere index
 poi_db.create_index([('location', '2dsphere')])
 indexes = poi_db.index_information()
@@ -301,6 +302,49 @@ def suggest():
     # Insert hyperlinks using the `~` delimiter
     response_text = insertHyperlinks(response, hyperlinks)
     return jsonify({"message":response_text, "POI": poi})
+
+# Endpoint to fetch events for a given set of POI names, and return a LLM response to inform the user about the events.
+@app.route('/check_events', methods=['POST'])
+def check_events():
+    data = request.get_json()  # Get the list of names from the POST request
+    print(f"===check_events==> {data}")
+    places = data.get("places", [])  # Retrieve the 'names' list from the JSON body
+    coordinates = data.get("coordinates", [])
+    if not places:
+        return jsonify({"error": "No POIs provided"}), 400
+
+    # Query the database for entries with the given names
+    entries = list(events_db.find({"location": {"$in": places}}))
+    print(f"===check_events results==> {entries}")
+    if entries:
+        found_places = []
+        found_coordinates = []
+        for entry in entries:
+            location = entry['location']
+            if location in places:
+                index = places.index(location)
+                found_places.append(location)
+                found_coordinates.append(coordinates[index])
+        # Craft response message if entries detected.
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": f"""You are an event promoter.
+                 Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {sentosa_name}, promoting these POIs and events. 
+                 This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion. The message is addressed to a generic audience, and should be as succint as possible.
+                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
+                {"role": "user", "content": f'Places of interest involved: {found_places}. Events data: {entries}.'}
+            ],
+            temperature=0,
+        )
+        print(f"===check_events GPT response==> {response}")
+        # Create hyperlinks with the route names
+        hyperlinks = create_hyperlinks(places, coordinates)
+        response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
+        return jsonify({'response': response_text, "places": found_places, "coordinates":found_coordinates})
+    else:
+        # Return no content if no entries are found
+        return jsonify({}), 204
 
 # Not needed in sentosa variant right now.
 # @app.route('/get_centroids', methods=['POST'])

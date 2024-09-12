@@ -1190,6 +1190,43 @@ async function postMessage(message, chatMessages) {
                 fromUser: '1',
             });
             attachEventListenersToHyperlinks();
+            let nextResponse = await fetch('/check_events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
+            });
+            
+            // Check if the response status is 204 (No Content)
+            if (nextResponse.status === 204) {
+                // Do nothing if the response is empty
+                console.log('No events found for the provided places.');
+                return;  // Exit early
+            }
+            
+            // Proceed if the response is ok and not empty
+            if (!nextResponse.ok) {
+                throw new Error('Network response was not ok ' + nextResponse.statusText);
+            }
+            
+            let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
+            
+            // Check if the response contains the necessary data and append the message
+            if (nextData.response) {
+                appendMessage({
+                    text: nextData.response,
+                    chatMessages,
+                    type: 'message',
+                    placeNames: nextData.found_places,  // Use found_places from the response
+                    longAndlat: nextData.coordinates,   // Use coordinates from the response
+                    fromUser: '1',
+                });
+            
+                // Attach event listeners to the hyperlinks
+                attachEventListenersToHyperlinks();
+            }
+            
         } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
 
@@ -1197,7 +1234,6 @@ async function postMessage(message, chatMessages) {
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
             addMarkers(orderOfVisit[0],orderOfVisit[1]);
-            // Send a request to the /get_text endpoint with the route
             console.log("Location op POIs: " + orderOfVisit)
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
@@ -1218,6 +1254,42 @@ async function postMessage(message, chatMessages) {
                 longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
+            let nextResponse = await fetch('/check_events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
+            });
+            
+            // Check if the response status is 204 (No Content)
+            if (nextResponse.status === 204) {
+                // Do nothing if the response is empty
+                console.log('No events found for the provided places.');
+                return;  // Exit early
+            }
+            
+            // Proceed if the response is ok and not empty
+            if (!nextResponse.ok) {
+                throw new Error('Network response was not ok ' + nextResponse.statusText);
+            }
+            
+            let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
+            
+            // Check if the response contains the necessary data and append the message
+            if (nextData.response) {
+                appendMessage({
+                    text: nextData.response,
+                    chatMessages,
+                    type: 'message',
+                    placeNames: nextData.found_places,  // Use found_places from the response
+                    longAndlat: nextData.coordinates,   // Use coordinates from the response
+                    fromUser: '1',
+                });
+            
+                // Attach event listeners to the hyperlinks
+                attachEventListenersToHyperlinks();
+            }            
         } else if (data.operation == "wayfinding") {
             console.log("PLaces: " + data.response);
             let cleanedPlaceNames = data.response;
@@ -1245,6 +1317,42 @@ async function postMessage(message, chatMessages) {
                 longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
+            let nextResponse = await fetch('/check_events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
+            });
+            
+            // Check if the response status is 204 (No Content)
+            if (nextResponse.status === 204) {
+                // Do nothing if the response is empty
+                console.log('No events found for the provided places.');
+                return;  // Exit early
+            }
+            
+            // Proceed if the response is ok and not empty
+            if (!nextResponse.ok) {
+                throw new Error('Network response was not ok ' + nextResponse.statusText);
+            }
+            
+            let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
+            
+            // Check if the response contains the necessary data and append the message
+            if (nextData.response) {
+                appendMessage({
+                    text: nextData.response,
+                    chatMessages,
+                    type: 'message',
+                    placeNames: nextData.found_places,  // Use found_places from the response
+                    longAndlat: nextData.coordinates,   // Use coordinates from the response
+                    fromUser: '1',
+                });
+            
+                // Attach event listeners to the hyperlinks
+                attachEventListenersToHyperlinks();
+            }            
         } else {
             appendMessage({ text: data.response, chatMessages });
         }
