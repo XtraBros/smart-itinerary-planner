@@ -112,7 +112,58 @@ async function getPoisByLocation(location) {
         
         swiperconent.innerHTML = contenxt;
         poiList.innerHTML = listCont;
+        // prompt suggestion if not recent:
+        const placeNames = [];
+        const coordinates = [];
 
+        Object.keys(placeInfoResponse).forEach(placeName => {
+            placeNames.push(placeName);
+            coordinates.push(placeInfoResponse[placeName].location);
+        });
+
+        const lastEventCheckTime = localStorage.getItem('lastEventCheckTime');
+        const currentTime = new Date().getTime();
+
+        if (!lastEventCheckTime || (currentTime - lastEventCheckTime > 5 * 60 * 1000)) {
+            // Time difference is more than 5 minutes or this is the first time running
+
+            let nextResponse = await fetch('/check_events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ places: placeNames, coordinates: coordinates })
+            });
+
+            if (nextResponse.status === 204) {
+                console.log('No events found for the provided places.');
+                return;
+            }
+
+            if (!nextResponse.ok) {
+                throw new Error('Network response was not ok ' + nextResponse.statusText);
+            }
+
+            let nextData = await nextResponse.json();
+
+            if (nextData.response) {
+                appendMessage({
+                    text: nextData.response,
+                    chatMessages,
+                    type: 'message',
+                    placeNames: nextData.found_places,
+                    longAndlat: nextData.coordinates,
+                    fromUser: '1',
+                });
+
+                attachEventListenersToHyperlinks();
+            }
+
+            // Update the last event check timestamp
+            localStorage.setItem('lastEventCheckTime', currentTime);
+        } else {
+            console.log('Skipping event check. Less than 5 minutes since the last check.');
+        }
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;

@@ -230,21 +230,14 @@ def place_info():
 
     for place in places:
         place = place.strip()
-        result = poi_db.find_one({"name": place}, {"_id": 0, "name": 1, "description": 1})
+        result = poi_db.find_one({"name": place}, {"_id": 0, "name": 1, "description": 1,"location":1})
         if result:
             place_name = result['name']
             description = result['description']
-
-            # Try different file extensions to find the corresponding thumbnail
-            #thumbnail_data = None
-            # filename = f"{re.sub(r'[: ,]+', '-', place_name.lower())}.jpg"
-            # thumbnail_file = fs.find_one({"filename": filename})
-            # if thumbnail_file:
-            #     thumbnail_data = base64.b64encode(thumbnail_file.read()).decode('utf-8')
-
+            location = result['location']
             place_info[place_name] = {
                 "description": description,
-                #"thumbnail": thumbnail_data,
+                "location": location
             }
 
     return jsonify(place_info)
