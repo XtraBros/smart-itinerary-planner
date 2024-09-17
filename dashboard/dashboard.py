@@ -51,7 +51,7 @@ def get_poi():
 @app.route('/add-poi', methods=['POST'])
 def add_poi():
     new_poi = request.json
-    
+
     print(f"Adding {new_poi['name']}")
     global df
     if 'target_audience' in new_poi:
@@ -63,7 +63,7 @@ def add_poi():
     update_cluster_graph()
     document = df.loc[df['name'] == new_poi['name']].to_dict(orient='records')[0]
     # Insert the document into MongoDB
-    poi_db.insert_one(document) 
+    poi_db.insert_one(document)
     return jsonify({"message": "POI added successfully"})
 
 @app.route('/edit-poi', methods=['POST'])
@@ -81,11 +81,11 @@ def edit_poi():
 
     # Find the POIs that have changed
     changed_pois = updated_df.compare(df)
-    
+
     # Update the DataFrame
     for index in changed_pois.index:
         updated_values = updated_df.loc[index].to_dict()
-        
+
         # Check if longitude or latitude has changed
         existing_poi = df.loc[index]
         location_changed = (existing_poi['longitude'] != updated_values['longitude']) or (existing_poi['latitude'] != updated_values['latitude'])
@@ -96,7 +96,7 @@ def edit_poi():
         if name_changed:
             old_name = existing_poi['name']
             new_name = updated_values['name']
-        
+
             distance_matrix = distance_matrix.rename(index={old_name: new_name}, columns={old_name: new_name})        # If location has changed, update the distance matrix and cluster graph
         if location_changed:
             edit_poi_in_distance_matrix(updated_values, existing_poi)
@@ -104,7 +104,7 @@ def edit_poi():
 
         # Update the cloud database with the full data entry
         poi_db.update_one({"id": index}, {"$set": updated_values})
-    
+
     return jsonify({"message": "POIs updated successfully"})
 
 # delete pois
@@ -160,11 +160,11 @@ def upload_csv():
 def update_cluster_graph():
     global df
     coords = df[['latitude', 'longitude']].values
-    
+
     # Fit KMeans model
     kmeans = KMeans(n_clusters=18, random_state=0).fit(coords)
     df['cluster'] = kmeans.labels_
-    
+
     # Prepare centroid locations data
     centroids = kmeans.cluster_centers_
     centroid_data = [{
@@ -172,7 +172,7 @@ def update_cluster_graph():
         "latitude": centroid[0],
         "longitude": centroid[1]
     } for i, centroid in enumerate(centroids)]
-    
+
     # Clear the existing centroid collection and insert the new centroid data
     cluster_loc.delete_many({})
     cluster_loc.insert_many(centroid_data)
@@ -181,7 +181,7 @@ def update_cluster_graph():
 
 def add_poi_to_distance_matrix(new_poi):
     global df, distance_matrix
-    
+
     poi_name = new_poi['name'].replace('[', '').replace(']', '').replace("'", '')
     # Generate distances for the new POI
     new_distances = generate_distances(new_poi, df)  # This should return a list of distances including the distance to itself
@@ -217,11 +217,11 @@ def edit_poi_in_distance_matrix(updated_poi, existing_poi):
     global df, distance_matrix
     curr_poi_name = existing_poi['name']
     new_poi_name = updated_poi['name']
-    
+
     # Generate new distances
     new_distances = generate_distances(updated_poi, df)  # Function to calculate distances to all other POIs
     print(new_distances)
-    
+
     # Ensure the new distances align with the distance matrix format
     if len(new_distances) != len(distance_matrix):
         print(new_distances)
@@ -229,16 +229,16 @@ def edit_poi_in_distance_matrix(updated_poi, existing_poi):
         print(f'needed: {len(distance_matrix)}')
 
         raise ValueError("The length of new_distances must match the number of rows/columns in distance_matrix.")
-    
+
     new_distances_series = pd.Series(new_distances, index=distance_matrix.columns)
-    
+
     # Rename the POI in the index if necessary
     if curr_poi_name != new_poi_name:
         distance_matrix.rename(index={curr_poi_name: new_poi_name}, columns={curr_poi_name: new_poi_name}, inplace=True)
-    
+
     # Update the distance matrix row
     distance_matrix.loc[new_poi_name] = new_distances_series
-    
+
     # Update the distance matrix column
     distance_matrix[new_poi_name] = new_distances_series
     print(distance_matrix)
@@ -278,13 +278,13 @@ def add_multiple_pois(df_new_pois):
         add_poi_to_distance_matrix(new_poi)
         document = df.loc[df['name'] == new_poi['name']].to_dict(orient='records')[0]
         new_documents.append(document)
-    
+
     # Update the cluster graph after adding all POIs
     update_cluster_graph()
-    
+
     # Perform a single batch upload to MongoDB
     if new_documents:
         poi_db.insert_many(new_documents)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=3000)
+    app.run(debug=True, host="0.0.0.0", port=3000)

@@ -4,7 +4,7 @@ package.json
 config.py
 ./templates/test.html
 my-proxy/node_modules
-
+/static/thumbnails/sentosa/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -15,6 +15,8 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+.pyenv
+config.json
 build/
 develop-eggs/
 dist/
@@ -165,3 +167,13 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Zac's misc files
+notes.md
+graph/distance_matrix_gen.ipynb
+dashboard/upload_sentosa.py
+static/thumbnails/sentosa/*
+
+# IDE & System
+.idea/
+.DS_Store

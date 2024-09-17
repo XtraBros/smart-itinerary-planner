@@ -1,0 +1,13 @@
+{
+  "GPT_MODEL": "gpt-4",
+  "MAPBOX_MAPTILES": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "MAPBOX_ACCESS_TOKEN": "@MAPBOX_ACCESS_TOKEN@",
+  "MONGO_CLUSTER_URI": "mongodb+srv://zacwong:zacwong@cluster0.v6x6jtv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
+  "MONGO_DB_NAME": "SENTOSA",
+  "POI_DB_NAME": "POIDATA",
+  "EVENTS_DB_NAME": "EVENTS",
+  "DISTANCE_MATRIX": "DISTANCEMATRIX",
+  "CLUSTER_LOCATIONS": "CLUSTERLOCATIONS",
+  "OPENAI_API_KEY": "@OPENAI_API_KEY@",
+  "GOOGLE_CLOUD_URI": "https://storage.googleapis.com/sentosa-thumbnails/sentosa/"
+}
