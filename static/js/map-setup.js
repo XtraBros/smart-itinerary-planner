@@ -365,8 +365,8 @@ fetch('/config')
             style: 'mapbox://styles/mapbox/streets-v12',
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
-            center: [103.827973, 1.250277],
-            zoom: 13
+            center: [103.78839388, 1.4042306],
+            zoom: 14
         });
 
         directions = new MapboxDirections({

@@ -39,7 +39,6 @@ events_db = db[config['EVENTS_DB_NAME']]
 poi_db.create_index([('location', '2dsphere')])
 indexes = poi_db.index_information()
 dist_mat = db[config["DISTANCE_MATRIX"]]
-thumbnails_db = db["THUMBNAILS"]
 fs = gridfs.GridFS(db)
 #cluster_loc = db[config['CLUSTER_LOCATIONS']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
@@ -79,8 +78,8 @@ def ask_plan():
 
     # Initial messages with RAG data
     messages = [
-        {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}. The visitor is currently at {user_location}.
+        {"role": "system", "content": f"""You are a helpful tour guide working in {zoo_name}. 
+            Your task is to advise visitors on features and attractions in {zoo_name}. The visitor is currently at {user_location}.
             
             Important Guidelines:
             1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
@@ -94,13 +93,12 @@ def ask_plan():
                 - If "operation" is "location", "route" or "wayfinding", "response" should contain a list of the names of the places of interest.
             4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
-            5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
+            5) Use the exact names of the places as provided in this list: {zoo_places_list}.
             6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
     ]
-
 
     # Handle function calls and get the final response
     state = {
