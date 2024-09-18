@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let colHeaders;
     let deletedRows = [];
     let markers = [];
+    let thumbnailURI;
 
     // Fetch the current config
     fetch('/get-config')
@@ -35,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     document.getElementById('configForm').appendChild(document.createElement('br'));
                 }
             }
+            thumbnailURI = data.GOOGLE_CLOUD_URI;
         });
 
     // Update the config
@@ -86,11 +88,16 @@ document.addEventListener("DOMContentLoaded", function() {
     
                 // Add POIs to the map as markers
                 data.forEach(poi => {
+                    // create thumbnail url
+                    const formattedPlaceName = poi.name.toLowerCase().replace(/\s+/g, '-');
+                    const thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
+                    poi.thumbnail = thumbnailUrl || '/static/icons/default.png';
                     // Create a marker for each POI
                     const marker = new mapboxgl.Marker()
                         .setLngLat([poi.longitude, poi.latitude]) // Set longitude and latitude
                         .setPopup(new mapboxgl.Popup().setHTML(
                             `<strong>${poi.name}</strong><br>
+                            <img src="${poi.thumbnail}" alt="${poi.name} thumbnail" style="width:100px;height:100px;"><br>
                             ${poi.description}<br>
                             Category: ${poi.category}<br>
                             Audience: ${poi.target_audience}<br>
@@ -291,6 +298,7 @@ function populateForm(poi) {
     document.getElementById('category').value = poi.category || '';
     document.getElementById('target_audience').value = poi.for || '';
     document.getElementById('operating_hours').value = poi.operating_hours || '';
+    document.getElementById('thumbnail').value = poi.thumbnail || '';
 }
 
 function isWithinBounds(coordinates) {
