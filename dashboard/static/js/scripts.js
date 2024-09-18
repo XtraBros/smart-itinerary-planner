@@ -376,10 +376,18 @@ document.addEventListener("DOMContentLoaded", function() {
             },
             body: JSON.stringify(poiData)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                // If the response is not ok, handle the error
+                return response.json().then(errorResponse => {
+                    throw new Error(errorResponse.message);
+                });
+            }
+            return response.json();
+        })
         .then(response => {
             alert(response.message);
-            this.reset();
+            document.getElementById("location-form").reset();  // Reset the form
             if (marker) {
                 marker.remove();
                 marker = null;
@@ -387,7 +395,7 @@ document.addEventListener("DOMContentLoaded", function() {
         })
         .catch(error => {
             console.error('Error adding POI:', error);
-            alert('Error adding POI');
+            alert(error.message);  // Show the specific error message from the server
         })
         .finally(() => {
             hideLoading();

@@ -6,13 +6,14 @@ import pymongo
 from sklearn.cluster import KMeans
 import requests
 import time
+import certifi
 
 app = Flask(__name__)
 
 CONFIG_FILE = '../config.json'
 with open(CONFIG_FILE) as json_file:
     config = json.load(json_file)
-mongo = pymongo.MongoClient(config['MONGO_CLUSTER_URI'])
+mongo = pymongo.MongoClient(config['MONGO_CLUSTER_URI'],tlsCAFile=certifi.where())
 print("Successfully cononected to Database.")
 DB = mongo[config['MONGO_DB_NAME']]
 poi_db = DB[config['POI_DB_NAME']]
@@ -54,6 +55,8 @@ def add_poi():
 
     print(f"Adding {new_poi['name']}")
     global df 
+    if new_poi['name'] in df['name'].values:
+        return jsonify({"message": f"POI with name '{new_poi['name']}' already exists"}), 400
     if 'longitude' in new_poi and 'latitude' in new_poi:
         new_poi['location'] = [float(new_poi['longitude']), float(new_poi['latitude'])]
     
