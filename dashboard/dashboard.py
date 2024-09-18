@@ -17,14 +17,14 @@ print("Successfully cononected to Database.")
 DB = mongo[config['MONGO_DB_NAME']]
 poi_db = DB[config['POI_DB_NAME']]
 df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
-required_columns = ['name', 'longitude', 'latitude', 'description']
+required_columns = ['name', 'longitude', 'latitude', 'description', 'location']
 dist_mat = DB[config["DISTANCE_MATRIX"]]
-cluster_loc = DB[config['CLUSTER_LOCATIONS']]
+#cluster_loc = DB[config['CLUSTER_LOCATIONS']]
 mapbox_access_token = config['MAPBOX_ACCESS_TOKEN']
 
 distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
 distance_matrix.set_index('name', inplace=True)
-cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
+#cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 
 @app.route('/')
 def index():
@@ -53,14 +53,17 @@ def add_poi():
     new_poi = request.json
 
     print(f"Adding {new_poi['name']}")
-    global df
+    global df 
+    if 'longitude' in new_poi and 'latitude' in new_poi:
+        new_poi['location'] = [float(new_poi['longitude']), float(new_poi['latitude'])]
+    
     if 'target_audience' in new_poi:
         new_poi['for'] = new_poi.pop('target_audience')
     new_poi['id'] = len(df)
     print(new_poi)
     df = pd.concat([df, pd.DataFrame([new_poi])], ignore_index=True)
     add_poi_to_distance_matrix(new_poi)
-    update_cluster_graph()
+    # update_cluster_graph()
     document = df.loc[df['name'] == new_poi['name']].to_dict(orient='records')[0]
     # Insert the document into MongoDB
     poi_db.insert_one(document)
@@ -100,7 +103,8 @@ def edit_poi():
             distance_matrix = distance_matrix.rename(index={old_name: new_name}, columns={old_name: new_name})        # If location has changed, update the distance matrix and cluster graph
         if location_changed:
             edit_poi_in_distance_matrix(updated_values, existing_poi)
-            update_cluster_graph()
+            existing_poi['location'] = [updated_values['longitude'],updated_values['latitude']]
+            # update_cluster_graph()
 
         # Update the cloud database with the full data entry
         poi_db.update_one({"id": index}, {"$set": updated_values})
@@ -174,10 +178,10 @@ def update_cluster_graph():
     } for i, centroid in enumerate(centroids)]
 
     # Clear the existing centroid collection and insert the new centroid data
-    cluster_loc.delete_many({})
-    cluster_loc.insert_many(centroid_data)
+    # cluster_loc.delete_many({})
+    # cluster_loc.insert_many(centroid_data)
 
-    print("Cluster graph and centroids updated successfully.")
+    # print("Cluster graph and centroids updated successfully.")
 
 def add_poi_to_distance_matrix(new_poi):
     global df, distance_matrix
@@ -280,11 +284,11 @@ def add_multiple_pois(df_new_pois):
         new_documents.append(document)
 
     # Update the cluster graph after adding all POIs
-    update_cluster_graph()
+    # update_cluster_graph()
 
     # Perform a single batch upload to MongoDB
     if new_documents:
         poi_db.insert_many(new_documents)
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=3000)
+    app.run(debug=True, host="127.0.0.1", port=3000)
