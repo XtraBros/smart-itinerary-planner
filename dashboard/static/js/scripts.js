@@ -2,9 +2,9 @@ document.addEventListener("DOMContentLoaded", function() {
     let config;
     let map;
     let marker;
-    let hot; // Handsontable instance
     let colHeaders;
     let deletedRows = [];
+    let markers = [];
 
     // Fetch the current config
     fetch('/get-config')
@@ -12,7 +12,12 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(data => {
             config = data;
             mapboxgl.accessToken = data.MAPBOX_ACCESS_TOKEN;
-
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [103.8198, 1.2528],
+                zoom: 15
+            });
             for (const key in data) {
                 if (data.hasOwnProperty(key)) {
                     const label = document.createElement('label');
@@ -31,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         });
+    
     // Show loading overlay
     // Show loading overlay
     function showLoading() {
@@ -76,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (tabName === 'poi') {
             loadPOIData();
         } else if (tabName === 'addLocation') {
-            initializeMap();
+            mapLocationClick();
         }
     };
 
@@ -85,64 +91,31 @@ document.addEventListener("DOMContentLoaded", function() {
         fetch('/get-poi')
             .then(response => response.json())
             .then(data => {
-                const container = document.getElementById('poiTable');
-                if (hot) {
-                    hot.destroy();
-                }
-
-                // Drop the 'id' column from data
-                const filteredData = data.map(row => {
-                    const { id, ...rest } = row;
-                    return rest;
+                // Clear any existing markers from the map
+                markers.forEach(marker => marker.remove());
+                markers = [];
+    
+                // Add POIs to the map as markers
+                data.forEach(poi => {
+                    // Create a marker for each POI
+                    const marker = new mapboxgl.Marker()
+                        .setLngLat([poi.longitude, poi.latitude]) // Set longitude and latitude
+                        .setPopup(new mapboxgl.Popup().setHTML(
+                            `<strong>${poi.name}</strong><br>
+                            ${poi.description}<br>
+                            Category: ${poi.category}<br>
+                            Audience: ${poi.target_audience}<br>
+                            Hours: ${poi.operating_hours}`
+                        )) // Add a popup with POI details
+                        .addTo(map);
+    
+                    // Push the marker to the array to manage markers later (for clearing or updating)
+                    markers.push(marker);
                 });
-
-                // Extract column headers and column configuration from the filtered data
-                colHeaders = Object.keys(filteredData[0]);
-                const columns = colHeaders.map(header => ({
-                    data: header
-                }));
-
-                hot = new Handsontable(container, {
-                    data: filteredData,
-                    colHeaders: colHeaders,
-                    columns: columns,
-                    rowHeaders: true,
-                    contextMenu: true,
-                    minSpareRows: 0, // Remove the empty last row
-                    allowInsertRow: false, // Disable adding new rows
-                    licenseKey: 'non-commercial-and-evaluation' // For non-commercial use
-                });
-
-                // Add afterRemoveRow hook to delete POI
-                hot.addHook('beforeRemoveRow', function(index, amount) {
-                    for (let i = 0; i < amount; i++) {
-                        const rowIndex = index + i; // Get the row index of the deleted row
-                        let rowData = this.getSourceDataAtRow(rowIndex);
-                        if (rowData) {
-                          deletedRows.push({ name: rowData.name, id: rowIndex });
-                        }
-                      }
-                });
-                hot.addHook('afterUndo', function(action){
-                    if (action.actionType === 'remove_row') {
-                        action.data.forEach(row => {
-                          let name = row[0]; // Assuming name is in the first column
-                          let rowIndex = action.index;
-                          deletedRows = deletedRows.filter(deletedRow => deletedRow.name !== name && deletedRow.id !== rowIndex);
-                        });
-                      }
-                });
-                hot.addHook('afterRedo', function(action){
-                    if (action.actionType === 'remove_row') {
-                        for (let i = 0; i < action.amount; i++) {
-                          let rowIndex = action.index + i;
-                          let rowData = this.getSourceDataAtRow(rowIndex);
-                          if (rowData) {
-                            deletedRows.push({ name: rowData.name, id: rowIndex });
-                          }
-                        }
-                    }
-                });
+            })
+            .catch(error => {
+                console.error('Error loading POI data:', error);
+                alert('Failed to load POI data');
             });
     }
 
@@ -272,33 +245,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Initialize Mapbox map
-    function initializeMap() {
-        map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v12',
-            center: [103.8198, 1.2528],
-            zoom: 15
-        });
-
-        map.on('load', function() {
-            // Define and set bounds for the map
-            // var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
-            // map.setMaxBounds(bounds);
-
-            // // // Add custom tiles
-            // map.addSource('custom-tiles', {
-            //     type: 'raster',
-            //     tiles: [config.MAPBOX_MAPTILES],
-            //     tileSize: 256,
-            //     minzoom: 12,
-            //     maxzoom: 22
-            // });
-            // map.addLayer({
-            //     id: 'custom-tiles-layer',
-            //     type: 'raster',
-            //     source: 'custom-tiles'
-            // });
-        });
+    function mapLocationClick() {
         map.on('click', function(e) {
             const coordinates = e.lngLat;
             document.getElementById('latitude').value = coordinates.lat.toFixed(6);
@@ -359,7 +306,6 @@ document.addEventListener("DOMContentLoaded", function() {
                coordinates.lat >= minLat && coordinates.lat <= maxLat;
     }
     
-    // Handle add poi
     // Handle add POI
     document.getElementById("location-form").addEventListener("submit", function(e) {
         e.preventDefault();

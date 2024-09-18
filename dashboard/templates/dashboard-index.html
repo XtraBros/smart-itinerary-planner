@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.0/mapbox-gl.css" rel="stylesheet" />
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
@@ -33,14 +31,16 @@
         </div>
         <div id="poi" class="tab-content">
             <h1>Manage POI Data</h1>
-            <div class="handsontable-container" id="poiTable"></div>
-            <br>
+             <!-- Mapbox Map Display -->
+            <div id="map" class="map"></div>
+
+            <br><br>
             <button type="button" id="savePOIButton">Save POI Data</button>
             <br><br>
             <input type="file" id="uploadCSV" accept=".csv">
             <button type="button" id="uploadCSVButton">Upload CSV</button>
             <br><br>
-            <button type="button" id="addLocationButton" onclick="openTab('addLocation')">Add New Location</button>
+            <button type="button" id="addLocationButton">Add New Location</button>
         </div>
         <div id="addLocation" class="tab-content">
             <h1>Add a New Location</h1>
