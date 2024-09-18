@@ -36,17 +36,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         });
-    
-    // Show loading overlay
-    // Show loading overlay
-    function showLoading() {
-        document.getElementById('loading-overlay').classList.add('visible');
-    }
-
-    // Hide loading overlay
-    function hideLoading() {
-        document.getElementById('loading-overlay').classList.remove('visible');
-    }
 
     // Update the config
     document.getElementById('updateButton').addEventListener('click', function(e) {
@@ -108,7 +97,9 @@ document.addEventListener("DOMContentLoaded", function() {
                             Hours: ${poi.operating_hours}`
                         )) // Add a popup with POI details
                         .addTo(map);
-    
+                    marker.getElement().addEventListener('click', () => {
+                        populateForm(poi); // Call function to populate the form
+                    });
                     // Push the marker to the array to manage markers later (for clearing or updating)
                     markers.push(marker);
                 });
@@ -243,68 +234,10 @@ document.addEventListener("DOMContentLoaded", function() {
         document.querySelector('.sidebar').classList.remove('show');
         document.getElementById("mainContent").classList.remove('shift-right');
     });
-
-    // Initialize Mapbox map
-    function mapLocationClick() {
-        map.on('click', function(e) {
-            const coordinates = e.lngLat;
-            document.getElementById('latitude').value = coordinates.lat.toFixed(6);
-            document.getElementById('longitude').value = coordinates.lng.toFixed(6);
-
-            // Remove the existing marker if there is one
-            if (marker) {
-                marker.remove();
-            }
-            // Add a new marker
-            marker = new mapboxgl.Marker()
-                .setLngLat(coordinates)
-                .addTo(map);
-
-        });
-
-        map.addControl(new mapboxgl.NavigationControl());
-    }
-
+    
     // Update the marker when latitude or longitude fields are changed
     document.getElementById('latitude').addEventListener('change', updateMarker);
     document.getElementById('longitude').addEventListener('change', updateMarker);
-
-    function updateMarker() {
-        const lat = parseFloat(document.getElementById('latitude').value);
-        const lng = parseFloat(document.getElementById('longitude').value);
-        const coordinates = new mapboxgl.LngLat(lng, lat);
-
-        if (isNaN(lat) || isNaN(lng)) {
-            alert('Please enter valid coordinates.');
-            return;
-        }
-
-        if (isWithinBounds(coordinates)) {
-            // Set the map center to the new coordinates
-            map.setCenter(coordinates);
-
-            // Remove the existing marker if there is one
-            if (marker) {
-                marker.remove();
-            }
-
-            // Add a new marker
-            marker = new mapboxgl.Marker()
-                .setLngLat(coordinates)
-                .addTo(map);
-        } else {
-            alert(`Coordinates are out of bounds. Please enter within the bounds:
-                Longitude: ${bounds[0][0]} to ${bounds[1][0]}, 
-                Latitude: ${bounds[0][1]} to ${bounds[1][1]}`);
-        }
-    }
-
-    function isWithinBounds(coordinates) {
-        const [minLng, minLat] = [103.77861059, 1.39813758];
-        const [maxLng, maxLat] = [103.79817716, 1.41032361];
-        return coordinates.lng >= minLng && coordinates.lng <= maxLng &&
-               coordinates.lat >= minLat && coordinates.lat <= maxLat;
-    }
     
     // Handle add POI
     document.getElementById("location-form").addEventListener("submit", function(e) {
@@ -348,3 +281,79 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 });
+
+// Helper functions:
+function populateForm(poi) {
+    document.getElementById('name').value = poi.name || '';
+    document.getElementById('longitude').value = poi.longitude || '';
+    document.getElementById('latitude').value = poi.latitude || '';
+    document.getElementById('description').value = poi.description || '';
+    document.getElementById('category').value = poi.category || '';
+    document.getElementById('target_audience').value = poi.for || '';
+    document.getElementById('operating_hours').value = poi.operating_hours || '';
+}
+
+function isWithinBounds(coordinates) {
+    const [minLng, minLat] = [103.77861059, 1.39813758];
+    const [maxLng, maxLat] = [103.79817716, 1.41032361];
+    return coordinates.lng >= minLng && coordinates.lng <= maxLng &&
+           coordinates.lat >= minLat && coordinates.lat <= maxLat;
+}
+
+// Show loading overlay
+function showLoading() {
+    document.getElementById('loading-overlay').classList.add('visible');
+}
+
+// Hide loading overlay
+function hideLoading() {
+    document.getElementById('loading-overlay').classList.remove('visible');
+}
+
+function mapLocationClick() {
+    map.on('click', function(e) {
+        const coordinates = e.lngLat;
+        document.getElementById('latitude').value = coordinates.lat.toFixed(6);
+        document.getElementById('longitude').value = coordinates.lng.toFixed(6);
+
+        // Remove the existing marker if there is one
+        if (marker) {
+            marker.remove();
+        }
+        // Add a new marker
+        marker = new mapboxgl.Marker()
+            .setLngLat(coordinates)
+            .addTo(map);
+
+    });
+}
+
+function updateMarker() {
+    const lat = parseFloat(document.getElementById('latitude').value);
+    const lng = parseFloat(document.getElementById('longitude').value);
+    const coordinates = new mapboxgl.LngLat(lng, lat);
+
+    if (isNaN(lat) || isNaN(lng)) {
+        alert('Please enter valid coordinates.');
+        return;
+    }
+
+    if (isWithinBounds(coordinates)) {
+        // Set the map center to the new coordinates
+        map.setCenter(coordinates);
+
+        // Remove the existing marker if there is one
+        if (marker) {
+            marker.remove();
+        }
+
+        // Add a new marker
+        marker = new mapboxgl.Marker()
+            .setLngLat(coordinates)
+            .addTo(map);
+    } else {
+        alert(`Coordinates are out of bounds. Please enter within the bounds:
+            Longitude: ${bounds[0][0]} to ${bounds[1][0]}, 
+            Latitude: ${bounds[0][1]} to ${bounds[1][1]}`);
+    }
+}

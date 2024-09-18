@@ -33,19 +33,7 @@
             <h1>Manage POI Data</h1>
              <!-- Mapbox Map Display -->
             <div id="map" class="map"></div>
-
-            <br><br>
-            <button type="button" id="savePOIButton">Save POI Data</button>
-            <br><br>
-            <input type="file" id="uploadCSV" accept=".csv">
-            <button type="button" id="uploadCSVButton">Upload CSV</button>
-            <br><br>
-            <button type="button" id="addLocationButton">Add New Location</button>
-        </div>
-        <div id="addLocation" class="tab-content">
-            <h1>Add a New Location</h1>
-            <div id="map"></div>
-            <br><br>
+            <br>
             <form id="location-form" autocomplete="off">
                 <label for="name">Name:</label>
                 <input type="text" id="name" name="name" required autocomplete="name"><br><br>
@@ -68,9 +56,16 @@
                 <label for="operating_hours">Operating Hours:</label>
                 <input type="text" id="operating_hours" name="operating_hours" required autocomplete="operating_hours"><br><br>
             
-                <button type="submit" id="addLocationButton">Add Location</button>
-            </form>             
-        </div>    
+                <button type="submit" id="addLocationButton">Save Location</button>
+            </form>
+            <br><br>
+            <button type="button" id="savePOIButton">Save POI Data</button>
+            <br><br>
+            <input type="file" id="uploadCSV" accept=".csv">
+            <button type="button" id="uploadCSVButton">Upload CSV</button>
+            <br><br>
+            <button type="button" id="addLocationButton">Add New Location</button>
+        </div>
     </div>
     <div id="loading-overlay" class="loading-overlay">
         <div class="loading-message">Updating POI Data and graphs...</div>
