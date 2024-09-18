@@ -93,19 +93,25 @@ document.addEventListener("DOMContentLoaded", function() {
                     const thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
                     poi.thumbnail = thumbnailUrl || '/static/icons/default.png';
                     // Create a marker for each POI
-                    const marker = new mapboxgl.Marker()
-                        .setLngLat([poi.longitude, poi.latitude]) // Set longitude and latitude
-                        .setPopup(new mapboxgl.Popup().setHTML(
+                    const popup = new mapboxgl.Popup()
+                        .setHTML(
                             `<strong>${poi.name}</strong><br>
                             <img src="${poi.thumbnail}" alt="${poi.name} thumbnail" style="width:100px;height:100px;"><br>
                             ${poi.description}<br>
                             Category: ${poi.category}<br>
                             Audience: ${poi.target_audience}<br>
                             Hours: ${poi.operating_hours}`
-                        )) // Add a popup with POI details
+                        );
+
+                    const marker = new mapboxgl.Marker()
+                        .setLngLat([poi.longitude, poi.latitude]) // Longitude and Latitude of the POI
+                        .setPopup(popup) // Add a popup with POI details and thumbnail
                         .addTo(map);
                     marker.getElement().addEventListener('click', () => {
                         populateForm(poi); // Call function to populate the form
+                    });
+                    popup.on('close', () => {
+                        clearForm(); // Call function to clear the form
                     });
                     // Push the marker to the array to manage markers later (for clearing or updating)
                     markers.push(marker);
@@ -299,6 +305,17 @@ function populateForm(poi) {
     document.getElementById('target_audience').value = poi.for || '';
     document.getElementById('operating_hours').value = poi.operating_hours || '';
     document.getElementById('thumbnail').value = poi.thumbnail || '';
+}
+// Function to clear the form fields
+function clearForm() {
+    document.getElementById('name').value = '';
+    document.getElementById('longitude').value = '';
+    document.getElementById('latitude').value = '';
+    document.getElementById('description').value = '';
+    document.getElementById('category').value = '';
+    document.getElementById('target_audience').value = '';
+    document.getElementById('operating_hours').value = '';
+    document.getElementById('thumbnail').value = '';
 }
 
 function isWithinBounds(coordinates) {
