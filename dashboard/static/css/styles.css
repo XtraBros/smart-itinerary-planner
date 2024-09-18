@@ -121,3 +121,7 @@ body {
     color: #fff;
     font-size: 1.5em;
 }
+
+#cancelLocationButton{
+    display: none;
+}

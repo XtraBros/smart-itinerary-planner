@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let deletedRows = [];
     let markers = [];
     let thumbnailURI;
+    let mapClickHandler;
 
     // Fetch the current config
     fetch('/get-config')
@@ -72,8 +73,6 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById(tabName).classList.add('active');
         if (tabName === 'poi') {
             loadPOIData();
-        } else if (tabName === 'addLocation') {
-            mapLocationClick();
         }
     };
 
@@ -125,85 +124,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Add event listener for the save button
     document.getElementById('savePOIButton').addEventListener('click', function() {
-        const data = hot.getData();
-        const updatedPOIs = data.map((row, index) => {
-            const poi = {
-                id: index,
-                ...row.reduce((obj, value, colIndex) => {
-                    obj[colHeaders[colIndex]] = value;
-                    return obj;
-                }, {})
-            };
-            return poi;
-        });
-    
-        const hasDeletions = deletedRows.length > 0;
-        const hasChanges = hot.getPlugin('undoRedo').isUndoAvailable();
-    
-        if (!hasDeletions && !hasChanges) {
-            alert('No changes to save');
-            return;
-        }
-    
         showLoading();
-    
-        // Function to handle deletions
-        function handleDeletions() {
-            if (hasDeletions) {
-                return fetch('/delete-poi', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(deletedRows)
-                })
-                .then(response => response.json())
-                .then(deleteResponse => {
-                    if (!deleteResponse.success) {
-                        throw new Error(deleteResponse.message || 'Error deleting POIs');
-                    }
-                });
-            } else {
-                return Promise.resolve();
-            }
-        }
-    
-        // Function to handle edits
-        function handleEdits() {
-            if (hasChanges) {
-                return fetch('/edit-poi', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updatedPOIs)
-                })
-                .then(response => response.json())
-                .then(editResponse => {
-                    if (!editResponse.success) {
-                        throw new Error(editResponse.message || 'Error updating POIs');
-                    }
-                });
-            } else {
-                return Promise.resolve();
-            }
-        }
-    
-        // First handle deletions, then handle edits
-        handleDeletions()
-        .then(handleEdits)
-        .then(() => {
-            alert('Changes saved successfully');
-        })
-        .catch(error => {
-            console.error(error);
-            alert(error.message);
-        })
-        .finally(() => {
-            hideLoading();
-            deletedRows = []; // Clear the deletedRows list after processing
-        });
-    });    
+        // If edit, use edit-poi endpoint
+        // If add new location, use add-poi enpoint
+        hideLoading();
+    });
     
     // Handle CSV file upload
     document.getElementById('uploadCSVButton').addEventListener('click', function() {
@@ -293,6 +218,56 @@ document.addEventListener("DOMContentLoaded", function() {
             hideLoading();
         });
     });
+    // Add New Location button event listener
+    document.getElementById('addLocationButton').addEventListener("click", function() {
+        // Display cancel button
+        document.getElementById('cancelLocationButton').style.display = 'inline-block';
+        // Hide all existing markers
+        markers.forEach(marker => marker.remove());
+
+        // Enable 'Add Location' mode
+        addLocationToggle = true;
+        // Clear form data
+        clearForm();
+
+        // Define the click event handler function
+        mapClickHandler = function(e) {
+            const coordinates = e.lngLat;
+            document.getElementById('latitude').value = coordinates.lat.toFixed(6);
+            document.getElementById('longitude').value = coordinates.lng.toFixed(6);
+
+            // Remove the existing marker if there is one
+            if (marker) {
+                marker.remove();
+            }
+            // Add a new marker
+            marker = new mapboxgl.Marker()
+                .setLngLat(coordinates)
+                .addTo(map);
+        };
+
+        // Add the click event listener to the map
+        map.on('click', mapClickHandler);
+    });
+
+    // Cancel Location button event listener
+    document.getElementById('cancelLocationButton').addEventListener("click", function() {
+        addLocationToggle = false;
+        // Clear the form fields
+        clearForm();
+
+        // Remove the map click listener for adding new locations
+        if (mapClickHandler) {
+            map.off('click', mapClickHandler);
+            mapClickHandler = null; // Clear the reference
+        }
+
+        // Hide the cancel button and restore the "add location" button
+        document.getElementById('cancelLocationButton').style.display = 'none';
+
+        // Optionally, reload POI data or restore normal map behavior
+        loadPOIData(); // Assuming this function reloads POI data and restores map view
+    });
 });
 
 // Helper functions:
@@ -333,24 +308,6 @@ function showLoading() {
 // Hide loading overlay
 function hideLoading() {
     document.getElementById('loading-overlay').classList.remove('visible');
-}
-
-function mapLocationClick() {
-    map.on('click', function(e) {
-        const coordinates = e.lngLat;
-        document.getElementById('latitude').value = coordinates.lat.toFixed(6);
-        document.getElementById('longitude').value = coordinates.lng.toFixed(6);
-
-        // Remove the existing marker if there is one
-        if (marker) {
-            marker.remove();
-        }
-        // Add a new marker
-        marker = new mapboxgl.Marker()
-            .setLngLat(coordinates)
-            .addTo(map);
-
-    });
 }
 
 function updateMarker() {
