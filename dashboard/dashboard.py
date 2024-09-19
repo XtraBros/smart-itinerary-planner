@@ -51,7 +51,7 @@ def get_poi():
 @app.route('/add_poi', methods=['POST'])
 def add_poi():
     new_poi = request.json
-
+    del new_poi['thumbnail']
     print(f"Adding {new_poi['name']}")
     global poi_df 
     if new_poi['name'] in poi_df['name'].values:
@@ -171,6 +171,25 @@ def upload_csv():
 def view_changes():
     return jsonify(change_log)
 
+@app.route('/commit_changes', methods=['POST'])
+def commit_changes():
+    global change_log, poi_df, poi_db, distance_matrix, dist_mat_db
+    num_changes = len(change_log)
+    # Clear the existing and upload new POI data in the database
+    poi_db.delete_many({})  # Empty the poi_db collection
+    poi_db.insert_many(poi_df.to_dict('records'))
+
+    # Reset index of distance matrix
+    distance_matrix.reset_index(inplace=True)
+    # Clear the existing distance matrix data in the database and upload new data.
+    dist_mat_db.delete_many({})  # Empty the dist_mat_db collection
+    dist_mat_db.insert_many(distance_matrix.to_dict('records'))
+    # set index of distance matrix
+    distance_matrix.set_index('name', inplace=True)
+
+    # Empty change logs:
+    change_log = {}
+    return jsonify({"message": f"Committed {num_changes} changes to the database"})
 ####################################################################################################################################
 ####################################################################################################################################
 # helper functions

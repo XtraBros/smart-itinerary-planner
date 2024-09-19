@@ -283,8 +283,9 @@ document.addEventListener("DOMContentLoaded", function() {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                alert('Changes committed successfully!');
+            if (data.message) {
+                alert(data.message);
+                openTab('poi');
             } else {
                 alert('Failed to commit changes');
             }
@@ -293,6 +294,7 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error('Error committing changes:', error);
             alert('Error committing changes to database');
         });
+
     });
     // Handle CSV file upload
     document.getElementById('uploadCSVButton').addEventListener('click', function() {
