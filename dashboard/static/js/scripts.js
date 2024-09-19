@@ -7,9 +7,10 @@ document.addEventListener("DOMContentLoaded", function() {
     let markers = [];
     let thumbnailURI;
     let mapClickHandler;
+    let addLocationToggle;
 
     // Fetch the current config
-    fetch('/get-config')
+    fetch('/get_config')
         .then(response => response.json())
         .then(data => {
             config = data;
@@ -49,7 +50,7 @@ document.addEventListener("DOMContentLoaded", function() {
             formData[input.name] = input.value;
         });
 
-        fetch('/update-config', {
+        fetch('/update_config', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -78,7 +79,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Load POI Data
     function loadPOIData() {
-        fetch('/get-poi')
+        fetch('/get_poi')
             .then(response => response.json())
             .then(data => {
                 // Clear any existing markers from the map
@@ -98,7 +99,7 @@ document.addEventListener("DOMContentLoaded", function() {
                             <img src="${poi.thumbnail}" alt="${poi.name} thumbnail" style="width:100px;height:100px;"><br>
                             ${poi.description}<br>
                             Category: ${poi.category}<br>
-                            Audience: ${poi.target_audience}<br>
+                            Audience: ${poi.for}<br>
                             Hours: ${poi.operating_hours}`
                         );
 
@@ -123,11 +124,85 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // Add event listener for the save button
-    document.getElementById('savePOIButton').addEventListener('click', function() {
+    document.getElementById('savePOIButton').addEventListener('click', function(e) {
+        e.preventDefault();
         showLoading();
-        // If edit, use edit-poi endpoint
-        // If add new location, use add-poi enpoint
-        hideLoading();
+        if (addLocationToggle){ //add new POI
+            const form = document.getElementById('location-form'); // Get the form element
+            const formData = new FormData(form);
+            const poiData = {};
+            formData.forEach((value, key) => poiData[key] = value);
+
+            fetch('/add_poi', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(poiData)
+            })
+            .then(response => response.json())
+            .then(response => {
+                alert(response.message);
+                form.reset();
+                if (marker) {
+                    marker.remove();
+                    marker = null;
+                }
+            })
+            .catch(error => {
+                console.error('Error adding POI:', error);
+                alert('Error adding POI');
+            })
+            .finally(() => {
+                loadPOIData();
+                hideLoading();
+            });
+        } else { // edit existing POI
+            const form = document.getElementById('location-form'); // Get the form element
+            const formData = new FormData(form);
+            const poiData = {};
+            formData.forEach((value, key) => poiData[key] = value);
+            
+            fetch('/edit_poi', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(poiData)
+            })
+            .then(response => response.json())
+            .then(response => {
+                alert(response.message);
+                form.reset();
+                if (marker) {
+                    marker.remove();
+                    marker = null;
+                }
+            })
+            .catch(error => {
+                console.error('Error adding POI:', error);
+                alert('Error editing POI');
+            })
+            .finally(() => {
+                loadPOIData();
+                hideLoading();
+            });
+        }
+        addLocationToggle = false;
+        // Clear the form fields
+        clearForm();
+        if (marker) {
+            marker.remove();
+        }       
+        // Remove the map click listener for adding new locations
+        if (mapClickHandler) {
+            map.off('click', mapClickHandler);
+            mapClickHandler = null; // Clear the reference
+        }
+        // Hide the cancel button and restore the "add location" button
+        document.getElementById('cancelLocationButton').style.display = 'none';
+        // reload POI data or restore normal map behavior
+        loadPOIData();
     });
     
     // Handle CSV file upload
@@ -138,7 +213,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const reader = new FileReader();
             reader.onload = function(e) {
                 const csvData = e.target.result;
-                fetch('/upload-csv', {
+                fetch('/upload_csv', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -186,7 +261,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const poiData = {};
         formData.forEach((value, key) => poiData[key] = value);
 
-        fetch('/add-poi', {
+        fetch('/add_poi', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -255,8 +330,9 @@ document.addEventListener("DOMContentLoaded", function() {
         addLocationToggle = false;
         // Clear the form fields
         clearForm();
-
-        // Remove the map click listener for adding new locations
+        if (marker) {
+            marker.remove();
+        }        // Remove the map click listener for adding new locations
         if (mapClickHandler) {
             map.off('click', mapClickHandler);
             mapClickHandler = null; // Clear the reference
@@ -265,13 +341,14 @@ document.addEventListener("DOMContentLoaded", function() {
         // Hide the cancel button and restore the "add location" button
         document.getElementById('cancelLocationButton').style.display = 'none';
 
-        // Optionally, reload POI data or restore normal map behavior
-        loadPOIData(); // Assuming this function reloads POI data and restores map view
+        // Reload POI data or restore normal map behavior
+        loadPOIData();
     });
 });
 
 // Helper functions:
 function populateForm(poi) {
+    document.getElementById('poi-id').value = poi.id;
     document.getElementById('name').value = poi.name || '';
     document.getElementById('longitude').value = poi.longitude || '';
     document.getElementById('latitude').value = poi.latitude || '';

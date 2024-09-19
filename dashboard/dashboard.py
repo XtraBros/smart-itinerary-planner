@@ -17,27 +17,27 @@ mongo = pymongo.MongoClient(config['MONGO_CLUSTER_URI'],tlsCAFile=certifi.where(
 print("Successfully cononected to Database.")
 DB = mongo[config['MONGO_DB_NAME']]
 poi_db = DB[config['POI_DB_NAME']]
-df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
+poi_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0}))).drop(columns=['index'])
+print(poi_df.columns)
+print(poi_df.head())
+change_log = {}
 required_columns = ['name', 'longitude', 'latitude', 'description', 'location']
-dist_mat = DB[config["DISTANCE_MATRIX"]]
-#cluster_loc = DB[config['CLUSTER_LOCATIONS']]
+dist_mat_db = DB[config["DISTANCE_MATRIX"]]
 mapbox_access_token = config['MAPBOX_ACCESS_TOKEN']
-
-distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
+distance_matrix = pd.DataFrame(list(dist_mat_db.find({}, {"_id": 0})))
 distance_matrix.set_index('name', inplace=True)
-#cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 
 @app.route('/')
 def index():
     return render_template('dashboard-index.html')
 
-@app.route('/get-config', methods=['GET'])
+@app.route('/get_config', methods=['GET'])
 def get_config():
     with open(CONFIG_FILE, 'r') as file:
         config = json.load(file)
     return jsonify(config)
 
-@app.route('/update-config', methods=['POST'])
+@app.route('/update_config', methods=['POST'])
 def update_config():
     data = request.json
     with open(CONFIG_FILE, 'w') as file:
@@ -45,81 +45,91 @@ def update_config():
     return jsonify({"message": "Config updated successfully"})
 
 # Endpoint to get POI data
-@app.route('/get-poi', methods=['GET'])
+@app.route('/get_poi', methods=['GET'])
 def get_poi():
-    return df.to_json(orient='records')
+    return poi_df.to_json(orient='records')
 
-@app.route('/add-poi', methods=['POST'])
+@app.route('/add_poi', methods=['POST'])
 def add_poi():
     new_poi = request.json
 
     print(f"Adding {new_poi['name']}")
-    global df 
-    if new_poi['name'] in df['name'].values:
+    global poi_df 
+    if new_poi['name'] in poi_df['name'].values:
         return jsonify({"message": f"POI with name '{new_poi['name']}' already exists"}), 400
     if 'longitude' in new_poi and 'latitude' in new_poi:
         new_poi['location'] = [float(new_poi['longitude']), float(new_poi['latitude'])]
-    
     if 'target_audience' in new_poi:
         new_poi['for'] = new_poi.pop('target_audience')
-    new_poi['id'] = len(df)
+    new_poi['id'] = len(poi_df)
     print(new_poi)
-    df = pd.concat([df, pd.DataFrame([new_poi])], ignore_index=True)
+    poi_df = pd.concat([poi_df, pd.DataFrame([new_poi])], ignore_index=True)
     add_poi_to_distance_matrix(new_poi)
-    # update_cluster_graph()
-    document = df.loc[df['name'] == new_poi['name']].to_dict(orient='records')[0]
-    # Insert the document into MongoDB
-    poi_db.insert_one(document)
+    # update change log
+    update_change_log("add",new_poi['name'])
     return jsonify({"message": "POI added successfully"})
 
-@app.route('/edit-poi', methods=['POST'])
+@app.route('/edit_poi', methods=['POST'])
 def edit_poi():
-    updated_pois = request.json
-    global df, distance_matrix
+    updated_poi = request.json  # Receive data as a single POI from the form
+    global poi_df, distance_matrix
 
-    # Convert the updated POIs list to a DataFrame
-    updated_df = pd.DataFrame(updated_pois)[:len(df)]
-    updated_df.index = range(len(updated_df))
-    print(df)
-    print(updated_df)
-    # Ensure the indices and columns of the updated_df match those of df
-    updated_df = updated_df.reindex(columns=df.columns)
+    # Extract values from the request (updated POI)
+    poi_id = int(updated_poi.get('id'))  # Use a unique ID to find the POI
+    print(f"===Editting POI ID: {poi_id}===")
+    updated_name = updated_poi['name']
+    updated_longitude = float(updated_poi['longitude'])
+    updated_latitude = float(updated_poi['latitude'])
+    updated_description = updated_poi['description']
+    updated_category = updated_poi['category']
+    updated_target_audience = updated_poi['target_audience']
+    updated_operating_hours = updated_poi['operating_hours']
 
-    # Find the POIs that have changed
-    changed_pois = updated_df.compare(df)
+    # Check if the POI exists in the DataFrame using the ID
+    existing_poi = poi_df.loc[poi_df['id'] == poi_id]
+    if existing_poi.empty:
+        return jsonify({"error": "POI not found"}), 404
 
-    # Update the DataFrame
-    for index in changed_pois.index:
-        updated_values = updated_df.loc[index].to_dict()
+    # Convert the existing POI row to a dictionary for comparison
+    existing_poi = existing_poi.iloc[0].to_dict()
 
-        # Check if longitude or latitude has changed
-        existing_poi = df.loc[index]
-        location_changed = (existing_poi['longitude'] != updated_values['longitude']) or (existing_poi['latitude'] != updated_values['latitude'])
-        name_changed = (existing_poi['name'] != updated_values['name'])
-        # Update the DataFrame row
-        for col, val in updated_values.items():
-            df.at[index, col] = val
-        if name_changed:
-            old_name = existing_poi['name']
-            new_name = updated_values['name']
+    # Check if the POI name has changed
+    name_changed = (existing_poi['name'] != updated_name)
 
-            distance_matrix = distance_matrix.rename(index={old_name: new_name}, columns={old_name: new_name})        # If location has changed, update the distance matrix and cluster graph
-        if location_changed:
-            edit_poi_in_distance_matrix(updated_values, existing_poi)
-            existing_poi['location'] = [updated_values['longitude'],updated_values['latitude']]
-            # update_cluster_graph()
+    # Check if the location (longitude or latitude) has changed
+    location_changed = (
+        existing_poi['longitude'] != updated_longitude or 
+        existing_poi['latitude'] != updated_latitude
+    )
 
-        # Update the cloud database with the full data entry
-        poi_db.update_one({"id": index}, {"$set": updated_values})
+    # Update the POI details in the DataFrame
+    poi_df.loc[poi_df['id'] == poi_id, 'name'] = updated_name
+    poi_df.loc[poi_df['id'] == poi_id, 'longitude'] = updated_longitude
+    poi_df.loc[poi_df['id'] == poi_id, 'latitude'] = updated_latitude
+    poi_df.loc[poi_df['id'] == poi_id, 'description'] = updated_description
+    poi_df.loc[poi_df['id'] == poi_id, 'category'] = updated_category
+    poi_df.loc[poi_df['id'] == poi_id, 'target_audience'] = updated_target_audience
+    poi_df.loc[poi_df['id'] == poi_id, 'operating_hours'] = updated_operating_hours
 
-    return jsonify({"message": "POIs updated successfully"})
+    # Handle name change in the distance matrix if necessary
+    if name_changed:
+        old_name = existing_poi['name']
+        distance_matrix = distance_matrix.rename(index={old_name: updated_name}, columns={old_name: updated_name})
+        print(f"Name change detected: Old Name '{old_name}' -> New Name '{updated_name}'")
+
+    # Handle location change in the distance matrix
+    if location_changed:
+        edit_poi_in_distance_matrix(updated_poi, existing_poi)
+        print(f"Location change detected for {updated_name}: Old [{existing_poi['longitude']}, {existing_poi['latitude']}] -> New [{updated_longitude}, {updated_latitude}]")
+    update_change_log('edit', updated_name)
+    return jsonify({"message": f"POI {updated_name} updated successfully"}), 200
 
 # delete pois
-@app.route('/delete-poi', methods=['POST'])
+@app.route('/delete_poi', methods=['POST'])
 def delete_poi():
     deleted_rows = request.json
     print(deleted_rows)
-    global df
+    global poi_df
 
     for row in deleted_rows:
         poi_id = row['id']
@@ -132,7 +142,7 @@ def delete_poi():
     return jsonify({"success": True}), 200
 
 
-@app.route('/upload-csv', methods=['POST'])
+@app.route('/upload_csv', methods=['POST'])
 def upload_csv():
     csv_data = request.json.get('csv')
     new_data = pd.read_csv(io.StringIO(csv_data))
@@ -165,7 +175,7 @@ def upload_csv():
 
 #helper functions
 def update_cluster_graph():
-    global df
+    global poi_df
     coords = df[['latitude', 'longitude']].values
 
     # Fit KMeans model
@@ -187,11 +197,11 @@ def update_cluster_graph():
     # print("Cluster graph and centroids updated successfully.")
 
 def add_poi_to_distance_matrix(new_poi):
-    global df, distance_matrix
+    global poi_df, distance_matrix
 
     poi_name = new_poi['name'].replace('[', '').replace(']', '').replace("'", '')
     # Generate distances for the new POI
-    new_distances = generate_distances(new_poi, df)  # This should return a list of distances including the distance to itself
+    new_distances = generate_distances(new_poi, poi_df)  # This should return a list of distances including the distance to itself
 
     # Ensure the length of new_distances matches the expected length
     if len(new_distances) != len(distance_matrix) + 1:
@@ -206,22 +216,15 @@ def add_poi_to_distance_matrix(new_poi):
     # Add new column to the distance matrix
     new_column = pd.Series(new_distances, index=new_index, name=poi_name)
     distance_matrix[poi_name] = new_column
-    # Update the database
-    dist_mat.delete_many({})
-    dist_mat.insert_many(distance_matrix.reset_index().to_dict(orient='records'))
 
 
 def delete_poi_from_distance_matrix(poi_name):
     poi_name = poi_name.replace('[', '').replace(']', '').replace("'", '')
     global distance_matrix
     distance_matrix = distance_matrix.drop(index=poi_name, columns=poi_name)
-    # Update the database
-    dist_mat.delete_many({})
-    dist_mat.insert_many(distance_matrix.reset_index().to_dict(orient='records'))
-
 
 def edit_poi_in_distance_matrix(updated_poi, existing_poi):
-    global df, distance_matrix
+    global poi_df, distance_matrix
     curr_poi_name = existing_poi['name']
     new_poi_name = updated_poi['name']
 
@@ -249,9 +252,6 @@ def edit_poi_in_distance_matrix(updated_poi, existing_poi):
     # Update the distance matrix column
     distance_matrix[new_poi_name] = new_distances_series
     print(distance_matrix)
-    # Update the database
-    dist_mat.delete_many({})
-    dist_mat.insert_many(distance_matrix.to_dict(orient='records'))
 
 def generate_distances(new_poi, poi_df):
     distances = []
@@ -292,6 +292,22 @@ def add_multiple_pois(df_new_pois):
     # Perform a single batch upload to MongoDB
     if new_documents:
         poi_db.insert_many(new_documents)
+
+# Function to update the change log with a new entry
+def update_change_log(operation, name):
+    # Generate a new integer key for the next entry in the change log
+    # This key will be the next integer after the current maximum key
+    if change_log:
+        new_id = max(change_log.keys()) + 1
+    else:
+        new_id = 1  # Start with key 1 if change_log is empty
+
+    # Create a new log entry with the 'operation' and 'name'
+    change_log[new_id] = {
+        'operation': operation,
+        'name': name
+    }
+    print(f"{operation} operation on {name} recorded.")
 
 if __name__ == '__main__':
     app.run(debug=True, host="127.0.0.1", port=3000)
