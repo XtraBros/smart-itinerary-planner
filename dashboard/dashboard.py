@@ -167,7 +167,13 @@ def upload_csv():
 
     return jsonify({"message": message})
 
-#helper functions
+@app.route('/view_changes', methods=['POST'])
+def view_changes():
+    return jsonify(change_log)
+
+####################################################################################################################################
+####################################################################################################################################
+# helper functions
 def update_cluster_graph():
     global poi_df
     coords = df[['latitude', 'longitude']].values

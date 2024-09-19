@@ -129,3 +129,36 @@ body {
 #deletePOIButton{
     display: none;
 }
+/* Style for the table to look like an Excel sheet */
+#changeLogTable {
+    width: 100%;
+    border-collapse: collapse; /* Ensures the borders don't have gaps between cells */
+    margin-top: 20px;
+}
+
+#changeLogTable th, #changeLogTable td {
+    border: 1px solid #ddd; /* Light border for cells */
+    padding: 8px; /* Padding inside each cell for readability */
+    text-align: left; /* Align text to the left */
+}
+
+#changeLogTable th {
+    background-color: #f2f2f2; /* Light background for headers */
+    color: #333; /* Text color for headers */
+    font-weight: bold;
+}
+
+#changeLogTable tr:nth-child(even) {
+    background-color: #f9f9f9; /* Zebra striping for rows */
+}
+
+#changeLogTable tr:hover {
+    background-color: #ddd; /* Row hover effect */
+}
+
+.commit-button:hover {
+    background-color: #45a049;
+}
+.commit-button {
+    margin-top: 10px;
+}

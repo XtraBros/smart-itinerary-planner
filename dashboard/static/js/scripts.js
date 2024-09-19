@@ -2,8 +2,6 @@ document.addEventListener("DOMContentLoaded", function() {
     let config;
     let map;
     let marker;
-    let colHeaders;
-    let deletedRows = [];
     let markers = [];
     let thumbnailURI;
     let mapClickHandler;
@@ -72,8 +70,41 @@ document.addEventListener("DOMContentLoaded", function() {
             tab.classList.remove('active');
         });
         document.getElementById(tabName).classList.add('active');
+    
         if (tabName === 'poi') {
             loadPOIData();
+        } else if (tabName === 'viewChanges') {
+            // Fetch and display the change log
+            fetch('/view_changes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.text())  // Use .text() to get the raw string
+            .then(changeLogString => {
+                // Parse the change log string into a dictionary
+                const changeLog = JSON.parse(changeLogString);
+                console.log(changeLog);
+                // Check if the change log is empty
+                if (Object.keys(changeLog).length === 0) {
+                    alert('No changes found in the log.');
+                    
+                    // Switch back to the POI tab if the log is empty
+                    document.getElementById('poi').classList.add('active');
+                    document.getElementById('viewChanges').classList.remove('active');
+                    
+                    // Optionally, call the function to load POI data
+                    loadPOIData();
+                } else {
+                    // Call a function to display the change log
+                    displayChangeLog(changeLog);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching change log:', error);
+                alert('Failed to load change log');
+            });
         }
     };
 
@@ -238,6 +269,30 @@ document.addEventListener("DOMContentLoaded", function() {
             hideLoading();
         });
         document.getElementById('deletePOIButton').style.display = 'none';
+    });
+    document.getElementById('commitChangesButton').addEventListener('click', function() {
+        // Display a loading message or any UI indication of action in progress
+        alert('Committing changes...');
+
+        // You can send a fetch request to your backend to commit changes
+        fetch('/commit_changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Changes committed successfully!');
+            } else {
+                alert('Failed to commit changes');
+            }
+        })
+        .catch(error => {
+            console.error('Error committing changes:', error);
+            alert('Error committing changes to database');
+        });
     });
     // Handle CSV file upload
     document.getElementById('uploadCSVButton').addEventListener('click', function() {
@@ -412,4 +467,30 @@ function updateMarker() {
             Longitude: ${bounds[0][0]} to ${bounds[1][0]}, 
             Latitude: ${bounds[0][1]} to ${bounds[1][1]}`);
     }
+}
+
+// display change log in HTML
+function displayChangeLog(changeLog) {
+    const table = document.getElementById('changeLogTable'); // Assuming there's a table with this ID
+    table.innerHTML = ''; // Clear previous content
+
+    // Create table headers if necessary
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = `
+        <th>ID</th>
+        <th>POI Name</th>
+        <th>Operation</th>
+    `;
+    table.appendChild(headerRow);
+
+    // Iterate over the change log dictionary using Object.entries
+    Object.entries(changeLog).forEach(([id, change]) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${id}</td>
+            <td>${change.name}</td>
+            <td>${change.operation}</td>
+        `;
+        table.appendChild(row);
+    });
 }

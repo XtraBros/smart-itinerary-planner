@@ -64,13 +64,20 @@
                 <button id="deletePOIButton">Delete POI</button>
             </form>
             <br><br>
-            <button type="button" id="commitButton">Commit Changes to Database</button>
+            <button type="button" id="viewChangesButton" onclick="openTab('viewChanges')">View Changes</button>
             <br><br>
             <input type="file" id="uploadCSV" accept=".csv">
             <button type="button" id="uploadCSVButton">Upload CSV</button>
             <br><br>
             <button type="button" id="addLocationButton">Add New Location</button>
             <button type="button" id="cancelLocationButton">Cancel</button>
+        </div>
+        <div id="viewChanges" class="tab-content">
+            <h1>Change Log</h1>
+            <table id="changeLogTable">
+                <!-- Table content will be populated by JavaScript -->
+            </table>
+            <button type="button" id="commitChangesButton" class="commit-button">Commit Changes to Database</button>
         </div>
     </div>
     <div id="loading-overlay" class="loading-overlay">
