@@ -18,8 +18,7 @@ print("Successfully cononected to Database.")
 DB = mongo[config['MONGO_DB_NAME']]
 poi_db = DB[config['POI_DB_NAME']]
 poi_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0}))).drop(columns=['index'])
-print(poi_df.columns)
-print(poi_df.head())
+print(f"Loaded {len(poi_df)} POIs.")
 change_log = {}
 required_columns = ['name', 'longitude', 'latitude', 'description', 'location']
 dist_mat_db = DB[config["DISTANCE_MATRIX"]]
@@ -127,19 +126,14 @@ def edit_poi():
 # delete pois
 @app.route('/delete_poi', methods=['POST'])
 def delete_poi():
-    deleted_rows = request.json
-    print(deleted_rows)
+    poi_id = int(request.json['id'])
     global poi_df
-
-    for row in deleted_rows:
-        poi_id = row['id']
-        poi_name = row['name']
-        print(poi_name)
-        df = df.drop(poi_id, axis=0)
-        poi_db.delete_one({"name": poi_name})
-        delete_poi_from_distance_matrix(poi_name)
-    df = df.reset_index()
-    return jsonify({"success": True}), 200
+    poi_name = poi_df.loc[poi_df['id'] == poi_id, 'name'].iloc[0]
+    print(f"Deleting {poi_id}: {poi_name}")
+    poi_df = poi_df.drop(poi_id, axis=0)
+    delete_poi_from_distance_matrix(poi_name)
+    poi_df = poi_df.reset_index()
+    return jsonify({"message": f"POI {poi_name} deleted successfully"}), 200
 
 
 @app.route('/upload_csv', methods=['POST'])

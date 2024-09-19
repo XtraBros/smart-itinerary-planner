@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function() {
                             ${poi.description}<br>
                             Category: ${poi.category}<br>
                             Audience: ${poi.for}<br>
-                            Hours: ${poi.operating_hours}`
+                            Hours: ${poi.operating_hours || "NA"} `
                         );
 
                     const marker = new mapboxgl.Marker()
@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         .addTo(map);
                     marker.getElement().addEventListener('click', () => {
                         populateForm(poi); // Call function to populate the form
+                        document.getElementById("deletePOIButton").style.display = 'inline-block';
                     });
                     popup.on('close', () => {
                         clearForm(); // Call function to clear the form
@@ -180,7 +181,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             })
             .catch(error => {
-                console.error('Error adding POI:', error);
+                console.error('Error editing POI:', error);
                 alert('Error editing POI');
             })
             .finally(() => {
@@ -205,6 +206,39 @@ document.addEventListener("DOMContentLoaded", function() {
         loadPOIData();
     });
     
+    // Delete POI Button
+    document.getElementById('deletePOIButton').addEventListener('click', function() {
+        showLoading();
+        // fetch delete endpoint to remove POI.
+        const form = document.getElementById('location-form'); // Get the form element
+        const poi_id = document.getElementById('poi-id').value;
+        console.log(poi_id);
+        fetch('/delete_poi', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({"id": poi_id})
+        })
+        .then(response => response.json())
+        .then(response => {
+            alert(response.message);
+            form.reset();
+            if (marker) {
+                marker.remove();
+                marker = null;
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting POI:', error);
+            alert('Error adding POI');
+        })
+        .finally(() => {
+            loadPOIData();
+            hideLoading();
+        });
+        document.getElementById('deletePOIButton').style.display = 'none';
+    });
     // Handle CSV file upload
     document.getElementById('uploadCSVButton').addEventListener('click', function() {
         const fileInput = document.getElementById('uploadCSV');
@@ -255,43 +289,6 @@ document.addEventListener("DOMContentLoaded", function() {
     // Handle add POI
     document.getElementById("location-form").addEventListener("submit", function(e) {
         e.preventDefault();
-        showLoading();
-
-        const formData = new FormData(this);
-        const poiData = {};
-        formData.forEach((value, key) => poiData[key] = value);
-
-        fetch('/add_poi', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(poiData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                // If the response is not ok, handle the error
-                return response.json().then(errorResponse => {
-                    throw new Error(errorResponse.message);
-                });
-            }
-            return response.json();
-        })
-        .then(response => {
-            alert(response.message);
-            document.getElementById("location-form").reset();  // Reset the form
-            if (marker) {
-                marker.remove();
-                marker = null;
-            }
-        })
-        .catch(error => {
-            console.error('Error adding POI:', error);
-            alert(error.message);  // Show the specific error message from the server
-        })
-        .finally(() => {
-            hideLoading();
-        });
     });
     // Add New Location button event listener
     document.getElementById('addLocationButton').addEventListener("click", function() {
@@ -352,10 +349,10 @@ function populateForm(poi) {
     document.getElementById('name').value = poi.name || '';
     document.getElementById('longitude').value = poi.longitude || '';
     document.getElementById('latitude').value = poi.latitude || '';
-    document.getElementById('description').value = poi.description || '';
-    document.getElementById('category').value = poi.category || '';
-    document.getElementById('target_audience').value = poi.for || '';
-    document.getElementById('operating_hours').value = poi.operating_hours || '';
+    document.getElementById('description').value = poi.description || 'NA';
+    document.getElementById('category').value = poi.category || 'NA';
+    document.getElementById('target_audience').value = poi.for || 'NA';
+    document.getElementById('operating_hours').value = poi.operating_hours || 'NA';
     document.getElementById('thumbnail').value = poi.thumbnail || '';
 }
 // Function to clear the form fields

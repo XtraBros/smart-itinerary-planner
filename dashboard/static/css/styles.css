@@ -125,3 +125,7 @@ body {
 #cancelLocationButton{
     display: none;
 }
+
+#deletePOIButton{
+    display: none;
+}
