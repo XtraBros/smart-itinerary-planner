@@ -12,6 +12,11 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
+from geopy.distance import geodesic
+import certifi
+import re
+import base64
+import gridfs
 
 
 app = Flask(__name__)
@@ -26,11 +31,16 @@ model_name = config['GPT_MODEL']
 
 ######################### MONGO #########################
 # Connect to MongoDB
-mongo_client = MongoClient(config['MONGO_CLUSTER_URI'])
+mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
 db = mongo_client[config['MONGO_DB_NAME']]
 poi_db = db[config['POI_DB_NAME']]
+events_db = db[config['EVENTS_DB_NAME']]
+# create geosphere index
+poi_db.create_index([('location', '2dsphere')])
+indexes = poi_db.index_information()
 dist_mat = db[config["DISTANCE_MATRIX"]]
-cluster_loc = db[config['CLUSTER_LOCATIONS']]
+fs = gridfs.GridFS(db)
+#cluster_loc = db[config['CLUSTER_LOCATIONS']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
 # Load the embedding model for semantic search
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -38,10 +48,10 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 
 ######################### CSV DATA #########################
 place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
-place_info_df.columns = place_info_df.columns.str.strip()
-place_info_df['name'] = place_info_df['name'].str.strip()
+# place_info_df.columns = place_info_df.columns.str.strip()
+# place_info_df['name'] = place_info_df['name'].str.strip()
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
-cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
+#cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
 ######################### CSV DATA #########################
 
 
@@ -49,7 +59,7 @@ zoo_name = "Singapore Zoo"
 zoo_places_list = place_info_df['name'].tolist()
 
 sentosa_name = "Singapore Sentosa Island"
-sentosa_places_list = "Entrance, Exit, Shangri La, Fort Siloso, SEA Aquarium, Palawan Beach, Tanjong Beach, Sentosa Golf Club, W Singapore, Capella Singapore, Universal Studios Singapore"
+sentosa_places_list = place_info_df["name"].tolist()
 
 @app.route('/')
 def home():
@@ -63,21 +73,33 @@ def get_config():
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
     user_input = request.json['message']
-    
+    user_location = request.json['userLocation']
+    print(request)
+
     # Initial messages with RAG data
     messages = [
-        {"role": "system", "content": f"""You are a helpful tour guide who is working in {zoo_name}. 
-            Your task is to interact with a visitor and advise them on features and attractions in {zoo_name}.
-            If the user's request is vague or generic, follow up with a question to get more information about the user's context. 
-            If you are to suggest attractions at the zoo, follow the following 3 instructions strictly:
-            1) Avoid selecting toilets/water points, tram stops, nursing rooms, and shops unless requested. 
-            2) Arrange your response as a Python list with the names of the attractions/shows/events, and reply with ONLY this list and nothing else.
-            3) If unspecified, always start from the Entrance/Exit.
-            4) If asked for locations, return the name of the location in a Python list. For example, ["Lions"].
-            Otherwise, simply reply to the user's query."""},
+        {"role": "system", "content": f"""You are a helpful tour guide working in {zoo_name}. 
+            Your task is to advise visitors on features and attractions in {zoo_name}. The visitor is currently at {user_location}.
+            
+            Important Guidelines:
+            1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
+            2) The "operation" key can only have one of the following values: "message", "location", "route" or "wayfinding".
+                - "message": Used when your response does not include locations, and is a direct reply to the user.
+                - "location": Used when your response includes locations without providing directions.
+                - "route": Used when your response involves providing a route between multiple places of interest.
+                - "wayfinding": Used when your response involves providing directions for the user to navigate to a destination.
+            3) The "response" key's value depends on the "operation" key:
+                - If "operation" is "message", "response" should contain a single string with your text response.
+                - If "operation" is "location", "route" or "wayfinding", "response" should contain a list of the names of the places of interest.
+            4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
+                - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
+            5) Use the exact names of the places as provided in this list: {zoo_places_list}.
+            6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
+            **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
+        """},
         {"role": "user", "content": user_input}
     ]
-    
+
     # Handle function calls and get the final response
     state = {
         "called_functions": set(),
@@ -85,52 +107,61 @@ def ask_plan():
     }
     message = handle_function_calls(messages, state)
     print(message)
-    print(state)
     # Initialize operation
     operation = 'message'
-    
+
     try:
         # Parse the message as a Python dictionary
-        evaluated_message = json.loads(message)
-        
-        # Check if the response is a list
-        if isinstance(evaluated_message, list):
-            operation = 'route'
-        
-        # Check for clarifying_question in the response
-        elif isinstance(evaluated_message, dict) and "clarifying_question" in evaluated_message:
-            message = evaluated_message["clarifying_question"]
-        
-        # Otherwise, keep the operation as 'message'
-    
+        evaluated_message = json.loads(remove_dupes(message))
+        response = evaluated_message['response']
+        operation = evaluated_message['operation']
+        if isinstance(response, dict):
+            # If 'response' is a dictionary, set 'response' and 'operation' to its values
+            response = response.get('response', response)
+            operation = response.get('operation', operation)
+        print(f"'response': {response}, 'operation': {operation}")
+        return jsonify({'response': response, 'operation': operation})
+
     except (ValueError, SyntaxError, json.JSONDecodeError) as e:
         print(f"Error parsing message: {e}")
         # If parsing fails, keep operation as 'message' and return the raw message
-    
-    return jsonify({'response': message, 'operation': operation})
+        return jsonify({'response': message, 'operation': operation})
 
 # end point to use LLM to structure route as response
 @app.route('/get_text', methods=['POST'])
 def get_text():
+    # Get the 'route' data from the request JSON
+    print(request.json)
+    route = request.json['route']
+    coordinates = request.json['coordinates']
+    print(f"route:{route}")
+    user_input = request.json['message']
+    if route[0]:
+        if isinstance(route[0], list):
+            route = route[0]
     try:
-        # Get the 'route' data from the request JSON
-        route = request.json['route']
-        user_input = request.json['message']
         # Continue with your processing
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"""You are a tour guide at {zoo_name}. 
-                 Your task is to guide a visitor, introducing them the attractions they will visit in the sequence given in the following list.
-                 Keep you response succint, and ensure the names of the attractions are as given in the list. Remove any quotation marks from the names, but encase the names in single apostrophies.
-                 Structure your response as a bulleted list so that it is easy to read, and ensure the message is engaging."""},
-                {"role": "user", "content": f'Suggested route: {str(route)}. User query: {user_input}'}
+                {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
+                 Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
+                 Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
+                 Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
+                 If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
+                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list."""},
+                {"role": "user", "content": f'Attractions: {str(route)}. User query: {user_input}'}
             ],
             temperature=0,
         )
-        hyperlinks = create_hyperlinks(route)
+
+        # Create hyperlinks with the route names
+        hyperlinks = create_hyperlinks(route, coordinates)
+        print(hyperlinks)
+        # Insert hyperlinks using the `~` delimiter
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
-        return jsonify({'response':response_text})
+
+        return jsonify({'response': response_text})
 
     except ValueError as ve:
         print(f"ValueError: {ve}")
@@ -165,54 +196,159 @@ def get_coordinates():
 # POST endpoint for optimizing route
 @app.route('/optimize_route', methods=['POST'])
 def optimize_route():
-    data = request.get_json()
-    place_names = data.get('placeNames')
-    print(place_names)
-    # Assuming place_names is a list of names to optimize
-    ordered_place_indexes = solve_route(place_names)
-    print(ordered_place_indexes)
-    return jsonify(ordered_place_indexes)
-    
+    try:
+        # Parse the incoming JSON request
+        data = request.get_json()
+        print(data)
+
+        # Extract the list of place names
+        place_names = data.get('placeNames')
+        print(place_names)
+
+        # Assuming place_names is a list of names to optimize
+        ordered_place_indexes = solve_route(place_names)
+        print(ordered_place_indexes)
+
+        # Return the optimized route indexes as a JSON response
+        return jsonify(ordered_place_indexes)
+
+    except Exception as e:
+        # Log the error for debugging purposes
+        print(f"Error encountered: {e}")
+
+        # Return a failsafe response indicating a potential network issue
+        return jsonify({"message": "It seems my network connection with you is unstable. Please try sending me your message again."}), 500
+
+
 # enpoint to load POI info from csv file: returns name:description pair
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
-    print(places)
-
     place_info = {}
 
     for place in places:
-        # Query the MongoDB database directly
-        result = poi_db.find_one({"name": place.strip()}, {"_id": 0, "name": 1, "description": 1})
+        place = place.strip()
+        result = poi_db.find_one({"name": place}, {"_id": 0, "name": 1, "description": 1,"location":1})
         if result:
-            place_info[result['name']] = result['description']
+            place_name = result['name']
+            description = result['description']
+            location = result['location']
+            place_info[place_name] = {
+                "description": description,
+                "location": location
+            }
 
-    print(f"place_info: {place_info}")
     return jsonify(place_info)
-
 
 @app.route('/weather_icon', methods=['POST'])
 def weather_icon():
     forecast = request.json
     lib = ["Fair", "Fair (Day)", "Fair (Night)", "Fair and Warm", "Partly Cloudy",
-        "Partly Cloudy (Day)", "Partly Cloudy (Night)", "Cloudy", "Hazy", "Slightly Hazy",
-        "Windy", "Mist", "Fog", "Light Rain", "Moderate Rain", "Heavy Rain", "Passing Showers",
-        "Light Showers", "Showers", "Heavy Showers", "Thundery Showers", "Heavy Thundery Showers",
-        "Heavy Thundery Showers with Gusty Winds"]
+           "Partly Cloudy (Day)", "Partly Cloudy (Night)", "Cloudy", "Hazy", "Slightly Hazy",
+           "Windy", "Mist", "Fog", "Light Rain", "Moderate Rain", "Heavy Rain", "Passing Showers",
+           "Light Showers", "Showers", "Heavy Showers", "Thundery Showers", "Heavy Thundery Showers",
+           "Heavy Thundery Showers with Gusty Winds"]
     return jsonify(process.extractOne(forecast,lib)[0])
 
+@app.route('/find_nearby_pois', methods=['POST'])
+def find_nearby():
+    data = request.get_json()  # Parse the JSON data from the request
 
-@app.route('/get_centroids', methods=['POST'])
-def get_centroids():
-    names = request.json['names']
-    if not names:
-        return jsonify({'error': 'No names provided'}), 400
-    coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
-    return jsonify({'centroids': coords_str})
+    # Extract the required arguments
+    user_location = data.get('user_location')
+    radius_in_meters = data.get('radius_in_meters')
+
+    if user_location is None or radius_in_meters is None:
+        return jsonify({'error': 'Missing required parameters'}), 400
+
+    # Call the find_nearby_pois function with the provided arguments
+    nearby_pois = find_nearby_pois(user_location, radius_in_meters)
+
+    # Return the result as JSON
+    return jsonify(nearby_pois)
+
+# Temporary endpoint for random suggestion message
+@app.route('/suggestion', methods=['POST'])
+def suggest():
+    data = request.get_json()
+    choice = int(data.get('choice', 1))
+
+    samples = {
+        1: "Lunchtime is just around the corner, and I have some perfect places for you! ~Feng Shui Inn~, is a top-rated Chinese restaurant where you can find all Chinese cuisines. Ready to experience its delicious, authentic flavors? Click and let me guide you there!",
+        2: "Hot deals alert! ~The Forum~ is having a flash sale now on luxury products at unbeatable prices, just around the corner. Want to score big on high-end goods for less? Click now, and I will show you the way to massive savings!"
+        }
+    sample_pois = {
+        1: "Feng Shui Inn",
+        2: "The Forum"
+        }
+    if choice not in samples:
+        return jsonify({"error": "Invalid choice provided. Please use 1 or 2."}), 400
+    response = samples[choice]
+    poi = sample_pois[choice]
+    coordinate = poi_db.find_one({"name": poi}, {"_id": 0, "longitude": 1, "latitude": 1})
+    coord_data = [[coordinate['longitude'],coordinate["latitude"]]]
+    # Create hyperlinks with the route names
+    hyperlinks = create_hyperlinks([poi], coord_data)
+
+    # Insert hyperlinks using the `~` delimiter
+    response_text = insertHyperlinks(response, hyperlinks)
+    return jsonify({"message":response_text, "POI": poi})
+
+# Endpoint to fetch events for a given set of POI names, and return a LLM response to inform the user about the events.
+@app.route('/check_events', methods=['POST'])
+def check_events():
+    data = request.get_json()  # Get the list of names from the POST request
+    print(f"===check_events==> {data}")
+    places = data.get("places", [])  # Retrieve the 'names' list from the JSON body
+    coordinates = data.get("coordinates", [])
+    if not places:
+        return jsonify({"error": "No POIs provided"}), 400
+
+    # Query the database for entries with the given names
+    entries = list(events_db.find({"location": {"$in": places}}))
+    print(f"===check_events results==> {entries}")
+    if entries:
+        found_places = []
+        found_coordinates = []
+        for entry in entries:
+            location = entry['location']
+            if location in places:
+                index = places.index(location)
+                found_places.append(location)
+                found_coordinates.append(coordinates[index])
+        # Craft response message if entries detected.
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": f"""You are an event promoter.
+                 Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {sentosa_name}, promoting these POIs and events. 
+                 This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion. The message is addressed to a generic audience, and should be as succint as possible.
+                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
+                {"role": "user", "content": f'Places of interest involved: {found_places}. Events data: {entries}.'}
+            ],
+            temperature=0,
+        )
+        print(f"===check_events GPT response==> {response}")
+        # Create hyperlinks with the route names
+        hyperlinks = create_hyperlinks(places, coordinates)
+        response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
+        return jsonify({'response': response_text, "places": found_places, "coordinates":found_coordinates})
+    else:
+        # Return no content if no entries are found
+        return jsonify({}), 204
+
+# Not needed in sentosa variant right now.
+# @app.route('/get_centroids', methods=['POST'])
+# def get_centroids():
+#     names = request.json['names']
+#     if not names:
+#         return jsonify({'error': 'No names provided'}), 400
+#     coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
+#     return jsonify({'centroids': coords_str})
 
 ###########################################################################################################
-# route optimisation function: 
-# input: list of place names from CSV. 
+# route optimisation function:
+# input: list of place names from CSV.
 # output: permutation of indexes based on input e.g. [0,2,3,5,1,4]
 def solve_route(place_names):
     # fetch distance matrix
@@ -220,7 +356,7 @@ def solve_route(place_names):
     # remove first column which contains names of locations.
     distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
     # get index of place from csv file
-    indices = [name_to_index[name.replace("'","")] for name in place_names]
+    indices = [name_to_index[name] for name in place_names]
     # Fetch distance matrix subset
     subset_matrix = distance_matrix.iloc[indices, indices]
     # Run TSP pacakge
@@ -228,9 +364,11 @@ def solve_route(place_names):
     return permutation
 
 def solve_tsp(distance_matrix):
+    # Handle inf values and NA values:
+    distance_matrix = distance_matrix.replace([float('inf'), -float('inf')], 1e9)  # Replace inf with a large value
+    distance_matrix = distance_matrix.fillna(0)  # Replace NaNs with 0 or an appropriate value
     # Create the routing index manager
     scaled_distance_matrix = (distance_matrix * 1000).round().astype(int)
-
     manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0)
 
     # Create the routing model
@@ -278,54 +416,45 @@ def solve_tsp(distance_matrix):
             optimal_sequence.append(manager.IndexToNode(index))
             index = solution.Value(routing.NextVar(index))
         optimal_sequence.append(manager.IndexToNode(index))  # Add the start point to complete the loop
-        return optimal_sequence
+        # sentosa use open routing, use set to remove duplicates.
+        return list(set(optimal_sequence))
     else:
         return None
+# Function to handle duplicated GPT output
+def remove_dupes(response_text):
+    # Use a regular expression to find all occurrences of dictionaries
+    matches = re.findall(r'\{.*?\}', response_text)
+
+    if matches:
+        # Return only the first dictionary
+        return matches[0]
+    else:
+        # If no dictionary is found, return the original response
+        return response_text
 
 # Function to create hyperlinks for places
-def create_hyperlinks(place_list):
+def create_hyperlinks(place_list, coordinates):
     hyperlinks = {}
-    print(f"Hyperlink names: {place_list}")
-    for name in place_list:
+    for index, name in enumerate(place_list):
         formatted_id = name.replace('"', '').replace(' ', '-').lower()
+        # Create a dictionary for coordinates with 'lng' and 'lat' keys
+        coord_dict = {"lng": coordinates[index][0], "lat": coordinates[index][1]}
         # Create the hyperlink HTML
-        hyperlink = f'<a href="#" class="location-link" data-marker-id="{formatted_id}">{name}</a>'
+        hyperlink = f'<a href="#" class="location-link" data-coordinates="{coord_dict}" data-marker-id="{formatted_id}">{name}</a>'
         hyperlinks[name] = hyperlink
-    print(hyperlinks)
     return hyperlinks
 
 
 def insertHyperlinks(message, replacements):
-    # Split the message into chunks by single apostrophes
-    chunks = message.split("'")
-    # Iterate through the chunks and replace matches
-    for i in range(len(chunks)):
-        chunk = chunks[i].strip()
-        if chunk in replacements:
-            chunks[i] = replacements[chunk]
-    
-    # Reconstruct the message
-    return "'".join(chunks)
+    # Split the message into chunks by the `~` delimiter
+    chunks = message.split("~")
 
-# function to get cluster centroid locations
-def get_unique_clusters_coordinates(names, poi_db, centroids_db):
-    # Clean up the names
-    names = [name.replace("'", "") for name in names]
+    # Map over the chunks to replace matches using a lambda function
+    # The lambda function checks if the chunk is in replacements and replaces it, otherwise it returns the chunk unchanged
+    chunks = map(lambda chunk: replacements.get(chunk.strip(), chunk), chunks)
 
-    # Query MongoDB for POIs with matching names
-    filtered_pois = list(poi_db.find({"name": {"$in": names}}, {"_id": 0, "name": 1, "cluster": 1}))
-
-    # Extract clusters from the filtered POIs
-    clusters = [poi['cluster'] for poi in filtered_pois]
-
-    # Query MongoDB for centroids with matching clusters
-    centroids = list(centroids_db.find({"cluster": {"$in": clusters}}, {"_id": 0, "cluster": 1, "centroid_longitude": 1, "centroid_latitude": 1}))
-
-    # Generate the list of coordinates
-    coords_list = [f"[{centroid['centroid_longitude']},{centroid['centroid_latitude']}]" for centroid in centroids]
-
-    print(coords_list)
-    return coords_list
+    # Reconstruct the message by joining the mapped chunks
+    return "".join(chunks)
 
 
 ###########################################################################################################
@@ -341,11 +470,11 @@ def fetch_weather_data():
     return response.json() if response.status_code == 200 else {"error": "Unable to fetch weather data"}
 
 def fetch_poi_data():
-    # Connect to MongoDB and fetch all documents with the required fields
-    documents = poi_db.find({}, {"name": 1, "operating_hours": 1, "description": 1})
+    # Connect to MongoDB and fetch all documents with the required fields, skip descriptions to save tokens
+    documents = poi_db.find({}, {"name": 1, "operating_hours": 1})
 
     poi_data = []
-    
+
     for doc in documents:
         # Collect the required fields from each document
         poi = {
@@ -354,15 +483,47 @@ def fetch_poi_data():
             "description": doc.get("description", "")
         }
         poi_data.append(poi)
-    
+
     return poi_data
+
+def find_nearby_pois(user_location, radius_in_meters=100):
+    user_lon = user_location['longitude']
+    user_lat = user_location['latitude']
+    print(f"User location in find_nearby_pois: {user_location}")
+    try:
+        # Convert radius to radians (radius of Earth is approximately 6378100 meters)
+        radius_in_radians = radius_in_meters / 6378100.0
+
+        # Perform a geospatial query to find POIs directly within the radius
+        nearby_pois = poi_db.find({
+            "location": {
+                "$geoWithin": {
+                    "$centerSphere": [[user_lon, user_lat], radius_in_radians]
+                }
+            }
+        }).limit(10)  # Limit results to a maximum of 10 POIs
+
+        # Convert the cursor to a list to check what is returned
+        nearby_pois_list = list(nearby_pois)
+        print(f"Found POIs: {nearby_pois_list}")
+
+        # Extract POI names from the results
+        results = [poi['name'] for poi in nearby_pois_list]
+
+        return results
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return []
+
 
 '''
 Function Mapping: map the function names to the function, so that it can be identified and called in handle_function_calls()
 '''
 function_mapping = {
     "fetch_weather_data": fetch_weather_data,
-    "fetch_poi_data": fetch_poi_data
+    "fetch_poi_data": fetch_poi_data,
+    "find_nearby_pois": find_nearby_pois
 }
 '''
 Function Schema:
@@ -370,36 +531,73 @@ defines a list of all available functions and their descriptions. GPT will use t
 functions are suitable and relevant, and call these functions if needed.
 '''
 function_schemas = [
-    # {
-    #     "name": "query_expansion",
-    #     "description": "Asks the user for more information to better understand their needs and provide a more personalized experience. Always ask for more context is not specified.",
-    #     "parameters": {
-    #         "type": "object",
-    #         "properties": {
-    #             "context": {
-    #                 "type": "string",
-    #                 "description": "The current conversation context or user input that needs clarification."
-    #             },
-    #             "clarifying_question": {
-    #                 "type": "string",
-    #                 "description": "The question to ask the user to gather more details."
-    #             }
-    #         },
-    #         "required": ["context"]
-    #     }
-    # },
     {
         "name": "fetch_weather_data",
         "description": "Fetches the 24-hour weather forecast from data.gov.sg",
         "parameters": {}
     },
     {
-    "name": "fetch_poi_data",
-    "description": '''Fetches the name, operating hours, and description of all attractions,
-                    ammenities, events, shows and animals in Singapore Zoo from the MongoDB database. 
-                    Always call this function if recommending attractions or places.''',
-    "parameters": {}
+        "name": "fetch_poi_data",
+        "description": '''Fetches the name, operating hours, and description of all attractions,
+                    ammenities, and places of interest in Sentosa from the MongoDB database.
+                    Always call this function if recommending attractions or places, or trying to locate a place of interest.''',
+        "parameters": {}
+    },
+    {
+        "name": "find_nearby_pois",
+        "description": "Finds places of interest (POIs) within a specified radius of the user's location, sorted by proximity.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_location": {
+                    "type": "object",
+                    "description": "The user's current location.",
+                    "properties": {
+                        "longitude": {
+                            "type": "number",
+                            "description": "The longitude of the user's location."
+                        },
+                        "latitude": {
+                            "type": "number",
+                            "description": "The latitude of the user's location."
+                        }
+                    },
+                    "required": ["longitude", "latitude"]
+                },
+                "radius_in_meters": {
+                    "type": "number",
+                    "description": "The radius within which to find POIs, in meters.",
+                    "default": 100
+                }
+            },
+            "required": ["user_location"]
+        },
+        "responses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the place of interest."
+                    },
+                    "location": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "description": "The location of the place of interest as [longitude, latitude]."
+                    },
+                    "distance": {
+                        "type": "number",
+                        "description": "The distance from the user's location to the place of interest, in meters."
+                    }
+                },
+                "required": ["name", "location", "distance"]
+            }
+        }
     }
+
 ]
 
 def handle_function_calls(messages, state):
@@ -409,7 +607,7 @@ def handle_function_calls(messages, state):
         functions=function_schemas,
         function_call="auto"
     )
-    
+
     message = response.choices[0].message
     if hasattr(message, 'function_call') and message.function_call:
         function_name = message.function_call.name
@@ -419,7 +617,7 @@ def handle_function_calls(messages, state):
         function_args = {}
         if function_args_str:
             function_args = json.loads(function_args_str)
-        
+
         if function_name not in state["called_functions"]:
             function_to_call = function_mapping.get(function_name)
             if function_to_call:
@@ -427,7 +625,7 @@ def handle_function_calls(messages, state):
                     function_result = function_to_call(**function_args)
                 except TypeError as e:
                     function_result = {"error": f"Function call error: {str(e)}"}
-                
+
                 state["called_functions"].add(function_name)
                 state["function_results"][function_name] = function_result
 
@@ -436,47 +634,24 @@ def handle_function_calls(messages, state):
                 #     return function_result['clarifying_question']
 
                 messages.append({
-                    "role": "function", 
-                    "name": function_name, 
+                    "role": "function",
+                    "name": function_name,
                     "content": json.dumps(function_result)  # Ensure content is JSON encoded
                 })
 
                 # Recursive call to handle further function calls
-                print(state['called_functions'])
                 return handle_function_calls(messages, state)
             else:
                 messages.append({
-                    "role": "function", 
-                    "name": function_name, 
+                    "role": "function",
+                    "name": function_name,
                     "content": json.dumps({"error": "Function not implemented"})
                 })
                 return handle_function_calls(messages, state)
     else:
         return message.content
 
-    
-# def query_expansion(context, clarifying_question=None):
-#     # Generate a clarifying question if none is provided
-#     if not clarifying_question:
-#         clarifying_question = "Could you provide more details about your preferences or what you're looking for?"
-
-#     # Return the question to ask the user
-#     return {
-#         "clarifying_question": clarifying_question
-#     }
-
-def chat_with_gpt(user_query):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": user_query}
-    ]
-    state = {
-        "called_functions": set(),
-        "function_results": {}
-    }
-    final_response = handle_function_calls(messages, state)
-    return final_response
 
 ###########################################################################################################
 if __name__ == '__main__':
-    app.run(debug=True, port=3106)
+    app.run(debug=True, host="0.0.0.0", port=3106)

@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name='viewport'
+        content='width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' />
     <title>Smart Tour Guide</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="static/css/base.css">
@@ -11,20 +15,40 @@
     <link rel="stylesheet" href="static/css/weather-widget.css">
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/marked/marked.min.js'></script>
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.0.0/mapbox-gl-directions.js"></script>
 </head>
+
 <body>
-    <div class="header">
-        <img src="static/icons/guide-genius.png" class="header-icon">
-        <div class="header-text">Guide Genius</div>
-        <div class="min-weather-widget" id="minWeatherWidget">
-            <img alt="min weather icon" class="min-weather-icon" id="weather-icon0">
-            <div class="min-forecast" id="forecast0"></div>
-            <div class="min-temp-details">
-                <div class="min-tempLow" id="tempLow0"></div>
-                <div class="min-tempHigh" id="tempHigh0"></div>
-            </div>           
-        </div>
+    <button class="domeShowBoot" onclick="domeShowBootFuc()"></button>
+    <div class="newHeader">
+        <ul class="list">
+            <li class="item">
+                <p><img src="static/icons/attraction.svg" alt="" srcset=""></p>
+                <p>Attraction</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/dining.svg" alt="" srcset=""></p>
+                <p>Dining</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/show.svg" alt="" srcset=""></p>
+                <p>Show</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/toilet.svg" alt="" srcset=""></p>
+                <p>Toilet</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/hotel.svg" alt="" srcset=""></p>
+                <p>Hotel</p>
+            </li>
+            <li class="item">
+                <p><img src="static/icons/retail.svg" alt="" srcset=""></p>
+                <p>Retail</p>
+            </li>
+        </ul>
     </div>
     <div class="weather-widget" id="weather-widget">
         <button class="close-button" id="close-button">&times;</button>
@@ -66,48 +90,159 @@
     </div>
     <div id="container">
         <div id="map"></div>
-        <div id="resizer"></div>
-        <div id="right-panel">
-            <div id="chatbot-area">
-                <div id="chatbot-messages">
-                    <div id="nav-steps" class="nav-steps"></div>
+        <div id="zoom-controls">
+            <div class="lunchtime">
+                <div class="infomfor" id="tishi">It's lunchtime. I've picked out a few restaurants
+                    in the neighbourhoods that I think you'll like.
+                    Take a look at them.</div>
+                <div id="foodBox" class="none">
+                    <img width="70%" src="static/icons/food.png" alt="" srcset="">
+                </div>
+                <div id="idaeBox" class="none">
+                    <img width="70%" src="static/icons/idae.png" alt="" srcset="">
+                </div>
+                <button id="robotIcoId" class="robotIco">
+                    <div class="robot-eye robot-eye-left"></div>
+                    <div class="robot-eye robot-eye-right"></div>
+                    <img src="static/icons/morx.svg" alt="" srcset="">
+                </button>
+            </div>
+            <!-- 推荐poi -->
+            <div id="poiSwiper" class="none">
+                <div class="promo">
+                    <img src="static/icons/start.svg" alt="" srcset="">
+                    <button onclick="getPromo()">Discover Nearby</button>
+                </div>
+                <div class="swiper">
+                    <div class="swiper-wrapper" id="swiperconent">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="poiList"></div>
+        <div class="mapandlistbut">
+            <button id="tabMap" class="activeButton" onclick="handerMap(event, 'map')">
+                Map
+            </button>
+            <button id="tabList" onclick="handerMap(event, 'list')">
+                List
+            </button>
+        </div>
+    </div>
+
+    <!-- chatgpt -->
+    <div id="popupModal" class="modal">
+        <div class="modalContent">
+            <div class="lineThree">--</div>
+            <div class="modal-body">
+                <div id="right-panel">
+                    <div id="chatbot-area">
+                        <div id="chatbot-messages">
+                            <div id="nav-steps" class="nav-steps"></div>
+                            <div class="reserveInfor">
+                                <button onclick="systemQuestionFunc(event)">How is the weather at Sentosa today?</button>
+                                <button onclick="systemQuestionFunc(event)">How do I get to Universal Studios Singapore?</button>
+                                <button onclick="systemQuestionFunc(event)">Where is W Singapore hotel?</button>
+                                <button onclick="systemQuestionFunc(event)">What popular attractions are near me?</button>
+                            </div>
+                        </div>
+                        <div id="voice">
+                            <div class="mt-4" id="div_language" style="display:none">
+                                <h2 class="mb-3 text-light">Select Language</h2>
+                                <select class="form-select bg-secondary text-light" id="select_language"
+                                    onchange="updateCountry()"></select>
+                                <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
                 <div id="input-container">
-                    <input type="text" id="chatbot-input" placeholder="Type a message..." onkeydown="submitChat(event)">
+                    <input type="text" id="chatbot-input" enterkeyhint="send" placeholder="Let’s chat" onkeydown="submitChat(event)">
                     <button id="voice-btn" onclick="startVoiceInput()">
                         <i id="record" class="fas fa-microphone"></i>
                     </button>
                 </div>
-
-                <div id="voice">
-                    <div class="mt-4" id="div_language" style="display:none">
-                        <h2 class="mb-3 text-light">Select Language</h2>
-                        <select class="form-select bg-secondary text-light" id="select_language" onchange="updateCountry()"></select>
-                        <select class="form-select bg-secondary text-light mt-2" id="select_dialect"></select>
-                    </div>
-                </div>
-
             </div>
-        </div>       
-        <div id="zoom-controls">
-            <button id="zoom-in">+</button>
-            <button id="zoom-out">-</button>
-    </div>
-    <div id="waypoint-form-container" style="display: none;">
-        <div id="waypoint-form">
-            <label for="waypoint-title">Title:</label>
-            <input type="text" id="waypoint-title" name="waypoint-title"><br>
-            <label for="waypoint-notes">Notes:</label>
-            <textarea id="waypoint-notes" name="waypoint-notes"></textarea><br>
-            <button id="save-waypoint">Save</button>
-            <button id="cancel-waypoint">Cancel</button>
         </div>
     </div>
-    <div class="tooltip">Click to display detailed forecast.</div>
+
+    <!-- This button use to demo -->
+     <button id="pauseAndpaly">
+        <img src="static/icons/pause.svg" alt="" srcset="">
+    </button>
+
+    <!-- 导航 -->
+    <div id="navigation" class="none">
+        <div class="neststat">
+           <div>
+                <img id="distanceIcon" src="static/icons/left.svg" alt="" srcset="">
+           </div>
+           <div class="distext">
+             <!-- Need to adjust font and layout -->
+              <p>
+                <span id="distanceText" class="number"></span>
+                meters
+              </p>
+             <span id="instructionText"></span>
+           </div>
+        </div>
+        <!-- Backend to update these fields -->
+        <div class="datelInfo">
+            <div id="journeyETA">
+                <h3>18:00</h3>
+                <p>Arrive</p>
+            </div>
+            <div id="journeyDuration">
+                <h3>20</h3>
+                <p>mins</p>
+            </div>
+            <div id="journeyDistance">
+                <h3>2.1</h3>
+                <p>km</p>
+            </div>
+            <div class="stopButton">
+                <button id="closedBut" class="closedBut">
+                    <p><img src="static/icons/closed.svg" alt="" width="26px" srcset=""></p>
+                    <p>Stop</p>
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- 完成导航 -->
+     <div id="navcompleted" class="none">
+        <div class="youdestination">
+            <div>
+                <img src="static/icons/walkicn.svg" alt="" srcset="">
+            </div>
+            <div>You have arrive your destination</div>
+        </div>
+        <div>
+            <button onclick="exitNavFunc()" class="exitClass">Exit</button>
+        </div>
+     </div>
+
+    <!-- 预览导航 -->
+     <div id="startNav" class="none">
+        <div class="infoWilk">
+            <div>
+                <img src="static/icons/walk.svg" alt="" srcset="">
+            </div>
+            <div>
+                <p>walk</p>
+                <p id="totMinus" class="minumts">30min</p>
+                <p id="totDist">2.4km</p>
+            </div>
+        </div>
+        <div class="funcBot">
+            <button class="cancelBottm" onclick="cancelNav()">Cancel</button>
+            <button class="startBottm" onclick="startUserNav()">Start</button>
+        </div>
+     </div>
     <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
     <script src="{{ url_for('static', filename='js/language.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
-    <script src="{{url_for('static',filename='js/chatbox-resize.js')}}"></script>
-    <script src="{{url_for('static',filename='js/weather-widget.js')}}"></script>
+    <script src="{{url_for('static',filename='js/touch.js')}}"></script>
 </body>
+
 </html>

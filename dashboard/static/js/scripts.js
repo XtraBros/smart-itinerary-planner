@@ -275,29 +275,29 @@ document.addEventListener("DOMContentLoaded", function() {
     function initializeMap() {
         map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v11',
-            center: [103.78839388, 1.4042306],
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [103.8198, 1.2528],
             zoom: 15
         });
 
         map.on('load', function() {
             // Define and set bounds for the map
-            var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
-            map.setMaxBounds(bounds);
+            // var bounds = [[103.77861059, 1.39813758], [103.79817716, 1.41032361]];
+            // map.setMaxBounds(bounds);
 
-            // Add custom tiles
-            map.addSource('custom-tiles', {
-                type: 'raster',
-                tiles: [config.MAPBOX_MAPTILES],
-                tileSize: 256,
-                minzoom: 12,
-                maxzoom: 22
-            });
-            map.addLayer({
-                id: 'custom-tiles-layer',
-                type: 'raster',
-                source: 'custom-tiles'
-            });
+            // // // Add custom tiles
+            // map.addSource('custom-tiles', {
+            //     type: 'raster',
+            //     tiles: [config.MAPBOX_MAPTILES],
+            //     tileSize: 256,
+            //     minzoom: 12,
+            //     maxzoom: 22
+            // });
+            // map.addLayer({
+            //     id: 'custom-tiles-layer',
+            //     type: 'raster',
+            //     source: 'custom-tiles'
+            // });
         });
         map.on('click', function(e) {
             const coordinates = e.lngLat;
