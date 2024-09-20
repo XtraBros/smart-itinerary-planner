@@ -58,16 +58,15 @@
                 <input type="text" id="operating_hours" name="operating_hours" required autocomplete="operating_hours"><br><br>
                 
                 <label for="thumbnail">Thumbnail:</label>
-                <input type="text" id="thumbnail" name="thumbnail" required autocomplete="thumbnail"><br><br>
-            
+                <form id="uploadThumbnail">
+                    <input type="file" id="fileInput" accept="image/jpeg/jpg" />
+                </form>
+                <br><br>
                 <button type="submit" id="savePOIButton">Save POI Data</button>
                 <button id="deletePOIButton">Delete POI</button>
             </form>
             <br><br>
             <button type="button" id="viewChangesButton" onclick="openTab('viewChanges')">View Changes</button>
-            <br><br>
-            <input type="file" id="uploadCSV" accept=".csv">
-            <button type="button" id="uploadCSVButton">Upload CSV</button>
             <br><br>
             <button type="button" id="addLocationButton">Add New Location</button>
             <button type="button" id="cancelLocationButton">Cancel</button>

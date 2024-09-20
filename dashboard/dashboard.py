@@ -7,6 +7,8 @@ from sklearn.cluster import KMeans
 import requests
 import time
 import certifi
+from google.cloud import storage
+import os
 
 app = Flask(__name__)
 
@@ -17,7 +19,7 @@ mongo = pymongo.MongoClient(config['MONGO_CLUSTER_URI'],tlsCAFile=certifi.where(
 print("Successfully cononected to Database.")
 DB = mongo[config['MONGO_DB_NAME']]
 poi_db = DB[config['POI_DB_NAME']]
-poi_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0}))).drop(columns=['index'])
+poi_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
 print(f"Loaded {len(poi_df)} POIs.")
 change_log = {}
 required_columns = ['name', 'longitude', 'latitude', 'description', 'location']
@@ -25,6 +27,13 @@ dist_mat_db = DB[config["DISTANCE_MATRIX"]]
 mapbox_access_token = config['MAPBOX_ACCESS_TOKEN']
 distance_matrix = pd.DataFrame(list(dist_mat_db.find({}, {"_id": 0})))
 distance_matrix.set_index('name', inplace=True)
+# Initialize the Google Cloud Storage client
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config["GOOGLE_AUTH_FILE"]
+storage_client = storage.Client()
+bucket = storage_client.bucket(config['GOOGLE_BUCKET_NAME'])
+print(bucket)
+folder_name = "sentosa"
+
 
 @app.route('/')
 def index():
@@ -51,7 +60,6 @@ def get_poi():
 @app.route('/add_poi', methods=['POST'])
 def add_poi():
     new_poi = request.json
-    del new_poi['thumbnail']
     print(f"Adding {new_poi['name']}")
     global poi_df 
     if new_poi['name'] in poi_df['name'].values:
@@ -97,8 +105,8 @@ def edit_poi():
 
     # Check if the location (longitude or latitude) has changed
     location_changed = (
-        existing_poi['longitude'] != updated_longitude or 
-        existing_poi['latitude'] != updated_latitude
+        float(existing_poi['longitude']) != float(updated_longitude) or 
+        float(existing_poi['latitude']) != float(updated_latitude)
     )
 
     # Update the POI details in the DataFrame
@@ -190,6 +198,27 @@ def commit_changes():
     # Empty change logs:
     change_log = {}
     return jsonify({"message": f"Committed {num_changes} changes to the database"})
+
+@app.route('/upload_thumbnail', methods=['POST'])
+def upload_thumbnail():
+    if 'thumbnail' not in request.files or 'fileName' not in request.form:
+        return jsonify({"error": "No file or filename provided"}), 400
+
+    file = request.files['thumbnail']
+    file_name = request.form['fileName']
+
+    try:
+        # Set the destination path within the bucket (folder)
+        destination_blob_name = f"{folder_name}/{file_name}"
+        blob = bucket.blob(destination_blob_name)
+
+        # Upload the file
+        blob.upload_from_file(file.stream, content_type='image/jpeg')
+
+        return jsonify({"message": f"Thumbnail {file_name} uploaded successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 ####################################################################################################################################
 ####################################################################################################################################
 # helper functions
@@ -248,7 +277,7 @@ def edit_poi_in_distance_matrix(updated_poi, existing_poi):
     new_poi_name = updated_poi['name']
 
     # Generate new distances
-    new_distances = generate_distances(updated_poi, df)  # Function to calculate distances to all other POIs
+    new_distances = generate_distances(updated_poi, poi_df)  # Function to calculate distances to all other POIs
     print(new_distances)
 
     # Ensure the new distances align with the distance matrix format
