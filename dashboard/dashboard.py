@@ -73,7 +73,7 @@ def add_poi():
     poi_df = pd.concat([poi_df, pd.DataFrame([new_poi])], ignore_index=True)
     add_poi_to_distance_matrix(new_poi)
     # update change log
-    update_change_log("add",new_poi['name'])
+    update_change_log("add", False, new_poi['name'])
     return jsonify({"message": "POI added successfully"})
 
 @app.route('/edit_poi', methods=['POST'])
@@ -122,13 +122,17 @@ def edit_poi():
     if name_changed:
         old_name = existing_poi['name']
         distance_matrix = distance_matrix.rename(index={old_name: updated_name}, columns={old_name: updated_name})
+        # rename thumbnail:
+
         print(f"Name change detected: Old Name '{old_name}' -> New Name '{updated_name}'")
+        update_change_log('edit', old_name, updated_name)
+    else:
+        update_change_log('edit', False, updated_name)
 
     # Handle location change in the distance matrix
     if location_changed:
         edit_poi_in_distance_matrix(updated_poi, existing_poi)
         print(f"Location change detected for {updated_name}: Old [{existing_poi['longitude']}, {existing_poi['latitude']}] -> New [{updated_longitude}, {updated_latitude}]")
-    update_change_log('edit', updated_name)
     return jsonify({"message": f"POI {updated_name} updated successfully"}), 200
 
 # delete pois
@@ -141,6 +145,7 @@ def delete_poi():
     poi_df = poi_df.drop(poi_id, axis=0)
     delete_poi_from_distance_matrix(poi_name)
     poi_df = poi_df.reset_index()
+    update_change_log('delete',False,poi_name)
     return jsonify({"message": f"POI {poi_name} deleted successfully"}), 200
 
 
@@ -183,6 +188,27 @@ def view_changes():
 def commit_changes():
     global change_log, poi_df, poi_db, distance_matrix, dist_mat_db
     num_changes = len(change_log)
+    # Process changes based on operation type
+    for change_id, change in change_log.items():
+        operation = change.get('operation')
+        name = change.get('name')
+        renamed = change.get('renamed_from')
+        formatted_new_name = f"{name.lower().replace(' ', '-')}.jpg"
+
+        if operation == 'edit' and renamed:
+            # For edit operation, rename the thumbnail in the Google Cloud Storage bucket
+            formatted_old_name = f"{renamed.lower().replace(' ', '-')}.jpg"
+            try:
+                rename_thumbnail(formatted_old_name, formatted_new_name)
+            except Exception as e:
+                print(f"Error renaming thumbnail: {e}")
+
+        elif operation == 'delete':
+            # For delete operation, remove the thumbnail from the Google Cloud Storage bucket
+            try:
+                delete_thumbnail(formatted_new_name)
+            except Exception as e:
+                print(f"Error deleting thumbnail: {e}")
     # Clear the existing and upload new POI data in the database
     poi_db.delete_many({})  # Empty the poi_db collection
     poi_db.insert_many(poi_df.to_dict('records'))
@@ -342,7 +368,7 @@ def add_multiple_pois(df_new_pois):
         poi_db.insert_many(new_documents)
 
 # Function to update the change log with a new entry
-def update_change_log(operation, name):
+def update_change_log(operation, renamed_from, name):
     # Generate a new integer key for the next entry in the change log
     # This key will be the next integer after the current maximum key
     if change_log:
@@ -353,9 +379,34 @@ def update_change_log(operation, name):
     # Create a new log entry with the 'operation' and 'name'
     change_log[new_id] = {
         'operation': operation,
-        'name': name
+        'name': name,
+        'renamed_from': renamed_from 
     }
     print(f"{operation} operation on {name} recorded.")
+
+def rename_thumbnail(old_name, new_name):
+    global bucket
+    """Renames a file in a Google Cloud Storage bucket."""
+    old_blob = bucket.blob(old_name)
+    new_blob = bucket.blob(new_name)
+
+    # Copy the blob to a new name
+    new_blob.rewrite(old_blob)
+    
+    # Delete the old blob
+    old_blob.delete()
+
+    print(f"Renamed file {old_name} to {new_name}")
+
+def delete_thumbnail(file_name):
+    """Deletes a file from a Google Cloud Storage bucket."""
+    global bucket
+    blob = bucket.blob(file_name)
+
+    # Delete the blob
+    blob.delete()
+
+    print(f"Deleted file {file_name}")
 
 if __name__ == '__main__':
     app.run(debug=True, host="127.0.0.1", port=3000)

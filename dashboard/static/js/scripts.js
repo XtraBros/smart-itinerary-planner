@@ -181,8 +181,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Upload the thumbnail to the server
                 const thumbnailResponse = await fetch('/upload_thumbnail', {
                     method: 'POST',
-                    body: thumbnailFormData
-                });
+                    body: thumbnailFormData,
+                    processData:false,
+                    contentType:false
+                    });
                 console.log("Response received: ", thumbnailResponse);
                 const thumbnailResult = await thumbnailResponse.json();
     
