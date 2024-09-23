@@ -299,6 +299,9 @@ document.addEventListener("DOMContentLoaded", function() {
             if (data.message) {
                 alert(data.message);
                 openTab('poi');
+                // Empty change log table
+                const table = document.getElementById('changeLogTable');
+                table.innerHTML = ''; // Clear previous content
             } else {
                 alert('Failed to commit changes');
             }
@@ -307,7 +310,6 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error('Error committing changes:', error);
             alert('Error committing changes to database');
         });
-
     });
 
     // Hamburger menu functionality
