@@ -391,6 +391,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // Helper functions:
 function populateForm(poi) {
+    // Empty form
+    document.getElementById('location-form').reset();
+    // Populate form
     document.getElementById('poi-id').value = poi.id;
     document.getElementById('name').value = poi.name || '';
     document.getElementById('longitude').value = poi.longitude || '';
