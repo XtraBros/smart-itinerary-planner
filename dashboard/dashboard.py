@@ -48,9 +48,22 @@ def get_config():
 @app.route('/update_config', methods=['POST'])
 def update_config():
     data = request.json
-    with open(CONFIG_FILE, 'w') as file:
+    config_file_path = CONFIG_FILE  # Assuming CONFIG_FILE is the path to your config file
+    app_file_path = "../app.py"  # Replace with the actual path to your app.py
+
+    # Write the new config data
+    with open(config_file_path, 'w') as file:
         json.dump(data, file, indent=4)
+
+    # "Touch" the app.py file to update its modified timestamp
+    touch_file(app_file_path)
+
     return jsonify({"message": "Config updated successfully"})
+
+def touch_file(filepath):
+    """ Update the modified time of the file to trigger a Flask reload """
+    with open(filepath, 'a'):
+        os.utime(filepath, None)
 
 # Endpoint to get POI data
 @app.route('/get_poi', methods=['GET'])
