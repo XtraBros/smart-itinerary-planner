@@ -360,15 +360,26 @@ fetch('/config')
         // Assuming the response contains a JSON object with an 'accessToken' property
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.GOOGLE_CLOUD_URI;
-        map = new mapboxgl.Map({
+        const site = data.config.MONGO_DB_NAME;
+        if (site === "SENTOSA"){
+            map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v12',
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
             center: [103.827973, 1.250277],
             zoom: 13
-        });
-
+            });
+        } else {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
+                //center: [103.8285654153839, 1.24791502223719],
+                center: [103.78839388, 1.4042306],
+                zoom: 15
+            });
+        };  
         directions = new MapboxDirections({
             accessToken: mapboxgl.accessToken,
             unit: 'metric',
