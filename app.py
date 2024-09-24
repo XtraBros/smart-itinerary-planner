@@ -3,19 +3,15 @@
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 import pandas as pd
-import ast
 import json
-import numpy as np
 from thefuzz import fuzz, process
 from pymongo import MongoClient
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
-from geopy.distance import geodesic
 import certifi
 import re
-import base64
 import gridfs
 
 
@@ -45,22 +41,14 @@ fs = gridfs.GridFS(db)
 # LOAD Vector store into memory if needed. Currently kept in db as column.
 # Load the embedding model for semantic search
 model = SentenceTransformer('all-MiniLM-L6-v2')
-######################### MONGO #########################
-
-######################### CSV DATA #########################
 place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
-# place_info_df.columns = place_info_df.columns.str.strip()
-# place_info_df['name'] = place_info_df['name'].str.strip()
 name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
-#cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
-######################### CSV DATA #########################
-
-
-zoo_name = "Singapore Zoo"
-zoo_places_list = place_info_df['name'].tolist()
-
-sentosa_name = "Singapore Sentosa Island"
-sentosa_places_list = place_info_df["name"].tolist()
+places_list = place_info_df['name'].tolist()
+if config['MONGO_DB_NAME'] == "SENTOSA":
+    place = "Singapore Sentosa Island"
+else:
+    place = "Singapore Zoo"
+######################### MONGO #########################
 
 @app.route('/')
 def home():
@@ -79,8 +67,8 @@ def ask_plan():
 
     # Initial messages with RAG data
     messages = [
-        {"role": "system", "content": f"""You are a helpful tour guide working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}. The visitor is currently at {user_location}.
+        {"role": "system", "content": f"""You are a helpful tour guide working in {place}. 
+            Your task is to advise visitors on features and attractions in {place}. The visitor is currently at {user_location}.
             
             Important Guidelines:
             1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
@@ -94,7 +82,7 @@ def ask_plan():
                 - If "operation" is "location", "route" or "wayfinding", "response" should contain a list of the names of the places of interest.
             4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
-            5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
+            5) Use the exact names of the places as provided in this list: {places_list}.
             6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
@@ -146,7 +134,7 @@ def get_text():
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"""You are a tour guide at {sentosa_name}. 
+                {"role": "system", "content": f"""You are a tour guide at {place}. 
                  Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
                  Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
@@ -323,7 +311,7 @@ def check_events():
             model=model_name,
             messages=[
                 {"role": "system", "content": f"""You are an event promoter.
-                 Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {sentosa_name}, promoting these POIs and events. 
+                 Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {place}, promoting these POIs and events. 
                  This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion. The message is addressed to a generic audience, and should be as succint as possible.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
                 {"role": "user", "content": f'Places of interest involved: {found_places}. Events data: {entries}.'}
