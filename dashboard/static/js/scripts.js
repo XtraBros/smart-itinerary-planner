@@ -26,6 +26,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     label.textContent = `${key}:`;
                     const input = document.createElement('input');
                     input.type = 'text';
+                    // If the key indicates sensitive information, change input type to 'password'
+                    if (key.includes('URI') || key.includes('KEY') || key.includes('TOKEN')) {
+                        input.type = 'password';
+                    }
                     input.id = key;
                     input.name = key;
                     input.value = data[key];
@@ -38,7 +42,60 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             thumbnailURI = data.GOOGLE_CLOUD_URI;
         });
-
+    
+    // upload config json to fill form.
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+    
+        if (file) {
+            const reader = new FileReader();
+    
+            reader.onload = function(e) {
+                try {
+                    // Parse the JSON file
+                    const jsonData = JSON.parse(e.target.result);
+                    
+                    // Clear existing form fields
+                    document.getElementById('configForm').innerHTML = '';
+    
+                    // Populate form with JSON data
+                    for (const key in jsonData) {
+                        if (jsonData.hasOwnProperty(key)) {
+                            const label = document.createElement('label');
+                            label.setAttribute('for', key);
+                            label.textContent = `${key}:`;
+    
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            
+                            // If the key contains sensitive data, use password input
+                            if (key.includes('URI') || key.includes('KEY') || key.includes('TOKEN')) {
+                                input.type = 'password';
+                            }
+    
+                            input.id = key;
+                            input.name = key;
+                            input.value = jsonData[key];
+                            input.required = true;
+    
+                            document.getElementById('configForm').appendChild(label);
+                            document.getElementById('configForm').appendChild(input);
+                            document.getElementById('configForm').appendChild(document.createElement('br'));
+                            document.getElementById('configForm').appendChild(document.createElement('br'));
+                        }
+                    }
+    
+                    alert("Config form populated with JSON data.");
+                } catch (error) {
+                    alert("Error parsing JSON file.");
+                }
+            };
+    
+            reader.readAsText(file);
+        } else {
+            alert("No file selected.");
+        }
+    });        
     // Update the config
     document.getElementById('updateButton').addEventListener('click', function(e) {
         e.preventDefault();
