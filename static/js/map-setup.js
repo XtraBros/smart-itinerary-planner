@@ -251,9 +251,7 @@ window.onload = function () {
             markerElement.style.transform = `rotate(${alpha}deg)`
         }
     });
-    getUserCurrentPosition((userLoc) => {
-        setUserLocationMark([userLoc.lng, userLoc.lat])
-    });
+    getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
         // autoplay: true,
