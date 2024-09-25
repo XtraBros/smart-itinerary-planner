@@ -13,12 +13,26 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(data => {
             config = data;
             mapboxgl.accessToken = data.MAPBOX_ACCESS_TOKEN;
-            map = new mapboxgl.Map({
+            const site = config.MONGO_DB_NAME;
+            if (site === "SENTOSA"){
+                map = new mapboxgl.Map({
                 container: 'map',
                 style: 'mapbox://styles/mapbox/streets-v12',
-                center: [103.8198, 1.2528],
-                zoom: 15
-            });
+                //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
+                //center: [103.8285654153839, 1.24791502223719],
+                center: [103.827973, 1.250277],
+                zoom: 13
+                });
+            } else {
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/streets-v12',
+                    //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
+                    //center: [103.8285654153839, 1.24791502223719],
+                    center: [103.794172, 1.404016],
+                    zoom: 16
+                });
+            };  
             for (const key in data) {
                 if (data.hasOwnProperty(key)) {
                     const label = document.createElement('label');
