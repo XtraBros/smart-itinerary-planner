@@ -1353,10 +1353,7 @@ async function postMessage(message, chatMessages) {
                 attachEventListenersToHyperlinks();
             }            
         } else if (data.operation == "wayfinding") {
-            console.log("PLaces: " + data.response);
             let cleanedPlaceNames = data.response;
-
-            console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
             addMarkers(orderOfVisit[0],orderOfVisit[1]);
