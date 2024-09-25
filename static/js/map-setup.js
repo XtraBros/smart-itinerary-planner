@@ -384,12 +384,13 @@ fetch('/config')
         // Assuming the response contains a JSON object with an 'accessToken' property
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.GOOGLE_CLOUD_URI;
+        const center = [103.827973, 1.250277]
         map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v12',
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
-            center: [103.827973, 1.250277],
+            center,
             zoom: 13
         });
 
@@ -467,7 +468,7 @@ fetch('/config')
             // user location control
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
-
+            setUserLocationMark(userLocation || center)
             // Override the geolocate event to use navigator.geolocation
             geolocateControl.on('geolocate', (e) => {
                 setUserLocationMark([e.coords.longitude, e.coords.latitude]);
@@ -510,22 +511,18 @@ function enableNavigationMode(data) {
 
 function setUserLocationMark(coord, angle) {
     console.log('------->>>>>', userMarker)
-    if (!userMarker) {
-        const el = document.createElement('div');
-        el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
-        userMarker = new mapboxgl.Marker({
-            color: 'red',
-            element: el
-        })
-            .setLngLat(coord)
-            .addTo(map);
-    } else {
-        userMarker.setLngLat(coord);
-        const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-        if (angle) {
-            markerElement.style.transform = `rotate(${angle}deg)`;
-        }
+    if (userMarker) {
+        userMarker.remove()
+        userMarker = null
     }
+    const el = document.createElement('div');
+    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" style="transform: rotate(${angle || 0}deg)" alt="" srcset=""></p>`);
+    userMarker = new mapboxgl.Marker({
+        color: 'red',
+        element: el
+    })
+        .setLngLat(coord)
+        .addTo(map);
 }
 
 function disableNavigationMode() {
