@@ -109,7 +109,6 @@ async function getPoisByLocation(location) {
                             </div>
                         </div>`;
         });
-        
         swiperconent.innerHTML = contenxt;
         poiList.innerHTML = listCont;
         // prompt suggestion if not recent:
@@ -227,6 +226,30 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(position => {
+            const userLocation = [position.coords.longitude, position.coords.latitude];
+            // add user current position to route
+            if (Object.keys(route).length) {
+                route.coordinates[0] = userLocation
+                paintLine(route)
+            }
+            setUserLocationMark(userLocation)
+        }, error => {
+            console.error("Not get user position: ", error);
+        }, {
+            enableHighAccuracy: true, // 启用高精度模式
+            maximumAge: 0, // 禁止使用缓存的位置信息
+            timeout: 5000 // 超时
+        });
+    }
+    window.addEventListener('deviceorientation', function (event) {
+        const alpha = event.alpha;
+        if (userMarker) {
+            const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+            markerElement.style.transform = `rotate(${alpha}deg)`
+        }
+    });
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -449,6 +472,13 @@ fetch('/config')
                 setUserLocationMark([e.coords.longitude, e.coords.latitude]);
             });
         });
+        // map.on('rotate', () => {
+        //     const mapBearing = map.getBearing();
+        //     if (userMarker && !simulationRunning) {
+        //         const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+        //         markerElement.style.transform = `rotate(${mapBearing}deg)`
+        //     }
+        // });
     })
     .catch(error => {
         console.error('Error fetching the access token:', error);
@@ -475,32 +505,9 @@ function enableNavigationMode(data) {
 
     // Wait for easeTo animation to complete, then start simulation
     map.once('moveend', simulateUserLocation(route));
-    // Monitor the user's GPS location
-    //navigator.geolocation.watchPosition((position) => {
-    // navigator.geolocation.getCurrentPosition((position) => {
-    //     // disable tracking of location for simulation.
-    //     // const userLocation = {
-    //     //     lng: position.coords.longitude,
-    //     //     lat: position.coords.latitude
-    //     // };
-    //     // const userHeading = position.coords.heading || 0;
-
-    //     // // Rotate the map to match the user's heading
-    //     // map.rotateTo(userHeading);
-
-       
-
-    // }, (error) => {
-    //     console.error('Error getting user location:', error);
-    // });
-    //, {
-    //     enableHighAccuracy: true, // Enable high accuracy mode to use GPS
-    //     maximumAge: 0, // Don't use a cached position
-    //     timeout: 10000 // Set a timeout for getting the location
-    // });
 }
 
-function setUserLocationMark(coord) {
+function setUserLocationMark(coord, angle) {
     if (!userMarker) {
         const el = document.createElement('div');
         el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
@@ -510,6 +517,12 @@ function setUserLocationMark(coord) {
         })
             .setLngLat(coord)
             .addTo(map);
+    } else {
+        userMarker.setLngLat(coord);
+        const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+        if (angle) {
+            markerElement.style.transform = `rotate(${angle}deg)`;
+        }
     }
 }
 
@@ -532,7 +545,6 @@ function calculateRemainingDistance(routeCoordinates) {
         // Each point should be an object with 'lat' and 'lng' properties
         const point1 = { lat: routeCoordinates[i][1], lng: routeCoordinates[i][0] };
         const point2 = { lat: routeCoordinates[i + 1][1], lng: routeCoordinates[i + 1][0] };
-        
         const distance = calculateDistance(point1, point2);
         totalRemainingDistance += distance;
     }
@@ -554,12 +566,12 @@ function displayInstruction(instructionTextContent, distanceToCheckpoint, remain
         instructionIcon.setAttribute('src', 'static/icons/right.svg');
     } else {
         instructionIcon.setAttribute('src', 'static/icons/lines.svg');
-    }    
+    }
 
     // Convert remaining distance to kilometers
     const remainingDistanceKm = (remainingDistance / 1000).toFixed(2);
     document.querySelector('#journeyDistance h3').textContent = remainingDistanceKm;
-    
+
     // Convert total duration to minutes
     const remainingDuration = calculateRemainingDuration(remainingDistance, 1.4);
     document.querySelector('#journeyDuration h3').textContent = remainingDuration;
@@ -590,12 +602,12 @@ function calculateDistance(point1, point2) {
     const dLng = (point2.lng - point1.lng) * toRad;
 
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(point1.lat * toRad) * Math.cos(point2.lat * toRad) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        Math.cos(point1.lat * toRad) * Math.cos(point2.lat * toRad) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
-}    
+}
 
 // Function to update navigation instructions based on user's current location
 let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
@@ -611,13 +623,13 @@ function updateNavigationInstructions(userLocation, nextPosition) {
 
     // Calculate the bearing using the next interpolated position instead of the checkpoint
     const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
-    
+
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
         zoom: 20,  // Adjust the zoom level for better street view navigation
         center: [userLocation.lng, userLocation.lat], // Center map on user's location
         duration: 500, // Animation duration in milliseconds
-        bearing: userHeading 
+        bearing: userHeading
     });
 
     let increment = false;
@@ -648,10 +660,10 @@ function updateNavigationInstructions(userLocation, nextPosition) {
     } else {
         const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
         document.getElementById("distanceText").textContent = `${distanceToCheckpoint.toFixed(1)}`;
-            // Update remaining distance in kilometers
+        // Update remaining distance in kilometers
         const remainingDistanceKm = (remainingDist / 1000).toFixed(2);
         document.querySelector('#journeyDistance h3').textContent = remainingDistanceKm;
-        
+
         // Calculate and update the remaining duration
         const remainingDuration = calculateRemainingDuration(remainingDist, 1.4);
         document.querySelector('#journeyDuration h3').textContent = remainingDuration;
@@ -675,8 +687,8 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     const λ2 = lng2 * degToRad;
 
     const θ = Math.atan2(
-      Math.sin(λ2 - λ1) * Math.cos(φ2),
-      Math.cos(φ1) * Math.sin(φ2) -
+        Math.sin(λ2 - λ1) * Math.cos(φ2),
+        Math.cos(φ1) * Math.sin(φ2) -
         Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1),
     );
 
@@ -932,7 +944,7 @@ function setMapRoute(resRoute) {
                     "coordinates": []
                 }
             }
-        });    
+        });
     }
 
     if (!map.getLayer('walked-route')) {
@@ -959,10 +971,10 @@ function userCalculate(start, end) {
 
     const dJiaodiLng = endLng - startLng;
     const y = Math.sin(dJiaodiLng) * Math.cos(endLat);
-    const x = Math.cos(startLat) * Math.sin(endLat) - 
-              Math.sin(startLat) * Math.cos(endLat) * Math.cos(dJiaodiLng);
+    const x = Math.cos(startLat) * Math.sin(endLat) -
+        Math.sin(startLat) * Math.cos(endLat) * Math.cos(dJiaodiLng);
     const bearing = Math.atan2(y, x) * 180 / Math.PI;
-    
+
     return (bearing + 360) % 360; // 确保角度在0-360之间
 }
 
@@ -974,7 +986,7 @@ function paintLine(resRoute) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
         endProit = resRoute.coordinates[resRoute.coordinates.length - 1]
         bers = userCalculate(resRoute.coordinates[0], endProit);
-        setUserLocationMark(resRoute.coordinates[0])
+        setUserLocationMark(resRoute.coordinates[0], bers)
     }
     if (!map.getSource('previewRoute')) {
         map.addSource('previewRoute', {
@@ -1002,8 +1014,8 @@ function paintLine(resRoute) {
                 'line-cap': 'round'
             },
             paint: {
-               'line-color': '#fff',
-               'line-width': 12
+                'line-color': '#fff',
+                'line-width': 12
             }
         });
         map.addLayer({
@@ -1069,7 +1081,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                     const totalDuration = legs[0].duration;
                     if (totMinus && totDist) {
                         totMinus.innerText = `${Math.ceil(totalDuration / 60)}min`
-                        totDist.innerText =  totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
+                        totDist.innerText = totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
                     }
                     route = data.routes[0].geometry;
                     steps = data.routes[0].legs[0].steps;
@@ -1248,21 +1260,21 @@ async function postMessage(message, chatMessages) {
                 },
                 body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
             });
-            
+
             // Check if the response status is 204 (No Content)
             if (nextResponse.status === 204) {
                 // Do nothing if the response is empty
                 console.log('No events found for the provided places.');
                 return;  // Exit early
             }
-            
+
             // Proceed if the response is ok and not empty
             if (!nextResponse.ok) {
                 throw new Error('Network response was not ok ' + nextResponse.statusText);
             }
-            
+
             let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
-            
+
             // Check if the response contains the necessary data and append the message
             if (nextData.response) {
                 appendMessage({
@@ -1273,18 +1285,18 @@ async function postMessage(message, chatMessages) {
                     longAndlat: nextData.coordinates,   // Use coordinates from the response
                     fromUser: '1',
                 });
-            
+
                 // Attach event listeners to the hyperlinks
                 attachEventListenersToHyperlinks();
             }
-            
+
         } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
 
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
-            addMarkers(orderOfVisit[0],orderOfVisit[1]);
+            addMarkers(orderOfVisit[0], orderOfVisit[1]);
             console.log("Location op POIs: " + orderOfVisit)
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
@@ -1312,21 +1324,21 @@ async function postMessage(message, chatMessages) {
                 },
                 body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
             });
-            
+
             // Check if the response status is 204 (No Content)
             if (nextResponse.status === 204) {
                 // Do nothing if the response is empty
                 console.log('No events found for the provided places.');
                 return;  // Exit early
             }
-            
+
             // Proceed if the response is ok and not empty
             if (!nextResponse.ok) {
                 throw new Error('Network response was not ok ' + nextResponse.statusText);
             }
-            
+
             let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
-            
+
             // Check if the response contains the necessary data and append the message
             if (nextData.response) {
                 appendMessage({
@@ -1337,10 +1349,10 @@ async function postMessage(message, chatMessages) {
                     longAndlat: nextData.coordinates,   // Use coordinates from the response
                     fromUser: '1',
                 });
-            
+
                 // Attach event listeners to the hyperlinks
                 attachEventListenersToHyperlinks();
-            }            
+            }
         } else if (data.operation == "wayfinding") {
             console.log("PLaces: " + data.response);
             let cleanedPlaceNames = data.response;
@@ -1348,7 +1360,7 @@ async function postMessage(message, chatMessages) {
             console.log(cleanedPlaceNames); // Check the cleaned list
             // Get the route from the get_coordinates function
             let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
-            addMarkers(orderOfVisit[0],orderOfVisit[1]);
+            addMarkers(orderOfVisit[0], orderOfVisit[1]);
             let textResponse = await fetch('/get_text', {
                 method: 'POST',
                 headers: {
@@ -1375,21 +1387,21 @@ async function postMessage(message, chatMessages) {
                 },
                 body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
             });
-            
+
             // Check if the response status is 204 (No Content)
             if (nextResponse.status === 204) {
                 // Do nothing if the response is empty
                 console.log('No events found for the provided places.');
                 return;  // Exit early
             }
-            
+
             // Proceed if the response is ok and not empty
             if (!nextResponse.ok) {
                 throw new Error('Network response was not ok ' + nextResponse.statusText);
             }
-            
+
             let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
-            
+
             // Check if the response contains the necessary data and append the message
             if (nextData.response) {
                 appendMessage({
@@ -1400,16 +1412,16 @@ async function postMessage(message, chatMessages) {
                     longAndlat: nextData.coordinates,   // Use coordinates from the response
                     fromUser: '1',
                 });
-            
+
                 // Attach event listeners to the hyperlinks
                 attachEventListenersToHyperlinks();
-            }            
+            }
         } else {
             appendMessage({ text: data.response, chatMessages });
         }
     } catch (error) {
         console.error('Error:', JSON.stringify(error));
-    } 
+    }
 }
 
 function disminiNav() {
@@ -1496,7 +1508,7 @@ function appendMessage({ text, className, chatMessages, type, suggestion, placeN
             `
             return;
         } else {
-            const bloaDox =document.getElementById("loading");
+            const bloaDox = document.getElementById("loading");
             if (bloaDox) {
                 bloaDox.remove();
             }
@@ -1670,7 +1682,6 @@ function getInstructions(data) {
             duration: duration,
             modifier: modifier
         };
-        
         instructions.push(formattedInstruction);
     });
     console.log("instructions length: " + instructions.length);
@@ -1749,34 +1760,34 @@ function addMarkers(placeNames, waypoints) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-                
+
                 // Remove unwanted characters from placeName
                 placeName = placeName.replace(/[\[\]]/g, '');
                 console.log(placeName);
-    
+
                 // Set up the basic place information
                 var place = {
                     description: placesData[placeName] ? placesData[placeName]['description'] : '',
                     name: placeName,
                 };
-    
+
                 // Create the thumbnail URL using Google Cloud Storage
                 const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
                 var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
                 place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
-    
+
                 // Generate the popup content using the template
                 var popupContentString = populateTemplate(template, place);
                 var doc = parser.parseFromString(popupContentString, 'text/html');
                 var popupContent = doc.querySelector('.info-card-content');
-    
+
                 // Add functionality for the button in the popup
                 popupContent.querySelector('button').onclick = async function () {
                     disminiNav();
                     await displayRoute([placeName], [coord], true);
                     paintLine(route)
                 }
-    
+
                 // Create a popup and marker for the map
                 var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
                 var popup = new mapboxgl.Popup().setDOMContent(popupContent);
@@ -1784,12 +1795,12 @@ function addMarkers(placeNames, waypoints) {
                     .setLngLat([coord[0], coord[1]])
                     .setPopup(popup)
                     .addTo(map);
-    
+
                 // Store marker by ID
                 window.mapMarkers[popupId] = marker;
             });
         });
-    });    
+    });
 }
 
 
@@ -1832,7 +1843,7 @@ function attachEventListenersToHyperlinks() {
             const marker = window.mapMarkers[markerId]; // Get the marker
             if (marker) { // Ensure marker exists
                 var markerCoordinates = marker.getLngLat();
-                
+
                 // Center the map on the marker's coordinates
                 window.map.flyTo({
                     center: markerCoordinates,
@@ -1871,7 +1882,7 @@ function getPromo() {
 // Suggestion Button:
 // EXAMPLE usage of endpoint:
 async function getSuggestion(type) {
-    if (!chatMessages){
+    if (!chatMessages) {
         var chatMessages = document.getElementById("chatbot-messages");
     }
     try {
@@ -1881,7 +1892,7 @@ async function getSuggestion(type) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({choice: type})
+            body: JSON.stringify({ choice: type })
         });
 
         // Check if the response is OK (status code 200-299)
@@ -1918,6 +1929,8 @@ function startUserNav() {
         map.removeLayer('lineBorder');
     }
     setMapRoute(route)
+    const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+    markerElement.style.transform = `rotate(0deg)`
     startNav.classList.remove('fadeshowin');
     enableNavigationMode(steps);
 }
