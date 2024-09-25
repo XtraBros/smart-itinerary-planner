@@ -226,23 +226,24 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(position => {
-            const userLocation = [position.coords.longitude, position.coords.latitude];
-            // add user current position to route
-            if (Object.keys(route).length) {
-                route.coordinates[0] = userLocation
-                paintLine(route)
-            }
-            setUserLocationMark(userLocation)
-        }, error => {
-            console.error("Not get user position: ", error);
-        }, {
-            enableHighAccuracy: true, // 启用高精度模式
-            maximumAge: 0, // 禁止使用缓存的位置信息
-            timeout: 5000 // 超时
-        });
-    }
+    // if (navigator.geolocation) {
+    //     navigator.geolocation.watchPosition(position => {
+    //         const userLocation = [position.coords.longitude, position.coords.latitude];
+    //         console.log("watchPosition", userLocation);
+    //         // add user current position to route
+    //         if (Object.keys(route).length) {
+    //             route.coordinates[0] = userLocation
+    //             paintLine(route)
+    //         }
+    //         // setUserLocationMark(userLocation)
+    //     }, error => {
+    //         console.error("Not get user position: ", error);
+    //     }, {
+    //         enableHighAccuracy: true, // 启用高精度模式
+    //         maximumAge: 0, // 禁止使用缓存的位置信息
+    //         timeout: 5000 // 超时
+    //     });
+    // }
     window.addEventListener('deviceorientation', function (event) {
         const alpha = event.alpha;
         if (userMarker) {
@@ -250,7 +251,9 @@ window.onload = function () {
             markerElement.style.transform = `rotate(${alpha}deg)`
         }
     });
-    getUserCurrentPosition();
+    getUserCurrentPosition((userLoc) => {
+        setUserLocationMark([userLoc.lng, userLoc.lat])
+    });
     const swiper = new Swiper('.swiper', {
         loop: true,
         // autoplay: true,
@@ -508,6 +511,7 @@ function enableNavigationMode(data) {
 }
 
 function setUserLocationMark(coord, angle) {
+    console.log('------->>>>>', userMarker)
     if (!userMarker) {
         const el = document.createElement('div');
         el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
