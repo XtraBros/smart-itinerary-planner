@@ -374,8 +374,8 @@ const geolocateControl = new mapboxgl.GeolocateControl({
     positionOptions: {
         enableHighAccuracy: true
     },
-    trackUserLocation: false,
-    showUserHeading: true
+    trackUserLocation: true,
+    showUserHeading: true,
 });
 
 fetch('/config')
@@ -468,10 +468,22 @@ fetch('/config')
             // user location control
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
-            setUserLocationMark(userLocation || center)
+            setTimeout(() => {
+                geolocateControl.trigger();
+            }, 100)
             // Override the geolocate event to use navigator.geolocation
-            geolocateControl.on('geolocate', (e) => {
-                setUserLocationMark([e.coords.longitude, e.coords.latitude]);
+            geolocateControl.on('geolocate', (position) => {
+                userLocation = {
+                    lng: position.coords.longitude,
+                    lat: position.coords.latitude
+                };
+                const userLoc = [position.coords.longitude, position.coords.latitude];
+                map.setZoom(13);
+                if (Object.keys(route).length) {
+                    route.coordinates[0] = userLoc
+                    paintLine(route)
+                }
+                setUserLocationMark(userLoc);
             });
         });
         // map.on('rotate', () => {
