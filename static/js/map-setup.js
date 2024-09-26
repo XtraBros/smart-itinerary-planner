@@ -20,6 +20,7 @@ let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
 let thumbnailURI;
+let endPlaceProt; // end port
 
 
 // User location
@@ -226,24 +227,6 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    // if (navigator.geolocation) {
-    //     navigator.geolocation.watchPosition(position => {
-    //         const userLocation = [position.coords.longitude, position.coords.latitude];
-    //         console.log("watchPosition", userLocation);
-    //         // add user current position to route
-    //         if (Object.keys(route).length) {
-    //             route.coordinates[0] = userLocation
-    //             paintLine(route)
-    //         }
-    //         // setUserLocationMark(userLocation)
-    //     }, error => {
-    //         console.error("Not get user position: ", error);
-    //     }, {
-    //         enableHighAccuracy: true, // 启用高精度模式
-    //         maximumAge: 0, // 禁止使用缓存的位置信息
-    //         timeout: 5000 // 超时
-    //     });
-    // }
     window.addEventListener('deviceorientation', function (event) {
         const alpha = event.alpha;
         if (userMarker) {
@@ -408,26 +391,6 @@ fetch('/config')
         map.setMaxBounds(bounds);
         map.on('load', function () {
             // Define and set bounds for the map
-
-            // Add custom tiles
-            // map.addSource('custom-tiles', {
-            //     type: 'raster',
-            //     // base url for maptiles
-            //     // ‘tiles’: [‘https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png’],
-            //     // use proxy server to get tiles
-            //     tiles: [data.config.MAPBOX_MAPTILES],
-            //     // using open source map to get tiles without proxy
-            //     //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            //     tileSize: 256,
-            //     // minzoom: 12,
-            //     // maxzoom: 22,
-            //     attribution: '© OpenStreetMap contributors'
-            // });
-            // map.addLayer({
-            //     id: 'custom-tiles-layer',
-            //     type: 'raster',
-            //     source: 'custom-tiles'
-            // });
             // 3D Layer for navigation view.    
             map.addLayer({
                 'id': '3d-buildings',
@@ -479,20 +442,40 @@ fetch('/config')
                 };
                 const userLoc = [position.coords.longitude, position.coords.latitude];
                 map.setZoom(13);
-                if (Object.keys(route).length) {
-                    route.coordinates[0] = userLoc
-                    paintLine(route)
-                }
+                // map.setCenter(userLoc);
                 setUserLocationMark(userLoc);
+                if (Object.keys(route).length && endPlaceProt) {
+                    const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
+                    getMapboxWlakRoute(coordinates).then(result => {
+                        if (result.legs && result.route) {
+                            walkedRoute = []
+                            routeIndex = 0;
+                            currentStepIndex = 0;
+                            clearTimeout(simulationTimeout);
+                            if (map.getLayer('route')) {
+                                map.removeLayer('route');
+                            }
+                            if (map.getSource('route')) {
+                                map.removeSource('route');
+                            }
+                            if (map.getLayer('walked-route')) {
+                                map.removeLayer('walked-route');
+                            }
+                            if (map.getSource('walked-route')) {
+                                map.removeSource('walked-route');
+                            }
+                            if (simulationRunning || simulationPaused) {
+                                simulationRunning = false
+                                setMapRoute(result.route)
+                                simulateUserLocation(result.route)
+                            } else {
+                                paintLine(result.route)
+                            }
+                        }
+                    })
+                }
             });
         });
-        // map.on('rotate', () => {
-        //     const mapBearing = map.getBearing();
-        //     if (userMarker && !simulationRunning) {
-        //         const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-        //         markerElement.style.transform = `rotate(${mapBearing}deg)`
-        //     }
-        // });
     })
     .catch(error => {
         console.error('Error fetching the access token:', error);
@@ -706,7 +689,6 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     return ((θ * 180) / Math.PI + 360) % 360;
 }
 // Function to start simulating user location along the route with smooth movement
-// Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
     const imgs = pauseAndpaly.getElementsByTagName('img')[0]
@@ -769,7 +751,7 @@ function simulateUserLocation(route) {
                     const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
 
                     // Continue animating along the current segment
-                    setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
+                    simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
                 }
 
                 // Update navigation instructions based on the user's location and the next interpolated position
@@ -1063,48 +1045,18 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
             }
         }
         addMarkers(placeNames, rawCoordinates);
-
+        endPlaceProt = rawCoordinates;
         // Check number of waypoints. If less than 25, execute the usual. Else, fetch centroids.
-        let fetchDirectionsPromise;
         let allCoordinates;
         if (fromUser) {
             allCoordinates = [[userLocation.lng, userLocation.lat], ...rawCoordinates];
         } else {
             allCoordinates = rawCoordinates;
         }
-        console.log("Coordinates to go to: " + allCoordinates)
         const coordinates = allCoordinates.map(coord => coord.join(',')).join(';');
-        var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-        // Fetch directions data from Mapbox Directions API
-        fetchDirectionsPromise = fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch route data');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.routes && data.routes.length > 0) {
-                    var legs = data.routes[0].legs;
-                    api_response = data.routes[0]
-                    // console.log('------data->>>>>>>>>', data)
-                    const totalDistance = legs[0].distance.toFixed(2);
-                    const totalDuration = legs[0].duration;
-                    if (totMinus && totDist) {
-                        totMinus.innerText = `${Math.ceil(totalDuration / 60)}min`
-                        totDist.innerText = totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
-                    }
-                    route = data.routes[0].geometry;
-                    steps = data.routes[0].legs[0].steps;
-                    return { legs, route };
-                } else {
-                    console.error('No route found: ', data);
-                    throw new Error('No route found');
-                }
-            });
-
+        console.log("Coordinates to go to: " + coordinates, rawCoordinates)
         // Process fetched directions data or centroids
-        fetchDirectionsPromise
+        getMapboxWlakRoute(coordinates)
             .then(result => {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
@@ -1132,6 +1084,36 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 reject(error);
             });
     });
+}
+
+function getMapboxWlakRoute(coordinates) {
+    const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+    return fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch route data');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.routes && data.routes.length > 0) {
+                const legs = data.routes[0].legs;
+                api_response = data.routes[0]
+                // console.log('------data->>>>>>>>>', data)
+                const totalDistance = legs[0].distance.toFixed(2);
+                const totalDuration = legs[0].duration;
+                if (totMinus && totDist) {
+                    totMinus.innerText = `${Math.ceil(totalDuration / 60)}min`
+                    totDist.innerText = totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
+                }
+                route = data.routes[0].geometry;
+                steps = data.routes[0].legs[0].steps;
+                return { legs, route };
+            } else {
+                console.error('No route found: ', data);
+                throw new Error('No route found');
+            }
+        });
 }
 
 // Function to optimize route. Takes in list of places and coordinates, returns both ordered in sequence of visit
@@ -1734,23 +1716,11 @@ async function getCoordinatesWithPlace(places) {
 }
 
 async function get_coordinates(data, fromUser) {
-    // Start from tracked user location instead of gps location.
-    // if (fromUser) {    
-    //     // Fetch the user's current location
-    //     userLocation = await new Promise((resolve, reject) => {
-    //         getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
-    //     });
-    // }
     const orderOfVisit = await getCoordinatesWithPlace(data);
     return orderOfVisit;
 }
 
 async function get_coordinates_without_route(data) {
-    // if (!simulationRunning && map.getSource('route')) {
-    //     map.removeLayer('route');
-    //     map.removeLayer('directions');
-    //     map.removeSource('route');
-    // }
     const orderOfVisit = await getCoordinatesWithPlace(data);
     return orderOfVisit;
 }
@@ -1813,7 +1783,6 @@ function addMarkers(placeNames, waypoints) {
         });
     });
 }
-
 
 function fetchTemplate(url) {
     return fetch(url).then(response => response.text());
