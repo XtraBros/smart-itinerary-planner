@@ -176,7 +176,7 @@ const tabMap = document.getElementById('tabMap')
 const tabList = document.getElementById('tabList')
 const poiSwiper = document.getElementById('poiSwiper');
 const zoomControls = document.getElementById('zoom-controls');
-const pauseAndpaly = document.getElementById('pauseAndpaly');
+// const pauseAndpaly = document.getElementById('pauseAndpaly');
 const foodBox = document.getElementById('foodBox');
 const idaeBox = document.getElementById('idaeBox');
 const startNav = document.getElementById('startNav');
@@ -198,13 +198,13 @@ window.onload = function () {
         stopNavFunc();
     }
 
-    pauseAndpaly.onclick = function () {
-        if (simulationRunning) {
-            pauseSimulation();
-        } else {
-            simulateUserLocation(route);
-        }
-    }
+    // pauseAndpaly.onclick = function () {
+    //     if (simulationRunning) {
+    //         pauseSimulation();
+    //     } else {
+    //         simulateUserLocation(route);
+    //     }
+    // }
 
     btn.onclick = function () {
         popupModal.style.display = "block";
@@ -252,7 +252,7 @@ window.onload = function () {
                 value.remove();
             }
         }
-        pauseAndpaly.style.display = 'none';
+        // pauseAndpaly.style.display = 'none';
         const swiperconent = document.getElementById('swiperconent');
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
@@ -263,7 +263,7 @@ function stopNavFunc() {
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
-    pauseAndpaly.style.display = 'none';
+    // pauseAndpaly.style.display = 'none';
     disableNavigationMode();
     simulationRunning = false;
     simulationPaused = false;
@@ -490,7 +490,7 @@ function enableNavigationMode(data) {
     instructionPopup.classList.add('fadeshowin');
     poiSwiper.classList.add('fadeshowin');
     listButton.style.display = 'none';
-    pauseAndpaly.style.display = 'block';
+    // pauseAndpaly.style.display = 'block';
 
     // Animate the map to tilt and zoom for 3D perspective
     map.easeTo({
@@ -691,7 +691,7 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 // Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
-    const imgs = pauseAndpaly.getElementsByTagName('img')[0]
+    // const imgs = pauseAndpaly.getElementsByTagName('img')[0]
     imgs.setAttribute('src', `static/icons/pause.svg`);
     const targetDistance = 5; // meters per step for interpolation
 
@@ -737,7 +737,7 @@ function simulateUserLocation(route) {
                     } else {
                         closedNavfun();
                         navcompleted.classList.add('fadeshowin');
-                        pauseAndpaly.style.display = 'none';
+                        // pauseAndpaly.style.display = 'none';
                         simulationRunning = false;
                         simulationPaused = false;
                         routeIndex = 0;
@@ -839,7 +839,7 @@ function pauseSimulation() {
         simulationPaused = true;
         simulationRunning = false;
         clearTimeout(simulationTimeout); // Stop the current timeout
-        const imgs = pauseAndpaly.getElementsByTagName('img')[0]
+        // const imgs = pauseAndpaly.getElementsByTagName('img')[0]
         imgs.setAttribute('src', `static/icons/continue.svg`);
         console.log("Simulation paused");
     }
@@ -1811,7 +1811,7 @@ function attachEventListenersToHyperlinks() {
     document.querySelectorAll('.location-link').forEach(function (link) {
         link.addEventListener('click', function (e) {
             showMapTab();
-            pauseAndpaly.style.display = 'none';
+            // pauseAndpaly.style.display = 'none';
             const markerId = this.getAttribute('data-marker-id');
             // Hide the popup modal
             document.getElementById('popupModal').style.display = 'none';
