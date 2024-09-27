@@ -212,7 +212,7 @@ window.onload = function () {
         if (simulationRunning) {
             pauseSimulation();
         } else {
-            simulateUserLocation(sroute);
+            simulateUserLocation(route);
         }
     }
 
@@ -423,6 +423,10 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
+            map.on('offroute', function (event) {
+                console.log("Offroute detected!", event);
+                // This should trigger when the user is off-route
+            });
             // geolocation tracking
             geolocateControl = new mapboxgl.GeolocateControl({
                 positionOptions: {
@@ -553,12 +557,24 @@ function enableNavigationMode(data) {
     map.once('moveend', simulateUserLocation(route));
 }
 // Function to check if user is off-route
-function isUserOffRoute(userLocation, routeCoordinates, threshold = 0.02) { // threshold in kilometers
-    let closestPoint = turf.nearestPointOnLine(routeCoordinates, userLocation);
-    let distance = turf.distance(userLocation, closestPoint.geometry.coordinates);
-    
-    return distance > threshold;  // Returns true if off-route
+function isUserOffRoute(userLocation, route, tolerance = 0.02) {
+    const userCoordinates = [userLocation.lng, userLocation.lat];
+    // Extract the coordinates from the route object
+    const routeCoordinates = route.coordinates;
+    // Create a turf lineString from route coordinates
+    const routeLine = turf.lineString(routeCoordinates);
+
+    // Create a buffered area around the route with the specified tolerance
+    const bufferedRoute = turf.buffer(routeLine, tolerance, { units: 'kilometers' });
+
+    // Create a point from the user's location
+    const userPoint = turf.point(userCoordinates);
+
+    // Check if the user's point is within the buffered route
+    return !turf.booleanPointInPolygon(userPoint, bufferedRoute);
 }
+
+
 // Handle route recalculation when user goes off-route
 function recalculateRoute(currentLocation, destination) {
     const directionsRequest = `https://api.mapbox.com/directions/v5/mapbox/walking/${currentLocation.lng},${currentLocation.lat};${destination[0]},${destination[1]}s?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
@@ -906,6 +922,11 @@ function interpolate(p1, p2, fraction) {
 function updateUserLocation(location) {
     userLocation = location;
     console.log("User location updated:", location);
+    // Check if the user is off-route after updating the location
+    if (isUserOffRoute(userLocation, route)) {
+        console.log('User is off-route, recalculating route...');
+        recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+    }
 }
 
 // Function to pause the simulation
@@ -928,21 +949,25 @@ function stopSimulation() {
     console.log("Simulation stopped");
 }
 
-function updateUserLocation(newLocation) {
-    userLocation = newLocation;
+// function updateUserLocation(newLocation) {
+//     userLocation = newLocation;
 
-    // Update the map view to center on the new location
-    map.flyTo({
-        center: [userLocation.lng, userLocation.lat],
-        essential: true, // Animation is essential
-        zoom: 18 // Adjust zoom level as needed
-    });
+//     // Update the map view to center on the new location
+//     map.flyTo({
+//         center: [userLocation.lng, userLocation.lat],
+//         essential: true, // Animation is essential
+//         zoom: 18 // Adjust zoom level as needed
+//     });
 
-    // Update the marker position
-    if (userMarker) {
-        userMarker.setLngLat([userLocation.lng, userLocation.lat]);
-    }
-}
+//     // Update the marker position
+//     if (userMarker) {
+//         userMarker.setLngLat([userLocation.lng, userLocation.lat]);
+//     }
+//     if (isUserOffRoute(userLocation, route)) {
+//         console.log('User is off-route, recalculating route...');
+//         recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+//     }
+// }
 
 function setMapRoute(resRoute) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
