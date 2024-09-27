@@ -2,6 +2,7 @@
 var waypoints = [];
 var map;
 var directions;
+var navigation;
 var walkedRoute = [];
 let route = {};
 let api_response = {};
@@ -353,14 +354,6 @@ function handerMap(e, type) {
     e.target.classList.add('activeButton')
 }
 
-const geolocateControl = new mapboxgl.GeolocateControl({
-    positionOptions: {
-        enableHighAccuracy: true
-    },
-    trackUserLocation: true,
-    showUserHeading: true,
-});
-
 fetch('/config')
     .then(response => response.json())
     .then(data => {
@@ -381,6 +374,12 @@ fetch('/config')
             accessToken: mapboxgl.accessToken,
             unit: 'metric',
             profile: 'mapbox/walking'
+        });
+
+        // Create Navigation instance for tracking and rerouting
+        navigation = new MapboxNavigation({
+            accessToken: mapboxgl.accessToken,
+            controls: { showCompass: true }
         });
         // variable to allow resizing function
         window.mapboxMap = map;
@@ -421,6 +420,15 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
+            // mapbox location tracking
+            const geolocate = new mapboxgl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                trackUserLocation: true,
+                showUserHeading: true // If you want to show user's heading direction
+            });
+            map.addControl(geolocate);
             map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -503,7 +511,28 @@ function enableNavigationMode(data) {
     // Wait for easeTo animation to complete, then start simulation
     // map.once('moveend', simulateUserLocation(route));
 }
+// Handle route recalculation when user goes off-route
+function recalculateRoute(currentLocation, destination) {
+    const directionsRequest = `https://api.mapbox.com/directions/v5/mapbox/walking/${currentLocation.lng},${currentLocation.lat};${destination[0]},${destination[1]}s?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
 
+    fetch(directionsRequest)
+        .then(response => response.json())
+        .then(data => {
+            const newRoute = data.routes[0].geometry.coordinates;
+
+            // Update the map with new route
+            map.getSource('route').setData({
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': newRoute
+                }
+            });
+
+            console.log("New route calculated and updated on the map.");
+        })
+        .catch(error => console.error('Error in recalculating route:', error));
+}
 function setUserLocationMark(coord, angle) {
     console.log('------->>>>>', userMarker)
     if (userMarker) {
@@ -924,6 +953,16 @@ function setMapRoute(resRoute) {
         directions.on('route', function (e) {
             const route = e.route[0].geometry;
             map.getSource('route').setData(route);
+        });
+        // Detect off-route using OffRouteObserver and trigger recalculation
+        navigation.on('offroute', (event) => {
+            console.log("User is off-route! Recalculating...");
+
+            // Extract current location from event
+            const currentLocation = event.location;
+
+            // Call the rerouting function
+            recalculateRoute(currentLocation, [destination_longitude, destination_latitude]);
         });
     }
 
@@ -1448,9 +1487,9 @@ async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
 }
 
 function closedNavfun() {
-    const navigation = document.getElementById('navigation');
-    navigation.classList.remove('fadeshowin');
-    navigation.classList.add('fadeout');
+    const navigationElem = document.getElementById('navigation');
+    navigationElem.classList.remove('fadeshowin');
+    navigationElem.classList.add('fadeout');
     if (map.getLayer('route')) {
         map.removeLayer('route');
     }
