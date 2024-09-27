@@ -467,7 +467,7 @@ fetch('/config')
                             if (simulationRunning || simulationPaused) {
                                 simulationRunning = false
                                 setMapRoute(result.route)
-                                simulateUserLocation(result.route)
+                                // simulateUserLocation(result.route)
                             } else {
                                 paintLine(result.route)
                             }
@@ -501,7 +501,7 @@ function enableNavigationMode(data) {
     });
 
     // Wait for easeTo animation to complete, then start simulation
-    map.once('moveend', simulateUserLocation(route));
+    // map.once('moveend', simulateUserLocation(route));
 }
 
 function setUserLocationMark(coord, angle) {
