@@ -512,24 +512,24 @@ function updateMarker() {
         return;
     }
 
-    if (isWithinBounds(coordinates)) {
-        // Set the map center to the new coordinates
-        map.setCenter(coordinates);
+    // if (isWithinBounds(coordinates)) {
+    //     // Set the map center to the new coordinates
+    //     map.setCenter(coordinates);
 
-        // Remove the existing marker if there is one
-        if (marker) {
-            marker.remove();
-        }
+    //     // Remove the existing marker if there is one
+    //     if (marker) {
+    //         marker.remove();
+    //     }
 
-        // Add a new marker
-        marker = new mapboxgl.Marker()
-            .setLngLat(coordinates)
-            .addTo(map);
-    } else {
-        alert(`Coordinates are out of bounds. Please enter within the bounds:
-            Longitude: ${bounds[0][0]} to ${bounds[1][0]}, 
-            Latitude: ${bounds[0][1]} to ${bounds[1][1]}`);
-    }
+    //     // Add a new marker
+    //     marker = new mapboxgl.Marker()
+    //         .setLngLat(coordinates)
+    //         .addTo(map);
+    // } else {
+    //     alert(`Coordinates are out of bounds. Please enter within the bounds:
+    //         Longitude: ${bounds[0][0]} to ${bounds[1][0]}, 
+    //         Latitude: ${bounds[0][1]} to ${bounds[1][1]}`);
+    // }
 }
 
 // display change log in HTML
