@@ -2,8 +2,9 @@
 var waypoints = [];
 var map;
 var directions;
-var navigation;
+var geolocateControl;
 var walkedRoute = [];
+var sroute;
 let route = {};
 let api_response = {};
 let navigationEnabled = false;
@@ -211,7 +212,7 @@ window.onload = function () {
         if (simulationRunning) {
             pauseSimulation();
         } else {
-            simulateUserLocation(route);
+            simulateUserLocation(sroute);
         }
     }
 
@@ -383,12 +384,6 @@ fetch('/config')
             unit: 'metric',
             profile: 'mapbox/walking'
         });
-
-        // Create Navigation instance for tracking and rerouting
-        navigation = new MapboxNavigation({
-            accessToken: mapboxgl.accessToken,
-            controls: { showCompass: true }
-        });
         // variable to allow resizing function
         window.mapboxMap = map;
         const bounds = [
@@ -428,15 +423,14 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
-            // mapbox location tracking
-            const geolocate = new mapboxgl.GeolocateControl({
+            // geolocation tracking
+            geolocateControl = new mapboxgl.GeolocateControl({
                 positionOptions: {
                     enableHighAccuracy: true
                 },
                 trackUserLocation: true,
                 showUserHeading: true // If you want to show user's heading direction
             });
-            map.addControl(geolocate);
             map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -451,7 +445,7 @@ fetch('/config')
                 geolocateControl.trigger();
             }, 100)
             // Override the geolocate event to use navigator.geolocation
-            geolocateControl.on('geolocate', (position) => {
+            geolocateControl.on('geolocate', async (position) => {
                 userLocation = {
                     lng: position.coords.longitude,
                     lat: position.coords.latitude
@@ -460,11 +454,25 @@ fetch('/config')
                 map.setZoom(13);
                 // map.setCenter(userLoc);
                 setUserLocationMark(userLoc);
+                try {
+                    sroute = await getRouteObject(userLocation);
+                    console.log("===sroute===>", sroute);
+                } catch (error) {
+                    console.error('Failed to retrieve route:', error);
+                }
                 if (Object.keys(route).length && endPlaceProt) {
                     const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
                     getMapboxWlakRoute(coordinates).then(result => {
                         if (result.legs && result.route) {
                             initProperty()
+                            geolocateControl.on('geolocate', (position) => {
+                                const userLocation = [position.coords.longitude, position.coords.latitude];
+                                
+                                if (isUserOffRoute(userLocation, result.route)) {
+                                    console.log('User is off-route, recalculating route...');
+                                    recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                                }
+                            });
                             if (map.getLayer('route')) {
                                 map.removeLayer('route');
                             }
@@ -480,7 +488,7 @@ fetch('/config')
                             if (simulationRunning || simulationPaused) {
                                 simulationRunning = false
                                 setMapRoute(result.route)
-                                // simulateUserLocation(result.route)
+                                simulateUserLocation(sroute);
                             } else {
                                 paintLine(result.route)
                             }
@@ -493,7 +501,35 @@ fetch('/config')
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
-
+// genRoute function to construct coordinates and call the helper function
+function genRoute(userLocation) {
+    const destination = [103.8423993, 1.246441004]; // Fixed destination coordinates
+    
+    // Construct the coordinates string: user location -> destination
+    const coordinates = `${userLocation.lng},${userLocation.lat};${destination[0]},${destination[1]}`;
+    
+    // Call the helper function with the constructed coordinates
+    return getMapboxWlakRoute(coordinates)
+        .then(result => {
+            // `result` contains { legs, route } returned by the helper function
+            return result; // Return the result from the helper function
+        })
+        .catch(error => {
+            console.error('Error generating walking route:', error);
+            throw error; // Rethrow the error for further handling
+        });
+}
+// Function to generate the route and return the route object using async/await
+async function getRouteObject(userLocation) {
+    try {
+        // Call genRoute and wait for the result (route object)
+        const result = await genRoute(userLocation);
+        return result.route; // Return the route object directly
+    } catch (error) {
+        console.error('Error fetching route object:', error);
+        throw error; // Rethrow the error for higher-level handling
+    }
+}
 // Navigation Mode 
 function enableNavigationMode(data) {
     instructions = getInstructions(data);
@@ -514,7 +550,14 @@ function enableNavigationMode(data) {
     });
 
     // Wait for easeTo animation to complete, then start simulation
-    // map.once('moveend', simulateUserLocation(route));
+    map.once('moveend', simulateUserLocation(sroute));
+}
+// Function to check if user is off-route
+function isUserOffRoute(userLocation, routeCoordinates, threshold = 0.02) { // threshold in kilometers
+    let closestPoint = turf.nearestPointOnLine(routeCoordinates, userLocation);
+    let distance = turf.distance(userLocation, closestPoint.geometry.coordinates);
+    
+    return distance > threshold;  // Returns true if off-route
 }
 // Handle route recalculation when user goes off-route
 function recalculateRoute(currentLocation, destination) {
@@ -956,16 +999,6 @@ function setMapRoute(resRoute) {
             const route = e.route[0].geometry;
             map.getSource('route').setData(route);
         });
-        // Detect off-route using OffRouteObserver and trigger recalculation
-        navigation.on('offroute', (event) => {
-            console.log("User is off-route! Recalculating...");
-
-            // Extract current location from event
-            const currentLocation = event.location;
-
-            // Call the rerouting function
-            recalculateRoute(currentLocation, [destination_longitude, destination_latitude]);
-        });
     }
 
     if (!map.getSource('walked-route')) {
@@ -1101,6 +1134,14 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
             .then(result => {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
+                    geolocateControl.on('geolocate', (position) => {
+                        const userLocation = [position.coords.longitude, position.coords.latitude];
+                        
+                        if (isUserOffRoute(userLocation, result.route)) {
+                            console.log('User is off-route, recalculating route...');
+                            recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                        }
+                    });
                     // console.log('------result->>>>>>>>>', result)
                     // Extract route instructions
                     if (result.route.coordinates && result.route.coordinates.length) {
