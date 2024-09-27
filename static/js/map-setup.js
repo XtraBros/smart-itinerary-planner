@@ -21,7 +21,15 @@ let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
 let thumbnailURI;
 let endPlaceProt; // end port
+let simulatePoint;
 
+function initProperty() {
+    routeIndex = 0;
+    currentStepIndex = 0;
+    walkedRoute = []
+    simulatePoint = null
+    clearTimeout(simulationTimeout);
+}
 
 // User location
 function getUserCurrentPosition(callBack, error) {
@@ -267,7 +275,7 @@ function stopNavFunc() {
     disableNavigationMode();
     simulationRunning = false;
     simulationPaused = false;
-    clearTimeout(simulationTimeout);
+    initProperty()
 }
 
 function exitNavFunc() {
@@ -448,10 +456,7 @@ fetch('/config')
                     const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
                     getMapboxWlakRoute(coordinates).then(result => {
                         if (result.legs && result.route) {
-                            walkedRoute = []
-                            routeIndex = 0;
-                            currentStepIndex = 0;
-                            clearTimeout(simulationTimeout);
+                            initProperty()
                             if (map.getLayer('route')) {
                                 map.removeLayer('route');
                             }
@@ -695,7 +700,8 @@ function simulateUserLocation(route) {
     imgs.setAttribute('src', `static/icons/pause.svg`);
     const targetDistance = 5; // meters per step for interpolation
 
-    setUserLocationMark([route.coordinates[0][0], route.coordinates[0][1]])
+    setUserLocationMark(route.coordinates[0]);
+    walkedRoute.unshift(route.coordinates[0]);
 
     function updateLocation() {
         if (!simulationRunning) return; // If not running, do nothing
@@ -703,8 +709,8 @@ function simulateUserLocation(route) {
         if (routeIndex < route.coordinates.length - 1) {
             // Simulate the user's location along the route
             const currentPosition = {
-                lng: route.coordinates[routeIndex][0],
-                lat: route.coordinates[routeIndex][1]
+                lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
+                lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
             };
             const nextPosition = {
                 lng: route.coordinates[routeIndex + 1][0],
@@ -723,11 +729,11 @@ function simulateUserLocation(route) {
 
                 // Update marker position
                 userMarker.setLngLat(interpolatedPosition);
-
+                simulatePoint = interpolatedPosition
                 // Calculate remaining distance to next position
                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
-                updateWalkedRoute(currentPosition);
-                updateRemainingRoute(currentPosition);
+                updateWalkedRoute(interpolatedPosition);
+                updateRemainingRoute(interpolatedPosition);
                 // If the remaining distance is less than the target, move to the next point
                 if (remainingDistance <= targetDistance) {
                     routeIndex++;
@@ -740,9 +746,7 @@ function simulateUserLocation(route) {
                         pauseAndpaly.style.display = 'none';
                         simulationRunning = false;
                         simulationPaused = false;
-                        routeIndex = 0;
-                        currentStepIndex = 0;
-                        clearTimeout(simulationTimeout);
+                        initProperty()
                         console.log("Route simulation completed");
                     }
                 } else {
@@ -778,7 +782,7 @@ function simulateUserLocation(route) {
 
 function updateWalkedRoute(currentPosition) {
     // Add the current position to the walked route
-    walkedRoute.push([currentPosition.lng, currentPosition.lat]);
+    walkedRoute.push(currentPosition);
 
     // Update the map with the walked route
     map.getSource('walked-route').setData({
@@ -792,8 +796,8 @@ function updateWalkedRoute(currentPosition) {
 
 function updateRemainingRoute(currentPosition) {
     // Update the remaining route after trimming
-    const remainingRoute = route.coordinates.slice(routeIndex);
-    remainingRoute.unshift([currentPosition.lng, currentPosition.lat]);
+    const remainingRoute = route.coordinates.slice(routeIndex + 1);
+    remainingRoute.unshift(currentPosition);
     map.getSource('route').setData({
         "type": "Feature",
         "geometry": {
@@ -838,7 +842,6 @@ function pauseSimulation() {
     if (simulationRunning && !simulationPaused) {
         simulationPaused = true;
         simulationRunning = false;
-        clearTimeout(simulationTimeout); // Stop the current timeout
         const imgs = pauseAndpaly.getElementsByTagName('img')[0]
         imgs.setAttribute('src', `static/icons/continue.svg`);
         console.log("Simulation paused");
@@ -849,8 +852,7 @@ function pauseSimulation() {
 function stopSimulation() {
     simulationRunning = false;
     simulationPaused = false;
-    rouetIndex = 0;
-    clearTimeout(simulationTimeout); // Stop any ongoing timeout
+    initProperty()
     console.log("Simulation stopped");
 }
 
@@ -1097,6 +1099,7 @@ function getMapboxWlakRoute(coordinates) {
         })
         .then(data => {
             if (data.routes && data.routes.length > 0) {
+                initProperty();
                 const legs = data.routes[0].legs;
                 api_response = data.routes[0]
                 // console.log('------data->>>>>>>>>', data)
