@@ -488,7 +488,7 @@ fetch('/config')
                             if (simulationRunning || simulationPaused) {
                                 simulationRunning = false
                                 setMapRoute(result.route)
-                                simulateUserLocation(sroute);
+                                simulateUserLocation(result.route);
                             } else {
                                 paintLine(result.route)
                             }
@@ -550,7 +550,7 @@ function enableNavigationMode(data) {
     });
 
     // Wait for easeTo animation to complete, then start simulation
-    map.once('moveend', simulateUserLocation(sroute));
+    map.once('moveend', simulateUserLocation(route));
 }
 // Function to check if user is off-route
 function isUserOffRoute(userLocation, routeCoordinates, threshold = 0.02) { // threshold in kilometers
