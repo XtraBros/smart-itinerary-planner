@@ -212,7 +212,7 @@ window.onload = function () {
         if (simulationRunning) {
             pauseSimulation();
         } else {
-            simulateUserLocation(route);
+            //simulateUserLocation(route);
         }
     }
 
@@ -492,7 +492,7 @@ fetch('/config')
                             if (simulationRunning || simulationPaused) {
                                 simulationRunning = false
                                 setMapRoute(result.route)
-                                simulateUserLocation(result.route);
+                                //simulateUserLocation(result.route);
                             } else {
                                 paintLine(result.route)
                             }
@@ -554,7 +554,7 @@ function enableNavigationMode(data) {
     });
 
     // Wait for easeTo animation to complete, then start simulation
-    map.once('moveend', simulateUserLocation(route));
+    //map.once('moveend', simulateUserLocation(route));
 }
 // Function to check if user is off-route
 function isUserOffRoute(userLocation, route, tolerance = 0.02) {
