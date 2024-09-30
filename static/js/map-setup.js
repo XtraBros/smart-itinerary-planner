@@ -856,7 +856,7 @@ function simulateUserLocation(route) {
 }
 
 // Function to use user's current location and update their position along the route
-function trackUserLocation(route) {
+function trackUserLocation(route, map) {
     console.log("Tracking user location");
     const imgs = pauseAndpaly.getElementsByTagName('img')[0];
     imgs.setAttribute('src', `static/icons/pause.svg`);
@@ -864,58 +864,56 @@ function trackUserLocation(route) {
     // Set the user's initial location marker at the starting point
     setUserLocationMark(route.coordinates[0]);
     walkedRoute.unshift(route.coordinates[0]);
+    // Function to handle location updates from the GeolocateControl
+    function updateLocation(position) {
+        if (!simulationRunning) return; // If not running, do nothing
 
-    const currentPosition = {
-        lng: position.coords.longitude,
-        lat: position.coords.latitude
-    };
+        const currentPosition = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude
+        };
 
-    // Find the next point in the route
-    const nextPosition = route.coordinates[routeIndex];
+        // Find the next point in the route
+        const nextPosition = route.coordinates[routeIndex];
 
-    getPoisByLocation(currentPosition);
+        getPoisByLocation(currentPosition);
 
-    // Update the user's location in your app
-    updateUserLocation(currentPosition);
+        // Update the user's location in your app
+        updateUserLocation(currentPosition);
 
-    // Update the marker position to the user's current location
-    userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
+        // Update the marker position to the user's current location
+        userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
 
-    // Calculate remaining distance to the next position on the route
-    const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], nextPosition);
+        // Calculate remaining distance to the next position on the route
+        const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], nextPosition);
 
-    updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
-    updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
+        updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
+        updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
 
-    // If the remaining distance is less than the threshold, move to the next point
-    if (remainingDistance <= targetDistance) {
-        routeIndex++;
+        // If the remaining distance is less than the threshold, move to the next point
+        if (remainingDistance <= targetDistance) {
+            routeIndex++;
 
-        if (routeIndex >= route.coordinates.length - 1) {
-            // Route completed
-            closedNavfun();
-            navcompleted.classList.add('fadeshowin');
-            pauseAndpaly.style.display = 'none';
-            initProperty();
-            console.log("Route tracking completed");
+            if (routeIndex >= route.coordinates.length - 1) {
+                // Route completed
+                closedNavfun();
+                navcompleted.classList.add('fadeshowin');
+                pauseAndpaly.style.display = 'none';
+                initProperty();
+                console.log("Route tracking completed");
+            }
         }
+
+        // Update navigation instructions based on the user's current position
+        updateNavigationInstructions(currentPosition, nextPosition);
     }
 
-    // Update navigation instructions based on the user's current position
-    updateNavigationInstructions(currentPosition, nextPosition);
-
-    // Start watching the user's position using the browser's geolocation API
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(updateLocation, (error) => {
-            console.error("Error getting location:", error);
-        }, {
-            enableHighAccuracy: true, // Use GPS if available
-            maximumAge: 0,
-            timeout: 10000 // Set a timeout to avoid long delays
-        });
-    } else {
-        console.error("Geolocation is not supported by this browser.");
-    }
+    // Event listener for when the user's location changes
+    geolocateControl.on('geolocate', (position) => {
+        updateLocation(position);
+    });
+    // Trigger the initial location fetch
+    geolocateControl.trigger();
 }
 
 function updateWalkedRoute(currentPosition) {
