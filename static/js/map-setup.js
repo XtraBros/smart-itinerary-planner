@@ -439,7 +439,7 @@ fetch('/config')
                 positionOptions: {
                     enableHighAccuracy: true
                 },
-                trackUserLocation: true,
+                trackUserLocation: false,
                 showUserHeading: true // If you want to show user's heading direction
             });
             map.loadImage('static/icons/walked.png', function (err, image) {
