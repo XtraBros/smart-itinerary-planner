@@ -237,13 +237,13 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    window.addEventListener('deviceorientation', function (event) {
+    window.addEventListener('deviceorientation', debounce(function (event) {
         const alpha = event.alpha;
         if (userMarker) {
             const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
             markerElement.style.transform = `rotate(${alpha}deg)`
         }
-    });
+    }, 200));
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -267,6 +267,14 @@ window.onload = function () {
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
     });
+}
+
+function debounce(fn, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
 }
 
 function stopNavFunc() {
@@ -455,7 +463,7 @@ fetch('/config')
                     lat: position.coords.latitude
                 };
                 const userLoc = [position.coords.longitude, position.coords.latitude];
-                map.setZoom(13);
+                // map.setZoom(13);
                 // map.setCenter(userLoc);
                 setUserLocationMark(userLoc);
                 try {

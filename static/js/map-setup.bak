@@ -20,7 +20,16 @@ let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
 let thumbnailURI;
+let endPlaceProt; // end port
+let simulatePoint;
 
+function initProperty() {
+    routeIndex = 0;
+    currentStepIndex = 0;
+    walkedRoute = []
+    simulatePoint = null
+    clearTimeout(simulationTimeout);
+}
 
 // User location
 function getUserCurrentPosition(callBack, error) {
@@ -226,23 +235,6 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(position => {
-            const userLocation = [position.coords.longitude, position.coords.latitude];
-            // add user current position to route
-            if (Object.keys(route).length) {
-                route.coordinates[0] = userLocation
-                paintLine(route)
-            }
-            setUserLocationMark(userLocation)
-        }, error => {
-            console.error("Not get user position: ", error);
-        }, {
-            enableHighAccuracy: true, // 启用高精度模式
-            maximumAge: 0, // 禁止使用缓存的位置信息
-            timeout: 5000 // 超时
-        });
-    }
     window.addEventListener('deviceorientation', function (event) {
         const alpha = event.alpha;
         if (userMarker) {
@@ -283,7 +275,7 @@ function stopNavFunc() {
     disableNavigationMode();
     simulationRunning = false;
     simulationPaused = false;
-    clearTimeout(simulationTimeout);
+    initProperty()
 }
 
 function exitNavFunc() {
@@ -373,8 +365,8 @@ const geolocateControl = new mapboxgl.GeolocateControl({
     positionOptions: {
         enableHighAccuracy: true
     },
-    trackUserLocation: false,
-    showUserHeading: true
+    trackUserLocation: true,
+    showUserHeading: true,
 });
 
 fetch('/config')
@@ -383,12 +375,13 @@ fetch('/config')
         // Assuming the response contains a JSON object with an 'accessToken' property
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.GOOGLE_CLOUD_URI;
+        const center = [103.827973, 1.250277]
         map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v12',
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
-            center: [103.827973, 1.250277],
+            center,
             zoom: 13
         });
 
@@ -406,26 +399,6 @@ fetch('/config')
         map.setMaxBounds(bounds);
         map.on('load', function () {
             // Define and set bounds for the map
-
-            // Add custom tiles
-            // map.addSource('custom-tiles', {
-            //     type: 'raster',
-            //     // base url for maptiles
-            //     // ‘tiles’: [‘https://mfamaptilesdev.blob.core.windows.net/tiles/combined-170/{z}/{x}/{y}.png’],
-            //     // use proxy server to get tiles
-            //     tiles: [data.config.MAPBOX_MAPTILES],
-            //     // using open source map to get tiles without proxy
-            //     //tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            //     tileSize: 256,
-            //     // minzoom: 12,
-            //     // maxzoom: 22,
-            //     attribution: '© OpenStreetMap contributors'
-            // });
-            // map.addLayer({
-            //     id: 'custom-tiles-layer',
-            //     type: 'raster',
-            //     source: 'custom-tiles'
-            // });
             // 3D Layer for navigation view.    
             map.addLayer({
                 'id': '3d-buildings',
@@ -466,19 +439,48 @@ fetch('/config')
             // user location control
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
-
+            setTimeout(() => {
+                geolocateControl.trigger();
+            }, 100)
             // Override the geolocate event to use navigator.geolocation
-            geolocateControl.on('geolocate', (e) => {
-                setUserLocationMark([e.coords.longitude, e.coords.latitude]);
+            geolocateControl.on('geolocate', (position) => {
+                userLocation = {
+                    lng: position.coords.longitude,
+                    lat: position.coords.latitude
+                };
+                const userLoc = [position.coords.longitude, position.coords.latitude];
+                map.setZoom(13);
+                // map.setCenter(userLoc);
+                setUserLocationMark(userLoc);
+                if (Object.keys(route).length && endPlaceProt) {
+                    const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
+                    getMapboxWlakRoute(coordinates).then(result => {
+                        if (result.legs && result.route) {
+                            initProperty()
+                            if (map.getLayer('route')) {
+                                map.removeLayer('route');
+                            }
+                            if (map.getSource('route')) {
+                                map.removeSource('route');
+                            }
+                            if (map.getLayer('walked-route')) {
+                                map.removeLayer('walked-route');
+                            }
+                            if (map.getSource('walked-route')) {
+                                map.removeSource('walked-route');
+                            }
+                            if (simulationRunning || simulationPaused) {
+                                simulationRunning = false
+                                setMapRoute(result.route)
+                                simulateUserLocation(result.route)
+                            } else {
+                                paintLine(result.route)
+                            }
+                        }
+                    })
+                }
             });
         });
-        // map.on('rotate', () => {
-        //     const mapBearing = map.getBearing();
-        //     if (userMarker && !simulationRunning) {
-        //         const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-        //         markerElement.style.transform = `rotate(${mapBearing}deg)`
-        //     }
-        // });
     })
     .catch(error => {
         console.error('Error fetching the access token:', error);
@@ -508,22 +510,19 @@ function enableNavigationMode(data) {
 }
 
 function setUserLocationMark(coord, angle) {
-    if (!userMarker) {
-        const el = document.createElement('div');
-        el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
-        userMarker = new mapboxgl.Marker({
-            color: 'red',
-            element: el
-        })
-            .setLngLat(coord)
-            .addTo(map);
-    } else {
-        userMarker.setLngLat(coord);
-        const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-        if (angle) {
-            markerElement.style.transform = `rotate(${angle}deg)`;
-        }
+    console.log('------->>>>>', userMarker)
+    if (userMarker) {
+        userMarker.remove()
+        userMarker = null
     }
+    const el = document.createElement('div');
+    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" style="transform: rotate(${angle || 0}deg)" alt="" srcset=""></p>`);
+    userMarker = new mapboxgl.Marker({
+        color: 'red',
+        element: el
+    })
+        .setLngLat(coord)
+        .addTo(map);
 }
 
 function disableNavigationMode() {
@@ -695,14 +694,14 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     return ((θ * 180) / Math.PI + 360) % 360;
 }
 // Function to start simulating user location along the route with smooth movement
-// Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
     const imgs = pauseAndpaly.getElementsByTagName('img')[0]
     imgs.setAttribute('src', `static/icons/pause.svg`);
     const targetDistance = 5; // meters per step for interpolation
 
-    setUserLocationMark([route.coordinates[0][0], route.coordinates[0][1]])
+    setUserLocationMark(route.coordinates[0]);
+    walkedRoute.unshift(route.coordinates[0]);
 
     function updateLocation() {
         if (!simulationRunning) return; // If not running, do nothing
@@ -710,8 +709,8 @@ function simulateUserLocation(route) {
         if (routeIndex < route.coordinates.length - 1) {
             // Simulate the user's location along the route
             const currentPosition = {
-                lng: route.coordinates[routeIndex][0],
-                lat: route.coordinates[routeIndex][1]
+                lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
+                lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
             };
             const nextPosition = {
                 lng: route.coordinates[routeIndex + 1][0],
@@ -730,11 +729,11 @@ function simulateUserLocation(route) {
 
                 // Update marker position
                 userMarker.setLngLat(interpolatedPosition);
-
+                simulatePoint = interpolatedPosition
                 // Calculate remaining distance to next position
                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
-                updateWalkedRoute(currentPosition);
-                updateRemainingRoute(currentPosition);
+                updateWalkedRoute(interpolatedPosition);
+                updateRemainingRoute(interpolatedPosition);
                 // If the remaining distance is less than the target, move to the next point
                 if (remainingDistance <= targetDistance) {
                     routeIndex++;
@@ -747,9 +746,7 @@ function simulateUserLocation(route) {
                         pauseAndpaly.style.display = 'none';
                         simulationRunning = false;
                         simulationPaused = false;
-                        routeIndex = 0;
-                        currentStepIndex = 0;
-                        clearTimeout(simulationTimeout);
+                        initProperty()
                         console.log("Route simulation completed");
                     }
                 } else {
@@ -758,7 +755,7 @@ function simulateUserLocation(route) {
                     const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
 
                     // Continue animating along the current segment
-                    setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
+                    simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
                 }
 
                 // Update navigation instructions based on the user's location and the next interpolated position
@@ -785,7 +782,7 @@ function simulateUserLocation(route) {
 
 function updateWalkedRoute(currentPosition) {
     // Add the current position to the walked route
-    walkedRoute.push([currentPosition.lng, currentPosition.lat]);
+    walkedRoute.push(currentPosition);
 
     // Update the map with the walked route
     map.getSource('walked-route').setData({
@@ -799,8 +796,8 @@ function updateWalkedRoute(currentPosition) {
 
 function updateRemainingRoute(currentPosition) {
     // Update the remaining route after trimming
-    const remainingRoute = route.coordinates.slice(routeIndex);
-    remainingRoute.unshift([currentPosition.lng, currentPosition.lat]);
+    const remainingRoute = route.coordinates.slice(routeIndex + 1);
+    remainingRoute.unshift(currentPosition);
     map.getSource('route').setData({
         "type": "Feature",
         "geometry": {
@@ -845,7 +842,6 @@ function pauseSimulation() {
     if (simulationRunning && !simulationPaused) {
         simulationPaused = true;
         simulationRunning = false;
-        clearTimeout(simulationTimeout); // Stop the current timeout
         const imgs = pauseAndpaly.getElementsByTagName('img')[0]
         imgs.setAttribute('src', `static/icons/continue.svg`);
         console.log("Simulation paused");
@@ -856,8 +852,7 @@ function pauseSimulation() {
 function stopSimulation() {
     simulationRunning = false;
     simulationPaused = false;
-    rouetIndex = 0;
-    clearTimeout(simulationTimeout); // Stop any ongoing timeout
+    initProperty()
     console.log("Simulation stopped");
 }
 
@@ -1052,48 +1047,18 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
             }
         }
         addMarkers(placeNames, rawCoordinates);
-
+        endPlaceProt = rawCoordinates;
         // Check number of waypoints. If less than 25, execute the usual. Else, fetch centroids.
-        let fetchDirectionsPromise;
         let allCoordinates;
         if (fromUser) {
             allCoordinates = [[userLocation.lng, userLocation.lat], ...rawCoordinates];
         } else {
             allCoordinates = rawCoordinates;
         }
-        console.log("Coordinates to go to: " + allCoordinates)
         const coordinates = allCoordinates.map(coord => coord.join(',')).join(';');
-        var url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-        // Fetch directions data from Mapbox Directions API
-        fetchDirectionsPromise = fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch route data');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.routes && data.routes.length > 0) {
-                    var legs = data.routes[0].legs;
-                    api_response = data.routes[0]
-                    // console.log('------data->>>>>>>>>', data)
-                    const totalDistance = legs[0].distance.toFixed(2);
-                    const totalDuration = legs[0].duration;
-                    if (totMinus && totDist) {
-                        totMinus.innerText = `${Math.ceil(totalDuration / 60)}min`
-                        totDist.innerText = totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
-                    }
-                    route = data.routes[0].geometry;
-                    steps = data.routes[0].legs[0].steps;
-                    return { legs, route };
-                } else {
-                    console.error('No route found: ', data);
-                    throw new Error('No route found');
-                }
-            });
-
+        console.log("Coordinates to go to: " + coordinates, rawCoordinates)
         // Process fetched directions data or centroids
-        fetchDirectionsPromise
+        getMapboxWlakRoute(coordinates)
             .then(result => {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
@@ -1121,6 +1086,37 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 reject(error);
             });
     });
+}
+
+function getMapboxWlakRoute(coordinates) {
+    const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+    return fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch route data');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.routes && data.routes.length > 0) {
+                initProperty();
+                const legs = data.routes[0].legs;
+                api_response = data.routes[0]
+                // console.log('------data->>>>>>>>>', data)
+                const totalDistance = legs[0].distance.toFixed(2);
+                const totalDuration = legs[0].duration;
+                if (totMinus && totDist) {
+                    totMinus.innerText = `${Math.ceil(totalDuration / 60)}min`
+                    totDist.innerText = totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
+                }
+                route = data.routes[0].geometry;
+                steps = data.routes[0].legs[0].steps;
+                return { legs, route };
+            } else {
+                console.error('No route found: ', data);
+                throw new Error('No route found');
+            }
+        });
 }
 
 // Function to optimize route. Takes in list of places and coordinates, returns both ordered in sequence of visit
@@ -1723,23 +1719,11 @@ async function getCoordinatesWithPlace(places) {
 }
 
 async function get_coordinates(data, fromUser) {
-    // Start from tracked user location instead of gps location.
-    // if (fromUser) {    
-    //     // Fetch the user's current location
-    //     userLocation = await new Promise((resolve, reject) => {
-    //         getUserCurrentPosition((userLoc) => resolve(userLoc), () => reject(error));
-    //     });
-    // }
     const orderOfVisit = await getCoordinatesWithPlace(data);
     return orderOfVisit;
 }
 
 async function get_coordinates_without_route(data) {
-    // if (!simulationRunning && map.getSource('route')) {
-    //     map.removeLayer('route');
-    //     map.removeLayer('directions');
-    //     map.removeSource('route');
-    // }
     const orderOfVisit = await getCoordinatesWithPlace(data);
     return orderOfVisit;
 }
@@ -1802,7 +1786,6 @@ function addMarkers(placeNames, waypoints) {
         });
     });
 }
-
 
 function fetchTemplate(url) {
     return fetch(url).then(response => response.text());
