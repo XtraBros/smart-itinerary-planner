@@ -525,6 +525,16 @@ function enableNavigationMode(data) {
     instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
     const instructionPopup = document.getElementById('navigation');
+    if (routeIndex == 0){
+        const firstInstruction = instructions[0];
+        // Extract the relevant information for the first instruction
+        const instructionTextContent = firstInstruction.instruction; // Text instruction
+        const distanceToCheckpoint = firstInstruction.distance; // Distance to the next checkpoint
+        const remainingDistance = calculateRemainingDistance(route.coordinates); // Assuming you have a function to calculate total remaining distance
+        const modifier = firstInstruction.modifier; // Modifier for direction icons (left, right, etc.)
+        // Display the first instruction
+        displayInstruction(instructionTextContent, distanceToCheckpoint, remainingDistance, modifier);
+    }
     // Show the pop-up
     instructionPopup.classList.add('fadeshowin');
     poiSwiper.classList.add('fadeshowin');
@@ -569,6 +579,8 @@ function recalculateRoute(currentLocation, destination) {
         .then(data => {
             const newRoute = data.routes[0].geometry.coordinates;
             route = data.routes[0].geometry;
+            steps = data.routes[0].legs[0].steps;
+            instructions = getInstructions(steps);
             // Update the map with new route
             map.getSource('route').setData({
                 'type': 'Feature',
@@ -684,7 +696,7 @@ function calculateDistance(point1, point2) {
 
 // Function to update navigation instructions based on user's current location
 let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
-function updateNavigationInstructions(userLocation, nextPosition) {
+function updateNavigationInstructions(userLocation) {
     const thresholdDistance = 5;
     // Calculate the distance between the user's current location and the next checkpoint
     const checkpoint = {
@@ -693,17 +705,6 @@ function updateNavigationInstructions(userLocation, nextPosition) {
     };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
     console.log("Currently tracking checkpoint: " + JSON.stringify(checkpoint));
-
-    // // Calculate the bearing using the next interpolated position instead of the checkpoint
-    // const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
-
-    // map.easeTo({
-    //     pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-    //     zoom: 20,  // Adjust the zoom level for better street view navigation
-    //     center: [userLocation.lng, userLocation.lat], // Center map on user's location
-    //     duration: 500, // Animation duration in milliseconds
-    //     bearing: userHeading
-    // });
 
     let increment = false;
 
@@ -834,7 +835,7 @@ function simulateUserLocation(route) {
 
                 // Update navigation instructions based on the user's location and the next interpolated position
                 console.log("User location: " + JSON.stringify(userLocation));
-                updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] }, nextPosition);
+                updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
             }
 
             // Start animating along the current segment with initial interpolation
@@ -904,7 +905,7 @@ function trackUserLocation(route) {
         }
 
         // Update navigation instructions based on the user's current position
-        updateNavigationInstructions(currentPosition, nextPosition);
+        updateNavigationInstructions(currentPosition);
     }
 
     // Event listener for when the user's location changes
