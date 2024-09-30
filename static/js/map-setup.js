@@ -539,7 +539,7 @@ function enableNavigationMode(data) {
     });
 
     // Wait for easeTo animation to complete, then start tracking
-    map.once('moveend', trackUserLocation(route));
+    map.once('moveend', () => trackUserLocation(route));
 }
 // Function to check if user is off-route
 function isUserOffRoute(userLocation, route, tolerance = 0.02) {
@@ -859,6 +859,7 @@ function trackUserLocation(route) {
     console.log("Tracking user location");
     const imgs = pauseAndpaly.getElementsByTagName('img')[0];
     imgs.setAttribute('src', `static/icons/pause.svg`);
+    geolocateControl.options.trackUserLocation = false;  // Prevent automatic recentering
 
     // Set the user's initial location marker at the starting point
     setUserLocationMark(route.coordinates[0]);
