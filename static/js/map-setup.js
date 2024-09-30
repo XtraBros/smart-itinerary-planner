@@ -4,7 +4,6 @@ var map;
 var directions;
 var geolocateControl;
 var walkedRoute = [];
-var sroute;
 let route = {};
 let api_response = {};
 let navigationEnabled = false;
@@ -457,48 +456,52 @@ fetch('/config')
                 geolocateControl.trigger();
             }, 100)
             // geolocate event 
-            geolocateControl.on('geolocate', async (position) => {
+            geolocateControl.on('geolocate', (position) => {
                 userLocation = {
                     lng: position.coords.longitude,
                     lat: position.coords.latitude
                 };
+                if (isUserOffRoute(userLocation, result.route)) {
+                    console.log('User is off-route, recalculating route...');
+                    recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                }
                 const userLoc = [position.coords.longitude, position.coords.latitude];
                 setUserLocationMark(userLoc);
-                if (Object.keys(route).length && endPlaceProt) {
-                    const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
-                    getMapboxWlakRoute(coordinates).then(result => {
-                        if (result.legs && result.route) {
-                            initProperty()
-                            geolocateControl.on('geolocate', (position) => {
-                                const userLocation = [position.coords.longitude, position.coords.latitude];
+                // if (Object.keys(route).length && endPlaceProt) {
+                //     const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
+                //     getMapboxWlakRoute(coordinates).then(result => {
+                //         if (result.legs && result.route) {
+                //             initProperty()
+                //             geolocateControl.on('geolocate', (position) => {
+                //                 const userLocation = [position.coords.longitude, position.coords.latitude];
                                 
-                                if (isUserOffRoute(userLocation, result.route)) {
-                                    console.log('User is off-route, recalculating route...');
-                                    recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
-                                }
-                            });
-                            if (map.getLayer('route')) {
-                                map.removeLayer('route');
-                            }
-                            if (map.getSource('route')) {
-                                map.removeSource('route');
-                            }
-                            if (map.getLayer('walked-route')) {
-                                map.removeLayer('walked-route');
-                            }
-                            if (map.getSource('walked-route')) {
-                                map.removeSource('walked-route');
-                            }
-                            if (simulationRunning || simulationPaused) {
-                                simulationRunning = false
-                                setMapRoute(result.route)
-                                //simulateUserLocation(result.route);
-                            } else {
-                                paintLine(result.route)
-                            }
-                        }
-                    })
-                }
+                //                 if (isUserOffRoute(userLocation, result.route)) {
+                //                     console.log('User is off-route, recalculating route...');
+                //                     recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                //                 }
+                //             });
+                //             if (map.getLayer('route')) {
+                //                 map.removeLayer('route');
+                //             }
+                //             if (map.getSource('route')) {
+                //                 map.removeSource('route');
+                //             }
+                //             if (map.getLayer('walked-route')) {
+                //                 map.removeLayer('walked-route');
+                //             }
+                //             if (map.getSource('walked-route')) {
+                //                 map.removeSource('walked-route');
+                //             }
+                //             if (simulationRunning || simulationPaused) {
+                //                 simulationRunning = false
+                //                 setMapRoute(result.route)
+                //                 //simulateUserLocation(result.route);
+                //             } else {
+                //                 paintLine(result.route)
+                //             }
+                //         }
+                //     })
+                // }
             });
         });
     })
@@ -566,7 +569,7 @@ function recalculateRoute(currentLocation, destination) {
         .then(response => response.json())
         .then(data => {
             const newRoute = data.routes[0].geometry.coordinates;
-
+            route = data.routes[0].geometry;
             // Update the map with new route
             map.getSource('route').setData({
                 'type': 'Feature',
@@ -575,7 +578,8 @@ function recalculateRoute(currentLocation, destination) {
                     'coordinates': newRoute
                 }
             });
-
+            // update navigation instructions:
+            // var instructions = extractRouteInstructions(data.legs, placeNames);
             console.log("New route calculated and updated on the map.");
         })
         .catch(error => console.error('Error in recalculating route:', error));
