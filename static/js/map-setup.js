@@ -695,16 +695,16 @@ function updateNavigationInstructions(userLocation, nextPosition) {
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
     console.log("Currently tracking checkpoint: " + JSON.stringify(checkpoint));
 
-    // Calculate the bearing using the next interpolated position instead of the checkpoint
-    const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
+    // // Calculate the bearing using the next interpolated position instead of the checkpoint
+    // const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
 
-    map.easeTo({
-        pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-        zoom: 20,  // Adjust the zoom level for better street view navigation
-        center: [userLocation.lng, userLocation.lat], // Center map on user's location
-        duration: 500, // Animation duration in milliseconds
-        bearing: userHeading
-    });
+    // map.easeTo({
+    //     pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+    //     zoom: 20,  // Adjust the zoom level for better street view navigation
+    //     center: [userLocation.lng, userLocation.lat], // Center map on user's location
+    //     duration: 500, // Animation duration in milliseconds
+    //     bearing: userHeading
+    // });
 
     let increment = false;
 
@@ -856,7 +856,7 @@ function simulateUserLocation(route) {
 }
 
 // Function to use user's current location and update their position along the route
-function trackUserLocation(route, map) {
+function trackUserLocation(route) {
     console.log("Tracking user location");
     const imgs = pauseAndpaly.getElementsByTagName('img')[0];
     imgs.setAttribute('src', `static/icons/pause.svg`);
@@ -872,12 +872,11 @@ function trackUserLocation(route, map) {
             lng: position.coords.longitude,
             lat: position.coords.latitude
         };
-
-        // Find the next point in the route
-        const nextPosition = route.coordinates[routeIndex];
-
+        const nextPosition = {
+            lng: route.coordinates[routeIndex + 1][0],
+            lat: route.coordinates[routeIndex + 1][1]
+        };
         getPoisByLocation(currentPosition);
-
         // Update the user's location in your app
         updateUserLocation(currentPosition);
 
@@ -885,7 +884,7 @@ function trackUserLocation(route, map) {
         userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
 
         // Calculate remaining distance to the next position on the route
-        const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], nextPosition);
+        const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 
         updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
         updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
