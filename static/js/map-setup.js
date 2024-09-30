@@ -461,10 +461,10 @@ fetch('/config')
                     lng: position.coords.longitude,
                     lat: position.coords.latitude
                 };
-                if (isUserOffRoute(userLocation, result.route)) {
-                    console.log('User is off-route, recalculating route...');
-                    recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
-                }
+                // if (isUserOffRoute(userLocation, route)) {
+                //     console.log('User is off-route, recalculating route...');
+                //     recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                // }
                 const userLoc = [position.coords.longitude, position.coords.latitude];
                 setUserLocationMark(userLoc);
                 // if (Object.keys(route).length && endPlaceProt) {
@@ -495,7 +495,7 @@ fetch('/config')
                 //             if (simulationRunning || simulationPaused) {
                 //                 simulationRunning = false
                 //                 setMapRoute(result.route)
-                //                 //simulateUserLocation(result.route);
+                //                 trackUserLocation(route)
                 //             } else {
                 //                 paintLine(result.route)
                 //             }
@@ -539,8 +539,8 @@ function enableNavigationMode(data) {
         duration: 500 // Animation duration in milliseconds
     });
 
-    // Wait for easeTo animation to complete, then start simulation
-    //map.once('moveend', simulateUserLocation(route));
+    // Wait for easeTo animation to complete, then start tracking
+    map.once('moveend', trackUserLocation(route));
 }
 // Function to check if user is off-route
 function isUserOffRoute(userLocation, route, tolerance = 0.02) {
@@ -855,6 +855,69 @@ function simulateUserLocation(route) {
     updateLocation();
 }
 
+// Function to use user's current location and update their position along the route
+function trackUserLocation(route) {
+    console.log("Tracking user location");
+    const imgs = pauseAndpaly.getElementsByTagName('img')[0];
+    imgs.setAttribute('src', `static/icons/pause.svg`);
+
+    // Set the user's initial location marker at the starting point
+    setUserLocationMark(route.coordinates[0]);
+    walkedRoute.unshift(route.coordinates[0]);
+
+    const currentPosition = {
+        lng: position.coords.longitude,
+        lat: position.coords.latitude
+    };
+
+    // Find the next point in the route
+    const nextPosition = route.coordinates[routeIndex];
+
+    getPoisByLocation(currentPosition);
+
+    // Update the user's location in your app
+    updateUserLocation(currentPosition);
+
+    // Update the marker position to the user's current location
+    userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
+
+    // Calculate remaining distance to the next position on the route
+    const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], nextPosition);
+
+    updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
+    updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
+
+    // If the remaining distance is less than the threshold, move to the next point
+    if (remainingDistance <= targetDistance) {
+        routeIndex++;
+
+        if (routeIndex >= route.coordinates.length - 1) {
+            // Route completed
+            closedNavfun();
+            navcompleted.classList.add('fadeshowin');
+            pauseAndpaly.style.display = 'none';
+            initProperty();
+            console.log("Route tracking completed");
+        }
+    }
+
+    // Update navigation instructions based on the user's current position
+    updateNavigationInstructions(currentPosition, nextPosition);
+
+    // Start watching the user's position using the browser's geolocation API
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(updateLocation, (error) => {
+            console.error("Error getting location:", error);
+        }, {
+            enableHighAccuracy: true, // Use GPS if available
+            maximumAge: 0,
+            timeout: 10000 // Set a timeout to avoid long delays
+        });
+    } else {
+        console.error("Geolocation is not supported by this browser.");
+    }
+}
+
 function updateWalkedRoute(currentPosition) {
     // Add the current position to the walked route
     walkedRoute.push(currentPosition);
@@ -1128,7 +1191,6 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 if (result.legs && result.route) {
                     geolocateControl.on('geolocate', (position) => {
                         const userLocation = [position.coords.longitude, position.coords.latitude];
-                        
                         if (isUserOffRoute(userLocation, result.route)) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
