@@ -430,18 +430,16 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
-            map.on('offroute', function (event) {
-                console.log("Offroute detected!", event);
-                // This should trigger when the user is off-route
-            });
             // geolocation tracking
             geolocateControl = new mapboxgl.GeolocateControl({
                 positionOptions: {
                     enableHighAccuracy: true
                 },
-                trackUserLocation: false,
-                showUserHeading: true // If you want to show user's heading direction
+                trackUserLocation: true,
+                showUserHeading: true, // If you want to show user's heading direction
             });
+            // force mapbox to stop changing map view when geolocating
+            geolocateControl._updateCamera = () => {}
             map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -909,6 +907,7 @@ function trackUserLocation(route) {
 
     // Event listener for when the user's location changes
     geolocateControl.on('geolocate', (position) => {
+        console.log('Updating user location:')
         updateLocation(position);
     });
     // Trigger the initial location fetch
