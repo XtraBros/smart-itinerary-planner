@@ -461,10 +461,10 @@ fetch('/config')
                     lng: position.coords.longitude,
                     lat: position.coords.latitude
                 };
-                if (isUserOffRoute(userLocation, result.route)) {
-                    console.log('User is off-route, recalculating route...');
-                    recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
-                }
+                // if (isUserOffRoute(userLocation, result.route)) {
+                //     console.log('User is off-route, recalculating route...');
+                //     recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                // }
                 const userLoc = [position.coords.longitude, position.coords.latitude];
                 setUserLocationMark(userLoc);
                 // if (Object.keys(route).length && endPlaceProt) {
@@ -591,7 +591,7 @@ function setUserLocationMark(coord, angle) {
         userMarker = null
     }
     const el = document.createElement('div');
-    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" style="transform: rotate(${angle || 0}deg)" alt="" srcset=""></p>`);
+    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
     userMarker = new mapboxgl.Marker({
         color: 'red',
         element: el
