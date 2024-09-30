@@ -456,22 +456,14 @@ fetch('/config')
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
-            // Override the geolocate event to use navigator.geolocation
+            // geolocate event 
             geolocateControl.on('geolocate', async (position) => {
                 userLocation = {
                     lng: position.coords.longitude,
                     lat: position.coords.latitude
                 };
                 const userLoc = [position.coords.longitude, position.coords.latitude];
-                // map.setZoom(13);
-                // map.setCenter(userLoc);
                 setUserLocationMark(userLoc);
-                try {
-                    sroute = await getRouteObject(userLocation);
-                    console.log("===sroute===>", sroute);
-                } catch (error) {
-                    console.error('Failed to retrieve route:', error);
-                }
                 if (Object.keys(route).length && endPlaceProt) {
                     const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
                     getMapboxWlakRoute(coordinates).then(result => {
@@ -513,24 +505,7 @@ fetch('/config')
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
-// genRoute function to construct coordinates and call the helper function
-function genRoute(userLocation) {
-    const destination = [103.8423993, 1.246441004]; // Fixed destination coordinates
-    
-    // Construct the coordinates string: user location -> destination
-    const coordinates = `${userLocation.lng},${userLocation.lat};${destination[0]},${destination[1]}`;
-    
-    // Call the helper function with the constructed coordinates
-    return getMapboxWlakRoute(coordinates)
-        .then(result => {
-            // `result` contains { legs, route } returned by the helper function
-            return result; // Return the result from the helper function
-        })
-        .catch(error => {
-            console.error('Error generating walking route:', error);
-            throw error; // Rethrow the error for further handling
-        });
-}
+
 // Function to generate the route and return the route object using async/await
 async function getRouteObject(userLocation) {
     try {
@@ -956,26 +931,6 @@ function stopSimulation() {
     initProperty()
     console.log("Simulation stopped");
 }
-
-// function updateUserLocation(newLocation) {
-//     userLocation = newLocation;
-
-//     // Update the map view to center on the new location
-//     map.flyTo({
-//         center: [userLocation.lng, userLocation.lat],
-//         essential: true, // Animation is essential
-//         zoom: 18 // Adjust zoom level as needed
-//     });
-
-//     // Update the marker position
-//     if (userMarker) {
-//         userMarker.setLngLat([userLocation.lng, userLocation.lat]);
-//     }
-//     if (isUserOffRoute(userLocation, route)) {
-//         console.log('User is off-route, recalculating route...');
-//         recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
-//     }
-// }
 
 function setMapRoute(resRoute) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
