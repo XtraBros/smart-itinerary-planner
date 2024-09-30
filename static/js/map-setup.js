@@ -530,7 +530,6 @@ function enableNavigationMode(data) {
     poiSwiper.classList.add('fadeshowin');
     listButton.style.display = 'none';
     pauseAndpaly.style.display = 'block';
-
     // Animate the map to tilt and zoom for 3D perspective
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
@@ -1187,7 +1186,10 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
                     geolocateControl.on('geolocate', (position) => {
-                        const userLocation = [position.coords.longitude, position.coords.latitude];
+                        userLocation = {
+                            lng: position.coords.longitude,
+                            lat: position.coords.latitude
+                        };                        
                         if (isUserOffRoute(userLocation, result.route)) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
