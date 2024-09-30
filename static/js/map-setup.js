@@ -769,98 +769,97 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     return ((θ * 180) / Math.PI + 360) % 360;
 }
 // Function to start simulating user location along the route with smooth movement
-function simulateUserLocation(route) {
-    console.log("Starting simulation");
-    const imgs = pauseAndpaly.getElementsByTagName('img')[0]
-    imgs.setAttribute('src', `static/icons/pause.svg`);
-    const targetDistance = 5; // meters per step for interpolation
+// function simulateUserLocation(route) {
+//     console.log("Starting simulation");
+//     const imgs = pauseAndpaly.getElementsByTagName('img')[0]
+//     imgs.setAttribute('src', `static/icons/pause.svg`);
+//     const targetDistance = 5; // meters per step for interpolation
 
-    setUserLocationMark(route.coordinates[0]);
-    walkedRoute.unshift(route.coordinates[0]);
+//     setUserLocationMark(route.coordinates[0]);
+//     walkedRoute.unshift(route.coordinates[0]);
 
-    function updateLocation() {
-        if (!simulationRunning) return; // If not running, do nothing
+//     function updateLocation() {
+//         if (!simulationRunning) return; // If not running, do nothing
 
-        if (routeIndex < route.coordinates.length - 1) {
-            // Simulate the user's location along the route
-            const currentPosition = {
-                lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
-                lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
-            };
-            const nextPosition = {
-                lng: route.coordinates[routeIndex + 1][0],
-                lat: route.coordinates[routeIndex + 1][1]
-            };
-            getPoisByLocation(currentPosition);
-            // Calculate the distance between the current and next position
-            const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
+//         if (routeIndex < route.coordinates.length - 1) {
+//             // Simulate the user's location along the route
+//             const currentPosition = {
+//                 lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
+//                 lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
+//             };
+//             const nextPosition = {
+//                 lng: route.coordinates[routeIndex + 1][0],
+//                 lat: route.coordinates[routeIndex + 1][1]
+//             };
+//             getPoisByLocation(currentPosition);
+//             // Calculate the distance between the current and next position
+//             const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 
-            // Animate the marker along the path between current and next position
-            function animateMarker(interpolatedPosition) {
-                if (!simulationRunning) return; // If not running, do nothing
+//             // Animate the marker along the path between current and next position
+//             function animateMarker(interpolatedPosition) {
+//                 if (!simulationRunning) return; // If not running, do nothing
 
-                // Update the user's location in your app
-                updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
+//                 // Update the user's location in your app
+//                 updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
 
-                // Update marker position
-                userMarker.setLngLat(interpolatedPosition);
-                simulatePoint = interpolatedPosition
-                // Calculate remaining distance to next position
-                const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
-                updateWalkedRoute(interpolatedPosition);
-                updateRemainingRoute(interpolatedPosition);
-                // If the remaining distance is less than the target, move to the next point
-                if (remainingDistance <= targetDistance) {
-                    routeIndex++;
+//                 // Update marker position
+//                 userMarker.setLngLat(interpolatedPosition);
+//                 simulatePoint = interpolatedPosition
+//                 // Calculate remaining distance to next position
+//                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
+//                 updateWalkedRoute(interpolatedPosition);
+//                 updateRemainingRoute(interpolatedPosition);
+//                 // If the remaining distance is less than the target, move to the next point
+//                 if (remainingDistance <= targetDistance) {
+//                     routeIndex++;
 
-                    if (routeIndex < route.coordinates.length - 1) {
-                        setTimeout(updateLocation, 100); // Continue to the next point
-                    } else {
-                        closedNavfun();
-                        navcompleted.classList.add('fadeshowin');
-                        pauseAndpaly.style.display = 'none';
-                        simulationRunning = false;
-                        simulationPaused = false;
-                        initProperty()
-                        console.log("Route simulation completed");
-                    }
-                } else {
-                    // Calculate the new interpolated position
-                    const fraction = targetDistance / remainingDistance;
-                    const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
+//                     if (routeIndex < route.coordinates.length - 1) {
+//                         setTimeout(updateLocation, 100); // Continue to the next point
+//                     } else {
+//                         closedNavfun();
+//                         navcompleted.classList.add('fadeshowin');
+//                         pauseAndpaly.style.display = 'none';
+//                         simulationRunning = false;
+//                         simulationPaused = false;
+//                         initProperty()
+//                         console.log("Route simulation completed");
+//                     }
+//                 } else {
+//                     // Calculate the new interpolated position
+//                     const fraction = targetDistance / remainingDistance;
+//                     const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
 
-                    // Continue animating along the current segment
-                    simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
-                }
+//                     // Continue animating along the current segment
+//                     simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
+//                 }
 
-                // Update navigation instructions based on the user's location and the next interpolated position
-                console.log("User location: " + JSON.stringify(userLocation));
-                updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
-            }
+//                 // Update navigation instructions based on the user's location and the next interpolated position
+//                 console.log("User location: " + JSON.stringify(userLocation));
+//                 updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
+//             }
 
-            // Start animating along the current segment with initial interpolation
-            const initialFraction = targetDistance / distance;
-            const initialInterpolatedPosition = interpolate([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat], initialFraction);
-            animateMarker(initialInterpolatedPosition);
+//             // Start animating along the current segment with initial interpolation
+//             const initialFraction = targetDistance / distance;
+//             const initialInterpolatedPosition = interpolate([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat], initialFraction);
+//             animateMarker(initialInterpolatedPosition);
 
-        } else {
-            console.log("Route simulation completed");
-            simulationRunning = false;
-        }
-    }
+//         } else {
+//             console.log("Route simulation completed");
+//             simulationRunning = false;
+//         }
+//     }
 
-    // Start the location simulation
-    simulationRunning = true;
-    simulationPaused = false;
-    updateLocation();
-}
+//     // Start the location simulation
+//     simulationRunning = true;
+//     simulationPaused = false;
+//     updateLocation();
+// }
 
 // Function to use user's current location and update their position along the route
 function trackUserLocation(route) {
     console.log("Tracking user location");
     const imgs = pauseAndpaly.getElementsByTagName('img')[0];
     imgs.setAttribute('src', `static/icons/pause.svg`);
-    geolocateControl.options.trackUserLocation = false;  // Prevent automatic recentering
 
     // Set the user's initial location marker at the starting point
     setUserLocationMark(route.coordinates[0]);
