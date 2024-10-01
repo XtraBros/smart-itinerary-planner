@@ -95,7 +95,8 @@ def ask_plan():
             4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
             5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
+            6) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
+            7) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
@@ -133,7 +134,6 @@ def ask_plan():
 @app.route('/get_text', methods=['POST'])
 def get_text():
     # Get the 'route' data from the request JSON
-    print(request.json)
     route = request.json['route']
     coordinates = request.json['coordinates']
     print(f"route:{route}")
@@ -159,7 +159,6 @@ def get_text():
 
         # Create hyperlinks with the route names
         hyperlinks = create_hyperlinks(route, coordinates)
-        print(hyperlinks)
         # Insert hyperlinks using the `~` delimiter
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
 
@@ -488,6 +487,15 @@ def fetch_poi_data():
 
     return poi_data
 
+def get_poi_by_name(name):
+    # Query the MongoDB collection for the document where the 'name' matches the input
+    poi = poi_db.find_one({"name": name})
+    
+    if poi:
+        return poi  # Return the data row/document
+    else:
+        return None
+
 def find_nearby_pois(user_location, radius_in_meters=100):
     user_lon = user_location['longitude']
     user_lat = user_location['latitude']
@@ -525,7 +533,8 @@ Function Mapping: map the function names to the function, so that it can be iden
 function_mapping = {
     "fetch_weather_data": fetch_weather_data,
     "fetch_poi_data": fetch_poi_data,
-    "find_nearby_pois": find_nearby_pois
+    "find_nearby_pois": find_nearby_pois,
+    "get_poi_by_name": get_poi_by_name
 }
 '''
 Function Schema:
@@ -537,6 +546,20 @@ function_schemas = [
         "name": "fetch_weather_data",
         "description": "Fetches the 24-hour weather forecast from data.gov.sg",
         "parameters": {}
+    },
+    {
+        "name": "get_poi_by_name",
+        "description": "Retrieve the data row of a Point of Interest (POI) from the database by its name.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "name": {
+                "type": "string",
+                "description": "The name of the POI to search for."
+            }
+            },
+            "required": ["name"]
+        }
     },
     {
         "name": "fetch_poi_data",
