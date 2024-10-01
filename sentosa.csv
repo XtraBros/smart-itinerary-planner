@@ -1,13 +1,13 @@
 id,name,category,for,longitude,latitude,description,operating_hours,location
-0,Entrance,place,all,103.8221477,1.265075218,Entrance to Sentosa Island,NA,"[103.8221477, 1.265075218]"
-1,Exit,place,all,103.8221477,1.265075218,Exit of Sentosa Island,NA,"[103.8221477, 1.265075218]"
-2,Shangri La,hotel,all,103.8098875,1.258024841,"The only beachfront resort in Singapore, Shangri-La Rasa Sentosa boasts balcony or terrace-rooms that overlook breezy Siloso Beach. Step outside onto your private balcony and take in the breathtaking scenery while sipping on a drink or two.
+0,Entrance,place,all,103.8221477,1.265075218,Entrance to Sentosa Island,,"[103.8221477, 1.265075218]"
+1,Exit,place,all,103.8221477,1.265075218,Exit of Sentosa Island,,"[103.8221477, 1.265075218]"
+2,Shangri-La Rasa Sentosa,hotel,all,103.809791,1.25733,"The only beachfront resort in Singapore, Shangri-La Rasa Sentosa boasts balcony or terrace-rooms that overlook breezy Siloso Beach. Step outside onto your private balcony and take in the breathtaking scenery while sipping on a drink or two.
 
 But the fun doesn't stop there - take a dip in the free-form swimming pool, unwind in one of the outdoor jacuzzis, or pamper yourself with a rejuvenating treatment at the spa.
 
-The little ones are also specially catered for at this island resort at the dedicated kid’s pool equipped with water slides and the Cool Zone children’s club for ages 5 - 12.
+The little ones are also specially catered for at this island resort at the dedicated kid√É¬ïs pool equipped with water slides and the Cool Zone children√É¬ïs club for ages 5 - 12.
 
-Whether you're looking for a romantic getaway or a fun-filled family vacation, Shangri-La Rasa Sentosa has something for everyone. Come and experience the ultimate beachfront escape today!",NA,"[103.8098875, 1.258024841]"
+Whether you're looking for a romantic getaway or a fun-filled family vacation, Shangri-La Rasa Sentosa has something for everyone. Come and experience the ultimate beachfront escape today!",,"[103.809791, 1.25733]"
 3,Fort Siloso,museum,adult,103.808755,1.259462768,"Fort Siloso is Singapore's only well-preserved coastal fort that served as part of the country's defences. The on-site military museum contains a treasure trove of WWII memorabilia, including coastal guns, the remains of fortified military structures and tunnels, as well as an interactive video documentary, complete with wax figures of Japanese & British soldiers at the Surrender Chambers.","Fort Siloso & Surrender Chambers : 9am - 6pm
 Exhibits opens at 10am. Last admission at 5.30pm
 Fort Siloso Skywalk lift operates from 9am - 10pm","[103.808755, 1.259462768]"
@@ -16,41 +16,16 @@ Fort Siloso Skywalk lift operates from 9am - 10pm","[103.808755, 1.259462768]"
 Immerse yourself in our all-new experiential space, VibranSEA where you'll embark a bold new spectacle of lights and marine wonder journey. Dive into four distinct zones that designed to captivate your sense and deepen your appreciation for the wonders of the sea.
 
 Get ready to take your fun to the next level with the Double Fun Package, designed exclusively to give you twice the fun! This package includes USS & S.E.A. Aquarium admission tickets, USS $5 retail voucher & a set meal with drink! Visit here for more details.",10am - 5pm,"[103.8207831, 1.257926129]"
-5,Palawan Beach,beach,all,103.822572,1.248572206,"For wholesome fun with the fam, hop on the beach tram at Beach Station and head down to Palawan Beach.
-
- 
-
-For a fun adventure, cross the rope bridge to the islet that is the ""Southernmost Point of Continental Asia"". Climb the watchtower to watch passing ships go by and get a bird's eye view of the beachfront. The calm, turquoise lagoons are also ideal for swimming and water sports. 
-
- 
-
-Soak up Mediterranean vibes at FOC Sentosa. This beach club brings the flavour of the Mediterranean to the island. Inspired by the Barcelona beach scene, FOC looks to convey the Mediterranean spirit with beach hammocks, cosy cabanas and even a pool deck in the outdoor area. Take advantage of the volleyball pickup games and fitness boot camps on the beach. 
-
- 
-
-At The Palawan @ Sentosa, dive into a world teeming with adventure. Splash Tribe, Sentosa's premier family-friendly beach hub, beckons with its sandcastle-themed water playground while adults can luxuriate by the infinity-edge pool. 
-
- 
-
-Just a stone's throw away, gear up for high-octane excitement at HyperDrive, Asia's top-tier gamified electric Go-Kart circuit. For a gentler pace, the UltraGolf beachside mini golf course offers imaginative landscapes for friendly competition. If you're looking for some wet 'n' wild fun, slide up and down the island's latest water-theme attraction - Hydrodash.
-
- 
-
-Meanwhile, The Palawan Dog Run is a delightful playground for our four-legged companions. As the sun dips, immerse yourself in luxury at +Twelve, the ultimate beach club experience with terraced cabanas, an infinity pool, and pulsating rhythms from top DJs. And when hunger calls, The Palawan Food Trucks stand ready with a myriad of global flavours.
-
- 
-
-From high-speed adventures to paw-some escapades, Palawan Beach promises an unforgettable experience for all.",NA,"[103.822572, 1.248572206]"
-6,Tanjong Beach,beach,all,103.829654,1.242051855,"Tanjong Beach is a favourite with guests who treasure its tranquility and solitude. Here, you can while away the hours with the sun, a favourite book and a gentle breeze for company. This beautiful stretch of beach gets especially romantic by night, with the twinkling lights of nearby ships providing a magical backdrop.",NA,"[103.829654, 1.242051855]"
-7,Sentosa Golf Club,club,adult,103.8291637,1.243938416,"It’s not often that business events are set to the remarkable backdrop of expansive undulating greens. Sentosa Golf Club offers a variety of meeting spaces with a resort-style ambience, some which take you to elegant rooftop terraces for experiences that are a cut above the rest. These event spaces are equipped with the latest conference facilities and personalised service for an ideal networking venue with varied seating capacities. If you need a breather from work, know that prestigious world-class golfing courses, The Serapong and The New Tanjong are just around the corner. Or bring your tournaments to the next level by wowing your guests with the picturesque view while they pit their golfing skills against one another. ",NA,"[103.8291637, 1.243938416]"
-8,W Singapore,hotel,all,103.8423993,1.246441004,"Explore the pulse of a Glowing Jungle. Step through the doors of W Singapore - Sentosa Cove – like the branches of a magical rainforest parting to reveal an exotic universe. Explore a vibrant microcosm combining the island resort’s wild environs with the modern energy of the capital’s entertainment centre.
+5,Tanjong Beach,beach,all,103.829654,1.242051855,"Tanjong Beach is a favourite with guests who treasure its tranquility and solitude. Here, you can while away the hours with the sun, a favourite book and a gentle breeze for company. This beautiful stretch of beach gets especially romantic by night, with the twinkling lights of nearby ships providing a magical backdrop.",,"[103.829654, 1.242051855]"
+6,Sentosa Golf Club,club,adult,103.8291637,1.243938416,"It√É¬ïs not often that business events are set to the remarkable backdrop of expansive undulating greens. Sentosa Golf Club offers a variety of meeting spaces with a resort-style ambience, some which take you to elegant rooftop terraces for experiences that are a cut above the rest. These event spaces are equipped with the latest conference facilities and personalised service for an ideal networking venue with varied seating capacities. If you need a breather from work, know that prestigious world-class golfing courses, The Serapong and The New Tanjong are just around the corner. Or bring your tournaments to the next level by wowing your guests with the picturesque view while they pit their golfing skills against one another. ",,"[103.8291637, 1.243938416]"
+7,W Singapore,hotel,all,103.8423993,1.246441004,"Explore the pulse of a Glowing Jungle. Step through the doors of W Singapore - Sentosa Cove √É¬ê like the branches of a magical rainforest parting to reveal an exotic universe. Explore a vibrant microcosm combining the island resort√É¬ïs wild environs with the modern energy of the capital√É¬ïs entertainment centre.
 
 Illuminated vegetation fuse with sleek stratospheres to blur the line between public spaces and private hideaways, and the organic and avant-garde mix and mingle with every adventurous turn and surprise around the corner.
 
-Unleash your fantasies at W Singapore Sentosa Cove where the resort hotel has been designed for play. The hotel's Whatever/Whenever service is also available to all guests, allowing them to enjoy whatever they want, whenever they want it on Sentosa Island. From the sexy WOOBAR and its bespoke cocktail menu to the EXTREME Wow Suite with its own jacuzzi, we won’t blame you if you never want to check out.",NA,"[103.8423993, 1.246441004]"
-9,Capella Singapore,hotel,all,103.8242795,1.249820397,"Luxury awaits at the Capella Singapore where no expense is spared. Situated on 30-acres of lush grounds, this modern property combines old world colonial charm with world class amenities, including a triple-tier infinity pool, gourmet restaurants and a variety of accommodation options to host your stay.",NA,"[103.8242795, 1.249820397]"
-10,Universal Studios Singapore,entertainment,all,103.8214448,1.256299651,"Work events will never be the same again, once you’ve got a taste of this wild ride. Turning ordinary gatherings on its head are extraordinary movie-themed offerings that include shows, movie sets and exhilirating rides like Shrek 4-D Adventure, Revenge of the Mummy, Transformers The Ride: The Ultimate 3-D Battle and many more. Let your imagination take charge and reimagine your events into epic street parties to blow your guests away.",10am - 6pm,"[103.8214448, 1.256299651]"
-11,Trickeye Singapore,museum,all,103.822601,1.256934,"Immerse yourself in a world where art and reality blur at Trickeye Singapore, located in the heart of Sentosa. This unique 3D + Interactive AR Museum brings art to life with its stunning optical illusions and augmented reality (AR) technology. Perfect for families, friends, and art enthusiasts, Trickeye Singapore offers an interactive experience that transcends the ordinary and transforms how you perceive art.
+Unleash your fantasies at W Singapore Sentosa Cove where the resort hotel has been designed for play. The hotel's Whatever/Whenever service is also available to all guests, allowing them to enjoy whatever they want, whenever they want it on Sentosa Island. From the sexy WOOBAR and its bespoke cocktail menu to the EXTREME Wow Suite with its own jacuzzi, we won√É¬ït blame you if you never want to check out.",,"[103.8423993, 1.246441004]"
+8,Capella Singapore,hotel,all,103.8242795,1.249820397,"Luxury awaits at the Capella Singapore where no expense is spared. Situated on 30-acres of lush grounds, this modern property combines old world colonial charm with world class amenities, including a triple-tier infinity pool, gourmet restaurants and a variety of accommodation options to host your stay.",,"[103.8242795, 1.249820397]"
+9,Universal Studios Singapore,entertainment,all,103.823046,1.25417,"Work events will never be the same again, once you√É¬ïve got a taste of this wild ride. Turning ordinary gatherings on its head are extraordinary movie-themed offerings that include shows, movie sets and exhilirating rides like Shrek 4-D Adventure, Revenge of the Mummy, Transformers The Ride: The Ultimate 3-D Battle and many more. Let your imagination take charge and reimagine your events into epic street parties to blow your guests away.",10am - 6pm,"[103.823046, 1.25417]"
+10,Trickeye Singapore,museum,all,103.822601,1.256934,"Immerse yourself in a world where art and reality blur at Trickeye Singapore, located in the heart of Sentosa. This unique 3D + Interactive AR Museum brings art to life with its stunning optical illusions and augmented reality (AR) technology. Perfect for families, friends, and art enthusiasts, Trickeye Singapore offers an interactive experience that transcends the ordinary and transforms how you perceive art.
 
 With a single ticket, experience 3D optical illusion + Interactive AR technology at FOUR exciting themed zones:
 
@@ -62,38 +37,38 @@ With a single ticket, experience 3D optical illusion + Interactive AR technology
 Explore 9 new photo opportunities that will spark your creativity! Step into the ""beloved Ames Room"", where sizes and proportions shift intriguingly, and defy gravity at the Levitation Exhibit.Additionally, don't miss the chance to interact with iconic paintings like ""Paris Street; Rainy Day,"" ""A Sunday Afternoon on the Island of La Grande Jatte"", and ""Guardian Angel"" now enhanced with augmented reality (AR) effects that bring these masterpieces to life.","Daily: 
 11am - 7pm
 Last admission at 6pm","[103.822601, 1.256934]"
-12,WaterWorld,entertainment,all,103.824878,1.253186,"Looking to see how they create those incredible movie effects in your favourite Hollywood action movies? Here’s your chance in this sensational live water show. Based on the blockbuster film, “Waterworld”, this spectacular reveals a tidal wave of death-defying stunts, along with thrills and spills from real explosions of fire and water.",10am - 6pm,"[103.824878, 1.253186]"
-13,Silk Road of the Sea,restaurant,all,103.820576,1.250334,"Restaurant and Bar at Palawan Beach. Signature Dishes
-Braised Shark’s Fin with Bamboo Pith & Crabmeat Stir-fried Crab with Dried Red Chilli","Mon - Thu
+11,WaterWorld,entertainment,all,103.824878,1.253186,"Looking to see how they create those incredible movie effects in your favourite Hollywood action movies? Here√É¬ïs your chance in this sensational live water show. Based on the blockbuster film, √É¬íWaterworld√É¬ì, this spectacular reveals a tidal wave of death-defying stunts, along with thrills and spills from real explosions of fire and water.",10am - 6pm,"[103.824878, 1.253186]"
+12,Silk Road of the Sea,restaurant,all,103.820576,1.250334,"Restaurant and Bar at Palawan Beach. Signature Dishes
+Braised Shark√É¬ïs Fin with Bamboo Pith & Crabmeat Stir-fried Crab with Dried Red Chilli","Mon - Thu
 11:00 - 15:00
 18:00 - 22:00
 Fri - Sun
 11:00 - 22:00
 Public Holiday
 11:00 - 22:00","[103.820576, 1.250334]"
-14,Samundar Indian Fusion Cuisine and Bar,restaurant,all,103.821607,1.249694,"North Indian Cuisine, Tandoori, Indian Breads, Bar Snacks, Curries, Beers, Wines, Cocktails, Mockta",11:30 - 22:30,"[103.821607, 1.249694]"
-15,Dragon's Teeth Gate Viewpoint,sightseeing,all,103.807373,1.259982,"Sightseeing spot to view the Dragon's Teeth Gate, a historical landmark for Singapore's sea ports.",NA,"[103.807373, 1.259982]"
-16,7-Eleven,store,all,103.811249,1.257294,7-Eleven convenience store,NA,"[103.811249, 1.257294]"
-17,Resort World Sentosa,place,all,103.820727,1.256208,"Resorts World Sentosa (RWS), Asia’s premium lifestyle destination resort, is located on Singapore’s resort island of Sentosa. Spanning 49 hectares, RWS is home to world-class attractions including Universal Studios Singapore, S.E.A. Aquarium, Dolphin Island and Adventure Cove Waterpark. Complementing the adventure and adrenaline of its theme parks and attractions are seven unique luxury hotels, the world-class Resorts World Convention Centre, and a casino. RWS offers award-winning dining experiences and exciting cuisines from around the world across its many renowned celebrity chef restaurants, establishing itself as a key player in Singapore’s vibrant and diverse dining scene and a leading gourmet destination in Asia for epicureans. The integrated resort also offers world-class entertainment, from concerts to public shows. RWS has been named “Best Integrated Resort” since 2011 for ten consecutive years at the TTG Travel Awards which recognises the best of Asia-Pacific’s travel industry.",NA,"[103.820727, 1.256208]"
-18,Din Tai Fung,restaurant,all,103.820562,1.25725,Din Tai Fung Dim Sum restaurant,11am - 9pm,"[103.820562, 1.25725]"
-19,Texas Chicken,restaurant,all,103.820311,1.257018,Texas Chicken Fast food restaurant,NA,"[103.820311, 1.257018]"
-20,Putien,restaurant,all,103.820001,1.256455,Putien Chinese Cuisine restaurant,11.30am - 10pm,"[103.820001, 1.256455]"
-21,Resorts World Theatre,entertainment,all,103.820007,1.256292,"Designed by Michael Graves, the 1,599-seat theatre is a perfect live entertainment venue for a wide range of events, ranging from conferences to large-scale musicals and concerts.
+13,Samundar Indian Fusion Cuisine and Bar,restaurant,all,103.821607,1.249694,"North Indian Cuisine, Tandoori, Indian Breads, Bar Snacks, Curries, Beers, Wines, Cocktails, Mockta",11:30 - 22:30,"[103.821607, 1.249694]"
+14,Dragon's Teeth Gate Viewpoint,sightseeing,all,103.807373,1.259982,"Sightseeing spot to view the Dragon's Teeth Gate, a historical landmark for Singapore's sea ports.",,"[103.807373, 1.259982]"
+15,7-Eleven,store,all,103.811249,1.257294,7-Eleven convenience store,,"[103.811249, 1.257294]"
+16,Resort World Sentosa,place,all,103.820727,1.256208,"Resorts World Sentosa (RWS), Asia√É¬ïs premium lifestyle destination resort, is located on Singapore√É¬ïs resort island of Sentosa. Spanning 49 hectares, RWS is home to world-class attractions including Universal Studios Singapore, S.E.A. Aquarium, Dolphin Island and Adventure Cove Waterpark. Complementing the adventure and adrenaline of its theme parks and attractions are seven unique luxury hotels, the world-class Resorts World Convention Centre, and a casino. RWS offers award-winning dining experiences and exciting cuisines from around the world across its many renowned celebrity chef restaurants, establishing itself as a key player in Singapore√É¬ïs vibrant and diverse dining scene and a leading gourmet destination in Asia for epicureans. The integrated resort also offers world-class entertainment, from concerts to public shows. RWS has been named √É¬íBest Integrated Resort√É¬ì since 2011 for ten consecutive years at the TTG Travel Awards which recognises the best of Asia-Pacific√É¬ïs travel industry.",,"[103.820727, 1.256208]"
+17,Din Tai Fung,restaurant,all,103.820562,1.25725,Din Tai Fung Dim Sum restaurant,11am - 9pm,"[103.820562, 1.25725]"
+18,Texas Chicken,restaurant,all,103.820311,1.257018,Texas Chicken Fast food restaurant,,"[103.820311, 1.257018]"
+19,Putien,restaurant,all,103.820001,1.256455,Putien Chinese Cuisine restaurant,11.30am - 10pm,"[103.820001, 1.256455]"
+20,Resorts World Theatre,entertainment,all,103.820007,1.256292,"Designed by Michael Graves, the 1,599-seat theatre is a perfect live entertainment venue for a wide range of events, ranging from conferences to large-scale musicals and concerts.
 
-Resorts World Theatre’s stage measures 30 metres (depth), 60 metres (width) and 18 metres (height). With a large and deep accessible sub-stage, performers can appear on stage from its basement to further enthrall the audience. The theatre is fully equipped with high-quality audio, visual and lighting equipment to deliver the perfect guest experience. 
+Resorts World Theatre√É¬ïs stage measures 30 metres (depth), 60 metres (width) and 18 metres (height). With a large and deep accessible sub-stage, performers can appear on stage from its basement to further enthrall the audience. The theatre is fully equipped with high-quality audio, visual and lighting equipment to deliver the perfect guest experience. 
 
 Located at Resorts World Sentosa,  the theatre location offers visitors a wide range of pre and post-show activities and dining options within the same complex. 
 
 Have a refreshing entertainment experience!",Refer to show schedule,"[103.820007, 1.256292]"
-22,Equarius Hotel,hotel,all,103.816892,1.257708,"Combine the luxuries of spacious, stylish living with the stunning vistas that nature has to offer. Arise in the morning to magnificent views of forest or ocean from your room balcony before heading out on the nearby nature hikes or to experience the thrills of the resort's most popular attractions.",NA,"[103.816892, 1.257708]"
-23,Scentopia,entertainment,all,103.813653,1.25467,"Explore the wonderful world of aromas at Scentopia! Join our innovative touchless perfume-making bar, indulge in free scented tours & enjoy with 300+ augmented reality experiences.
+21,Equarius Hotel,hotel,all,103.816892,1.257708,"Combine the luxuries of spacious, stylish living with the stunning vistas that nature has to offer. Arise in the morning to magnificent views of forest or ocean from your room balcony before heading out on the nearby nature hikes or to experience the thrills of the resort's most popular attractions.",,"[103.816892, 1.257708]"
+22,Scentopia,entertainment,all,103.813653,1.25467,"Explore the wonderful world of aromas at Scentopia! Join our innovative touchless perfume-making bar, indulge in free scented tours & enjoy with 300+ augmented reality experiences.
  
 With our collection of 200 scent oils, you can craft countless perfume combinations. Take a personality quiz, discover your scent preference and create your signature fragrance.
  
 Wish to bring home a unique souvenir? Purchase a DIY kit to create your very own family scent at home.
  
 Perfect for a date night, bridal shower and corporate events!",11am - 7pm (last booking at 6pm),"[103.813653, 1.25467]"
-24,Skyline Luge Sentosa,entertainment,all,103.817344,1.255048,"Experience the first luge ride in Southeast Asia via four different tracks, be it during the day or night under clear skies at Skyline Luge Singapore. Zip down the four different trails (Dragon, Expedition, Kupu Kupu and Jungle), specially designed with hairpin corners, long straights and exciting slopes. Otherwise hop on the Skyride for a scenic view of Sentosa and the surrounding coastline.","Mon - Thu: 11am - 7.30pm
+23,Skyline Luge Sentosa,entertainment,all,103.817344,1.255048,"Experience the first luge ride in Southeast Asia via four different tracks, be it during the day or night under clear skies at Skyline Luge Singapore. Zip down the four different trails (Dragon, Expedition, Kupu Kupu and Jungle), specially designed with hairpin corners, long straights and exciting slopes. Otherwise hop on the Skyride for a scenic view of Sentosa and the surrounding coastline.","Mon - Thu: 11am - 7.30pm
 Fri: 11am - 9pm
 Sat: 10am - 9pm
 Sun & PH: 10am - 7.30pm
@@ -105,26 +80,26 @@ From 1 Sep 2024 onwards:
 Mon - Thu: 10am - 7.30pm
 Fri & Sat: 10am - 9pm
 Sun & PH: 10am - 7.30pm","[103.817344, 1.255048]"
-25,iFly Singapore,entertainment,all,103.817509,1.252057,"Make all your flying dreams come true inside the world’s largest themed wind tunnel spanning 16.5 feet wide and 56.5 feet tall. And as the professionally-guided experience takes place inside a wind tunnel with 18 feet tall acrylic glass walls, this indoor skydiving experience boasts a bonus view of the South China Sea and Siloso Beach.
+24,iFly Singapore,entertainment,all,103.817509,1.252057,"Make all your flying dreams come true inside the world√É¬ïs largest themed wind tunnel spanning 16.5 feet wide and 56.5 feet tall. And as the professionally-guided experience takes place inside a wind tunnel with 18 feet tall acrylic glass walls, this indoor skydiving experience boasts a bonus view of the South China Sea and Siloso Beach.
 
 Flyers must be 7 years of age and above.","Mon, Tue, Thu - Sun & PH: 9am - 10pm
 (first flight at 10am, last flight at 9.30pm)
 Wed: 11am - 10pm
 (first flight at 12pm, last flight at 9.30pm)
 ","[103.817509, 1.252057]"
-26,Adventure Cove Sentosa,entertainment,all,103.8071464,1.2928392,"Southeast Asia’s first hydro-magnetic coaster isn’t our only claim to fame!
+25,Adventure Cove Sentosa,entertainment,all,103.817989,1.258275,"Southeast Asia√É¬ïs first hydro-magnetic coaster isn√É¬ït our only claim to fame!
 
-From zooming down high-speed water slides to drifting lazily down a winding river; snorkeling with 20,000 marine fish to wading with friendly rays in the shallows. There’s a wave of fun waiting for the thrill-seeker and nature lover in you, here at Adventure Cove Waterpark.
+From zooming down high-speed water slides to drifting lazily down a winding river; snorkeling with 20,000 marine fish to wading with friendly rays in the shallows. There√É¬ïs a wave of fun waiting for the thrill-seeker and nature lover in you, here at Adventure Cove Waterpark.
 
-So get your goggles ready!",Daily: 10am - 5pm,"[103.8071464, 1.2928392]"
-27,Southern Albatross,place,all,103.820066,1.258883,"Experience Sentosa from the sea and its historical picturesque Southern Islands on the Southern Albatross, a fast 60-min boat ride with great photo opportunities along the way. Discover Singapore’s best kept secret locations.",Thurs to Mon: 1pm - 2pm / 5pm - 6pm,"[103.820066, 1.258883]"
-28,Michael's Lounge,bar,adult,103.8205663,1.2572317,Do not dismiss this lobby bar at The Hotel Michael as just another hotel bar. Its location right in the heart of Resorts World Sentosa makes it a great indoor spot to people watch while nursing a drink. Wind down after an exciting day with their selection of tipples and nibbles.,"Daily: 11am - 7pm
-Last order : 6:30pm","[103.8205663, 1.2572317]"
-29,Krispy Kreme,food,all,103.8203014,1.2564542,"For that much needed mid-day sugar rush, you cannot pick something more delicious than a Krispy Kreme Glazed Doughnut. Everyone has their favourite flavour, and you get to choose from original-glazed, cake doughnuts, doughnuts with fillings and mini doughnuts.","Sun - Thu:
+So get your goggles ready!",Daily: 10am - 5pm,"[103.817989, 1.258275]"
+26,Southern Albatross,place,all,103.820066,1.258883,"Experience Sentosa from the sea and its historical picturesque Southern Islands on the Southern Albatross, a fast 60-min boat ride with great photo opportunities along the way. Discover Singapore√É¬ïs best kept secret locations.",Thurs to Mon: 1pm - 2pm / 5pm - 6pm,"[103.820066, 1.258883]"
+27,Michael's Lounge,bar,adult,103.819777,1.255144,Do not dismiss this lobby bar at The Hotel Michael as just another hotel bar. Its location right in the heart of Resorts World Sentosa makes it a great indoor spot to people watch while nursing a drink. Wind down after an exciting day with their selection of tipples and nibbles.,"Daily: 11am - 7pm
+Last order : 6:30pm","[103.819777, 1.255144]"
+28,Krispy Kreme,food,all,103.8203014,1.2564542,"For that much needed mid-day sugar rush, you cannot pick something more delicious than a Krispy Kreme Glazed Doughnut. Everyone has their favourite flavour, and you get to choose from original-glazed, cake doughnuts, doughnuts with fillings and mini doughnuts.","Sun - Thu:
 11.30am - 8pm
 Fri - Sat and Eve of PH:
 11.30am - 8.30pm","[103.8203014, 1.2564542]"
-30,Starbucks,food,all,103.819969,1.256371,"The place to go for everything from a daily cuppa to grab-and-go lunches, a spot of tea, indulgent desserts, quick in-between bites, or just a place to rest-your-feet after a day or island thrill, and sip on a daily brew.","Resorts World Sentosa
+29,Starbucks,food,all,103.819969,1.256371,"The place to go for everything from a daily cuppa to grab-and-go lunches, a spot of tea, indulgent desserts, quick in-between bites, or just a place to rest-your-feet after a day or island thrill, and sip on a daily brew.","Resorts World Sentosa
 Daily, eve of PH & PHs: 7.30
 am - 10pm
  
@@ -132,16 +107,16 @@ Sensoryscape
 Mon - Thu, PH:
 8am - 9pm
 Fri -Sun, eve of PH: 8am - 10pm","[103.819969, 1.256371]"
-31,llaollao,food,all,103.8186738,1.2563355,"Started in 2009 from Spain, llaollao is a brand of healthy yogurt widely accepted for its enormous benefits as well as its extraordinary taste with the customers being the inventors of their own creation thanks to the infinite combination of toppings.","Sun - Thurs: 11:30am - 9pm
-Fri - Sat: 11.30am - 10pm","[103.8186738, 1.2563355]"
-32,Malaysian Food Street,food,all,103.821523,1.256964,"Have your fill ‘across the Causeway’ eats, the Malaysian Food Street is a cluster of hawker stalls that offer up a variety of Malaysian hawker fare. Tuck into the likes of Heun Kee Claypot Chicken Rice, KL Jalan Alor Hokkien Mee (famed for its addictive dark sauce noodles), Penang Hokkien Prawn Mee, Penang Cendol (the Ice Kacang is a firm favourite), and Penang Lim Brothers' Char Koay Teow. It is like taking a foodie trip to Malaysia, without the passport.","Daily: 8.30am - 8.30pm
+30,llaollao,food,all,103.820102,1.256202,"Started in 2009 from Spain, llaollao is a brand of healthy yogurt widely accepted for its enormous benefits as well as its extraordinary taste with the customers being the inventors of their own creation thanks to the infinite combination of toppings.","Sun - Thurs: 11:30am - 9pm
+Fri - Sat: 11.30am - 10pm","[103.820102, 1.256202]"
+31,Malaysian Food Street,food,all,103.821523,1.256964,"Have your fill √É¬îacross the Causeway√É¬ï eats, the Malaysian Food Street is a cluster of hawker stalls that offer up a variety of Malaysian hawker fare. Tuck into the likes of Heun Kee Claypot Chicken Rice, KL Jalan Alor Hokkien Mee (famed for its addictive dark sauce noodles), Penang Hokkien Prawn Mee, Penang Cendol (the Ice Kacang is a firm favourite), and Penang Lim Brothers' Char Koay Teow. It is like taking a foodie trip to Malaysia, without the passport.","Daily: 8.30am - 8.30pm
 Last order at 8pm","[103.821523, 1.256964]"
-33,Osia Steak and Seafood Grill,restaurant,all,103.8198747,1.2557485,"Embark on a gastronomic journey like no other. Osia Steak and Seafood Grill was born from a vision to combine the finest ingredients from land and sea and transform them into culinary masterpieces. The freshest seafood and the choicest cuts of meat are sourced to create a menu that celebrates the rich bounty of the earth and the ocean. Our signature dishes, including the fullblood 2GR Wagyu Beef and Humpty Doo Barramundi, are personally sourced by Chef Scott Webster from boutique Australian farms with sustainable practices.","Lunch:
+32,Osia Steak and Seafood Grill,restaurant,all,103.819929,1.255453,"Embark on a gastronomic journey like no other. Osia Steak and Seafood Grill was born from a vision to combine the finest ingredients from land and sea and transform them into culinary masterpieces. The freshest seafood and the choicest cuts of meat are sourced to create a menu that celebrates the rich bounty of the earth and the ocean. Our signature dishes, including the fullblood 2GR Wagyu Beef and Humpty Doo Barramundi, are personally sourced by Chef Scott Webster from boutique Australian farms with sustainable practices.","Lunch:
 11.30am (1st Seating); 1.30pm (2nd Seating)
 Dinner:
-6pm (1st Seating); 8.30pm (2nd Seating)","[103.8198747, 1.2557485]"
-34,Feng Shui Inn,restaurant,all,103.8190843,1.2553266,"Let your mealtimes and after-hours gatherings sizzle. From the vibrant atmosphere to the aroma of grilling meat skewers wafting in the air, there’s plenty that will draw you into the new and chic foodie hangout of progressive Thai gastronomy.
-","Daily
+6pm (1st Seating); 8.30pm (2nd Seating)","[103.819929, 1.255453]"
+33,Feng Shui Inn,restaurant,all,103.8190843,1.2553266,"Be inspired by the culinary delights of Chef Li's menu, showcasing Cantonese cuisine at its finest, with dishes created before you in an open kitchen. Watch in wonder as his maestro chefs prepare decadent dishes from the freshest ingredients. From freshly made dim sum to stir-fried dishes infused with ‘wok hei’, succulent roast meats to nourishing double-boiled soups, every recipe is a tribute to authentic Cantonese cooking the way it should be.
+Complement your exquisite culinary experience with a rich tea menu and your choice from a delectable selection of fine wines, champagnes and spirits.","Daily
 
 
 Lunch
@@ -152,70 +127,60 @@ Second seating: 1pm
 Dinner
 First seating: 6pm
 Second seating: 8.30pm","[103.8190843, 1.2553266]"
-35,Soi Social,restaurant,all,103.8199069,1.2552536,"Let your mealtimes and after-hours gatherings sizzle. From the vibrant atmosphere to the aroma of grilling meat skewers wafting in the air, there’s plenty that will draw you into the new and chic foodie hangout of progressive Thai gastronomy.
+34,Soi Social,restaurant,all,103.820055,1.255083,"Let your mealtimes and after-hours gatherings sizzle. From the vibrant atmosphere to the aroma of grilling meat skewers wafting in the air, there√É¬ïs plenty that will draw you into the new and chic foodie hangout of progressive Thai gastronomy.
 ","Weds - Sun
 
 Lunch: 12pm to 3pm (last order 2.30pm)
 Dinner: 5pm to 11pm (last order 10.30pm) 
 
-Closed every Mon and Tue.","[103.8199069, 1.2552536]"
-36,Hotel Ora,hotel,all,103.8193029,1.256392188,"At Hotel Ora, enjoy modern luxury that’s both smart and sustainable in the guestrooms and workspaces that feature human-centric design.",NA,"[103.8193029, 1.256392188]"
-37,Crockford's Tower,hotel,all,103.819366,1.2551979,"Be cocooned in the lap of luxury at Crockfords Tower, an exclusive all-suite hotel with lavish amenities like bathrooms equipped with its own steam room and a television set that could be seen through a mirror.",NA,"[103.819366, 1.2551979]"
-38,Central Beach Bazaar,place,all,103.8171793,1.2516423,"Located at the heart of Sentosa’s beaches, Central Beach Bazaar is a new attraction that offers a day-to-night carnival beach experience, featuring the return of iconic Sentosa Musical Fountain, which is augmented by the tallest fountain in Southeast Asia, the Sentosa SkyJet. Central Beach Bazaar will be the highlight of your day at the beach, more than just the sun, sand and sea!
-",11am - 9pm,"[103.8171793,1.2516423]"
-39,Ola Beach Club,place,all,103.81519,1.253094,"Meaning 'life' in Hawaiian, Ola Beach Club on Siloso is Singapore’s only all-encompassing Hawaiian -themed lifestyle venue that caters to fun and sun-loving guests.
+Closed every Mon and Tue.","[103.820055, 1.255083]"
+35,Hotel Ora,hotel,all,103.8193029,1.256392188,"At Hotel Ora, enjoy modern luxury that√É¬ïs both smart and sustainable in the guestrooms and workspaces that feature human-centric design.",,"[103.8193029, 1.256392188]"
+36,Crockford's Tower,hotel,all,103.819556,1.255484,"Be cocooned in the lap of luxury at Crockfords Tower, an exclusive all-suite hotel with lavish amenities like bathrooms equipped with its own steam room and a television set that could be seen through a mirror.",,"[103.819556, 1.255484]"
+37,Central Beach Bazaar,place,all,103.8171793,1.2516423,"Located at the heart of Sentosa√É¬ïs beaches, Central Beach Bazaar is a new attraction that offers a day-to-night carnival beach experience, featuring the return of iconic Sentosa Musical Fountain, which is augmented by the tallest fountain in Southeast Asia, the Sentosa SkyJet. Central Beach Bazaar will be the highlight of your day at the beach, more than just the sun, sand and sea!
+",11am - 9pm,"[103.8171793, 1.2516423]"
+38,Ola Beach Club,place,all,103.815429,1.253039,"Meaning 'life' in Hawaiian, Ola Beach Club on Siloso is Singapore√É¬ïs only all-encompassing Hawaiian -themed lifestyle venue that caters to fun and sun-loving guests.
 
 Two stories high of multiple event spaces, endowed with a wide seafront plus a private pool to boot, there is no other place to hold business functions, joyous occasions, weddings or parties.
 
-What’s more, enjoy complimentary dine and play time with $20 worth of Ola Beach Club dining credits & 20 Token Sentosa Fun Pass™ per person when you purchase this Exclusive Meeting Deals for 5. Available from now to 31 Mar 2022.",10am - 10pm,"[103.81519,1.253094]"
-40,SkyHelix Sentosa,entertainment,all,103.8154273,1.2549435,"Take flight on the highest open-air panoramic ride in Singapore – SkyHelix Sentosa! Sit in an open-air gondola that gently rotates as it ascends to a height of 79 metres above sea level. Let your hair down, dangle your feet in the air and enjoy the uplifting experience with a cool drink in hand.
+What√É¬ïs more, enjoy complimentary dine and play time with $20 worth of Ola Beach Club dining credits & 20 Token Sentosa Fun Pass√Ç¬™ per person when you purchase this Exclusive Meeting Deals for 5. Available from now to 31 Mar 2022.",10am - 10pm,"[103.815429, 1.253039]"
+39,SkyHelix Sentosa,entertainment,all,103.817633,1.254938,"Take flight on the highest open-air panoramic ride in Singapore √É¬ê SkyHelix Sentosa! Sit in an open-air gondola that gently rotates as it ascends to a height of 79 metres above sea level. Let your hair down, dangle your feet in the air and enjoy the uplifting experience with a cool drink in hand.
 
-Be mesmerised by the breathtaking 360° views stretching from Sentosa to the Keppel Bay area and the Southern Islands.
+Be mesmerised by the breathtaking 360√Ç¬° views stretching from Sentosa to the Keppel Bay area and the Southern Islands.
 
-Day or night, each “flight” is a ride to remember!","Daily: 10am - 9.30pm
-Last admission at 9pm","[103.8154273,1.2549435]"
-41,Sentosa Musical Fountain,entertainment,all,103.8171793,1.2516423,"The beloved Sentosa Musical Fountain has returned to the island! Relive the nostalgia with this modern-day iteration of the famous Sentosa Musical Fountain, one of Sentosa’s most iconic shows in the early 1980s. Watch sophisticated synchronised water jets dance to an array of soundtracks and feel your spirits lift as you enjoy the day performance set against the open sea.
-
-The attraction comprises of a 5–minute performance.
-
-Singapore’s National Day Songs
-
-Enjoy a medley of 3 popular theme songs specially created to commemorate Singapore’s birthday.","Show Timings 
-
-4pm, 4.30pm, 5pm, 5.30pm, 6pm","[103.8171793,1.2516423]"
-42,Sentosa SkyJet,entertainment,all,103.8171793,1.2516423,"At 80 metres tall, equivalent to a 24-storey building, Sentosa SkyJet will be the tallest fountain in Southeast Asia. This impressive fountain will be a captivating visual marker for the beachgoers. Appreciate its magnificence in the day against the blue sky and at night when 24 LED lights illuminate its stream, presenting a magical spectacle set in the evening sky. 
+Day or night, each √É¬íflight√É¬ì is a ride to remember!","Daily: 10am - 9.30pm
+Last admission at 9pm","[103.817633, 1.254938]"
+40,Sentosa SkyJet,entertainment,all,103.8171793,1.2516423,"At 80 metres tall, equivalent to a 24-storey building, Sentosa SkyJet will be the tallest fountain in Southeast Asia. This impressive fountain will be a captivating visual marker for the beachgoers. Appreciate its magnificence in the day against the blue sky and at night when 24 LED lights illuminate its stream, presenting a magical spectacle set in the evening sky. 
 
 Admission: Free","10am -10pm
-Not operating during Sentosa Musical Fountain and Wings of Time show periods","[103.8171793,1.2516423]"
-43,DinoVenture: A Virtual Reality Experience,entertainment,all,103.8171793,1.2516423,"DinoVenture is a state-of-the-art virtual reality (VR) dinosaur encounter where guests can enjoy the thrill of a unique adventure like never before. Strap into the seat with a pair of VR goggles, and  prepare for an adrenaline-pumping adventure. Enjoy a sense of exploration and exhilaration while soaring through lush greenery and exploring off-the-beaten paths in a quest to escape from prehistoric predators. This cutting-edge technology offers a more immersive experience than conventional VR rides. With a variety of movements,guests willfeelanadrenaline rush as the ride maneuvers, racing against time to return to safety.",10am - 10pm (Last ride at 9:40pm),"[103.8171793,1.2516423]"
-44,KidZania Singapore,entertainment,kids,103.817673,1.251598,"A fun place for kids, KidZania Singapore is a hyper-real kids-sized indoor city for children aged 4-17 years old, spanning 7,600 square feet and offering exciting career role-play experiences in collaboration with over 40 partners. KidZania Singapore brings immersive learning experiences to children, sparking their imagination and interest through role-play and interactive experiences, allowing them to explore what it’s like to be a pilot, chef, vet, or even a mountaineer.
-",Daily: 10am - 6pm (Last admission: 4:30pm),"[103.817673,1.251598]"
-45,Wings of Time,entertainment,all,103.8169278,1.251053188,"Wings of Time is one of Sentosa's most breathtaking attractions, combining water, laser, fire, and music to create a mesmerizing night show about friendship and courage. Situated on the scenic Siloso Beach, this award-winning spectacle is staged nightly, promising an unforgettable experience for visitors of all ages. Be wowed by spellbinding laser, fire, and water effects set to a majestic soundtrack, complete with a jaw-dropping fireworks display. A fitting end to your day out at Sentosa, it’s possibly the only place in Singapore where you can witness such an awe-inspiring performance.","Daily  
+Not operating during Sentosa Musical Fountain and Wings of Time show periods","[103.8171793, 1.2516423]"
+41,KidZania Singapore,entertainment,kids,103.82036,1.251383,"A fun place for kids, KidZania Singapore is a hyper-real kids-sized indoor city for children aged 4-17 years old, spanning 7,600 square feet and offering exciting career role-play experiences in collaboration with over 40 partners. KidZania Singapore brings immersive learning experiences to children, sparking their imagination and interest through role-play and interactive experiences, allowing them to explore what it√É¬ïs like to be a pilot, chef, vet, or even a mountaineer.
+",Daily: 10am - 6pm (Last admission: 4:30pm),"[103.82036, 1.251383]"
+42,Wings of Time,entertainment,all,103.817051,1.251271,"Wings of Time is one of Sentosa's most breathtaking attractions, combining water, laser, fire, and music to create a mesmerizing night show about friendship and courage. Situated on the scenic Siloso Beach, this award-winning spectacle is staged nightly, promising an unforgettable experience for visitors of all ages. Be wowed by spellbinding laser, fire, and water effects set to a majestic soundtrack, complete with a jaw-dropping fireworks display. A fitting end to your day out at Sentosa, it√É¬ïs possibly the only place in Singapore where you can witness such an awe-inspiring performance.","Daily  
 
 Show 1: 7.40pm  
-Show 2: 8.40pm","[103.8169278,1.251053188]"
-46,"C-side: Bikini Bar, Coastes, and Sand Bar
-",bar,all,103.8164182,1.252005145,"Experience the epitome of beach culture at C Side, the most authentic beach destination in Singapore. The ultimate escape from the hustle bustle of the city is right here at your doorstep. With a mix of entertainment, activities, parties, food & beverage options, C Side has something for everyone.
+Show 2: 8.40pm","[103.817051, 1.251271]"
+43,"C-side: Bikini Bar, Coastes, and Sand Bar
+",bar,all,103.816046,1.25249,"Experience the epitome of beach culture at C Side, the most authentic beach destination in Singapore. The ultimate escape from the hustle bustle of the city is right here at your doorstep. With a mix of entertainment, activities, parties, food & beverage options, C Side has something for everyone.
 
 The ideal place for corporate functions, dinner and dance, family day, networking events, product launches, birthday parties and weddings, C Side is the most convenient beach getaway in Singapore. With panoramic views of the Siloso shoreline, C Side offers a great vantage point to take in glorious sunsets and beautiful displays of fireworks every evening.
 
 With an expansive beach and deck space, C Side is a perfect venue for small and large scale events whilst keeping that intimate feel. At C Side, beachlovers can truly unwind and enjoy the sun, sand, sea and good food!
 
-C Side is a combination of five outlets, each with its own distinct vibe and concept: Coastes, Sand Bar, Bikini Bar, Flame and Makan_. C Side also has beach side cabins for a unique retail experience.",Mon – Thu: 02:00 pm – 09:30 pm. Fri: 02:00 pm – 10.30 pm. Sat: 12:00 pm – 10:30 pm. Sun: 12:00 pm – 9.30pm.,"[103.8164182,1.252005145]"
-47,Syun,restaurant,all,103.8162333,1.2533904,"Shin Washoku, or ""New Japanese Cuisine,"" is a contemporary reinterpretation of traditional Japanese culinary practices. While honoring the core values of using the finest ingredients and heartfelt preparation, this style embraces innovative techniques and presentations.
+C Side is a combination of five outlets, each with its own distinct vibe and concept: Coastes, Sand Bar, Bikini Bar, Flame and Makan_. C Side also has beach side cabins for a unique retail experience.",Mon √É¬ê Thu: 02:00 pm √É¬ê 09:30 pm. Fri: 02:00 pm √É¬ê 10.30 pm. Sat: 12:00 pm √É¬ê 10:30 pm. Sun: 12:00 pm √É¬ê 9.30pm.,"[103.816046, 1.25249]"
+44,Syun,restaurant,all,103.819768,1.255424,"Shin Washoku, or ""New Japanese Cuisine,"" is a contemporary reinterpretation of traditional Japanese culinary practices. While honoring the core values of using the finest ingredients and heartfelt preparation, this style embraces innovative techniques and presentations.
 
 The restaurant is dedicated to providing an exceptional dining experience that blends the timeless essence of Japanese cuisine with modern sensibilities. Each dish is served with ""Omotenashi"", a traditional Japanese concept of hospitality characterized by warmth, respect, and attention to detail.
 
 Diners can discover the familiar flavors and comforting sensations of classic Japanese cuisine, elevated by the artistry and creativity of contemporary culinary techniques.","Lunch:
 12pm - 3pm (Last Order 2.30pm)
 Dinner:
-6pm - 10.30pm (Last Order 10pm)","[103.8162333,1.2533904]"
-48,Sanctuary Tearoom,restaurant,all,103.8195841,1.2520799,"Situated within the tranquil lush greenery within the resort, Sanctuary Tearoom is an all-day dining restaurant offering hearty menus that embrace fresh produce, conscious ingredients, and local finds.","Breakfast: 7am - 10.30am
-Lunch & Dinner: 11am - 10pm","[103.8195841,1.2520799]"
-49,Rumours Beach Club,entertainment,adult,103.814553,1.254147,"Rumours Beach Club is the only beach club in Singapore to have three swimming pools, with different pockets of spaces such as the VIP Area, Cabana Area, Beachfront Area, Indoor Area, Outdoor Area and Alfresco Area which can be sectioned off to cater for events of all sizes. From private romantic dinners to full-fledged wild parties for party-goers, Rumours Beach Club brings in a whole new beach experience perfect for any type of get-togethers. All you gotta do is turn up, tune out, lounge on and #getbeachy in the beach bar club.","Mon - Thurs: 11am - 9pm 
+6pm - 10.30pm (Last Order 10pm)","[103.819768, 1.255424]"
+45,Sanctuary Tearoom,restaurant,all,103.822114,1.252083,"Situated within the tranquil lush greenery within the resort, Sanctuary Tearoom is an all-day dining restaurant offering hearty menus that embrace fresh produce, conscious ingredients, and local finds.","Breakfast: 7am - 10.30am
+Lunch & Dinner: 11am - 10pm","[103.822114, 1.252083]"
+46,Rumours Beach Club,entertainment,adult,103.814612,1.254018,"Rumours Beach Club is the only beach club in Singapore to have three swimming pools, with different pockets of spaces such as the VIP Area, Cabana Area, Beachfront Area, Indoor Area, Outdoor Area and Alfresco Area which can be sectioned off to cater for events of all sizes. From private romantic dinners to full-fledged wild parties for party-goers, Rumours Beach Club brings in a whole new beach experience perfect for any type of get-togethers. All you gotta do is turn up, tune out, lounge on and #getbeachy in the beach bar club.","Mon - Thurs: 11am - 9pm 
 Fri, Sat, eve of PH: 10am - 10pm
-Sun & PH: 10am - 9pm","[103.814553,1.254147]"
-50,Sentosa 4D AdventureLand: Immersive 4D Rides & Shows,entertainment,all,103.8169783,1.2555303,"Dive into an immersive world at Sentosa 4D AdventureLand! Experience the rush of 4D rides and shows with cutting-edge technology. Perfect for family fun, it's a whirlwind of excitement waiting for you in the heart of Sentosa.
+Sun & PH: 10am - 9pm","[103.814612, 1.254018]"
+47,Sentosa 4D AdventureLand: Immersive 4D Rides & Shows,entertainment,all,103.8169783,1.2555303,"Dive into an immersive world at Sentosa 4D AdventureLand! Experience the rush of 4D rides and shows with cutting-edge technology. Perfect for family fun, it's a whirlwind of excitement waiting for you in the heart of Sentosa.
 
 Attractions and Experiences:
 
@@ -228,84 +193,84 @@ Desperados: A 4D interactive shooting game that's perfect for action lovers.
 Pirates 4D: An immersive 4D movie experience where you become part of the show through a synchronisation of 3D imaging, wind, water and other special effects.","Daily: 12pm - 7pm
 Last admission:
 
-• Any 2 Rides / 4-in-1 Combo: 6pm
-• Last Single Ride/Show: 6.30pm ","[103.8169783,1.2555303]"
-51,The Forum,shopping,all,103.8202366,1.257047,"The Forum may be closed now, but good things come to those who wait! It’s all part of our expansion plans to give you countless new and exciting moments across the resort – just like we announced in February of 2022.
-",Closed,"[103.8202366,1.257047]"
-52,Oasia Resort Sentosa,hotel,all,103.8194919,1.2531961,"Journey with us at Oasia Resort Sentosa, an idyllic destination to refresh, recharge and refuel. Tailored to the traveller who values wellness and a well-balanced lifestyle, participate in various fitness activities and wellness workshops where you can learn about sustainability, healthy living, urban farming, and self-care tips. Nestled within the resort is Oasia Spa, a sanctuary of healing and relaxation with Asian-inspired signature treatments.",NA,"[103.8194919,1.2531961]"
-53,The Barracks Hotel Sentosa,hotel,all,103.8209931,1.2519692,"Set against Sentosa’s storied backdrop of maritime intrigue, The Barracks Hotel Sentosa was once a British artillery outpost, home to soldiers from afar. Now lovingly restored, the hotel transports world-weary wanderers to the golden age of travel, when travel was – and still is – a stylish art form, filled with marvel, romance and discovery.",NA,"[103.8209931,1.2519692]"
-54,The Outpost Hotel Sentosa,hotel,all,103.8178114,1.2529593,"Set on a hilltop overlooking the beautiful Singapore Strait, The Outpost Hotel Sentosa is an adult-centric trendy getaway for the fun and the stylish. All rooms feature contemporary aesthetics and bold crisp lines, inspired by distinctive black and white design. Be your extraordinary self with access to Outpost Xperience, a host of purposefully curated brand experiences, fitness activities, customised minibar, stay privileges and access to 1-Altitude Coast, the island's only adults-exclusive rooftop pool and day club.",NA,"[103.8178114,1.2529593]"
-55,Village Hotel Sentosa,hotel,all,103.8176233,1.2523958,"A fun and vibrant stay awaits for families and urban explorers at Village Hotel Sentosa, where the sun-washed hues rooms reflect the natural surroundings and the sea. Look forward to a slew of fun activities tailor-made to put children at the centre of any vacation, from four thematic pools to the carnival-like welcome at the lobby featuring a Village Cart offering complimentary local sweets and snacks. Village Hotel Sentosa is part of the enclave of hotels in Sentosa by Far East Hospitality, home to another three uniquely-designed offerings – bespoke luxury at The Barracks Hotel Sentosa, pragmatic wellness at Oasia Resort Sentosa and adult-centric at The Outpost Hotel Sentosa. Enjoy the shared activities, an award-winning spa, a plethora of dining options, and unique experiences during your visit, as well as access a myriad of event spaces at the Events Centre.",NA,"[103.8176233,1.2523958]"
-56,Hotel Michael,hotel,all,103.8175132,1.2547727,"Art lovers will appreciate a stay in this luxury hotel for its exquisite interior design accents, glorious colour palettes and inspiring art installations. A tribute to the great contemporary architect, Michael Graves, Hotel Michael exudes consummate style in its elegant furnishings, warm accessories and inspiring works of art.",NA,"[103.8175132,1.2547727]"
-57,Mess Hall,Food and Beverage,all,103.8180122,1.2529085,"Nestled in a tranquility amongst lush greenery, Mess Hall is a transformation from an ex-military outpost to a chic and stylish space for communal gathering for socialising and dining hotspot. Making a difference as a lifestyle destination, the development infuses contemporary concepts influenced by Singapore’s rich heritage. 
+√Ç¬• Any 2 Rides / 4-in-1 Combo: 6pm
+√Ç¬• Last Single Ride/Show: 6.30pm ","[103.8169783, 1.2555303]"
+48,The Forum,shopping,all,103.8202366,1.257047,"The Forum may be closed now, but good things come to those who wait! It√É¬ïs all part of our expansion plans to give you countless new and exciting moments across the resort √É¬ê just like we announced in February of 2022.
+",Closed,"[103.8202366, 1.257047]"
+49,Oasia Resort Sentosa,hotel,all,103.8194919,1.2531961,"Journey with us at Oasia Resort Sentosa, an idyllic destination to refresh, recharge and refuel. Tailored to the traveller who values wellness and a well-balanced lifestyle, participate in various fitness activities and wellness workshops where you can learn about sustainability, healthy living, urban farming, and self-care tips. Nestled within the resort is Oasia Spa, a sanctuary of healing and relaxation with Asian-inspired signature treatments.",,"[103.8194919, 1.2531961]"
+50,The Barracks Hotel Sentosa,hotel,all,103.8209931,1.2519692,"Set against Sentosa's storied backdrop of maritime intrigue, The Barracks Hotel Sentosa was once a British artillery outpost, home to soldiers from afar. Now lovingly restored, the hotel transports world-weary wanderers to the golden age of travel, when travel was and still is a stylish art form, filled with marvel, romance and discovery.",,"[103.8209931, 1.2519692]"
+51,The Outpost Hotel Sentosa,hotel,all,103.819723,1.251877,"Set on a hilltop overlooking the beautiful Singapore Strait, The Outpost Hotel Sentosa is an adult-centric trendy getaway for the fun and the stylish. All rooms feature contemporary aesthetics and bold crisp lines, inspired by distinctive black and white design. Be your extraordinary self with access to Outpost Xperience, a host of purposefully curated brand experiences, fitness activities, customised minibar, stay privileges and access to 1-Altitude Coast, the island's only adults-exclusive rooftop pool and day club.",,"[103.819723, 1.251877]"
+52,Village Hotel Sentosa,hotel,all,103.819943,1.252237,"A fun and vibrant stay awaits for families and urban explorers at Village Hotel Sentosa, where the sun-washed hues rooms reflect the natural surroundings and the sea. Look forward to a slew of fun activities tailor-made to put children at the centre of any vacation, from four thematic pools to the carnival-like welcome at the lobby featuring a Village Cart offering complimentary local sweets and snacks. Village Hotel Sentosa is part of the enclave of hotels in Sentosa by Far East Hospitality, home to another three uniquely-designed offerings bespoke luxury at The Barracks Hotel Sentosa, pragmatic wellness at Oasia Resort Sentosa and adult-centric at The Outpost Hotel Sentosa. Enjoy the shared activities, an award-winning spa, a plethora of dining options, and unique experiences during your visit, as well as access a myriad of event spaces at the Events Centre.",,"[103.819943, 1.252237]"
+53,Hotel Michael,hotel,all,103.820349,1.255095,"Art lovers will appreciate a stay in this luxury hotel for its exquisite interior design accents, glorious colour palettes and inspiring art installations. A tribute to the great contemporary architect, Michael Graves, Hotel Michael exudes consummate style in its elegant furnishings, warm accessories and inspiring works of art.",,"[103.820349, 1.255095]"
+54,Mess Hall,Food and Beverage,all,103.8180122,1.2529085,"Nestled in a tranquility amongst lush greenery, Mess Hall is a transformation from an ex-military outpost to a chic and stylish space for communal gathering for socialising and dining hotspot. Making a difference as a lifestyle destination, the development infuses contemporary concepts influenced by Singapore's rich heritage. 
 
 
 
-For gourmands with discerning taste buds, Mess Hall offers an impressive collection of culinary flavours and options, serving diners with fresh produce. Retail and convenience outlets carrying a diverse range of products are also available to cater the needs for patrons. Notable dining establishments include Miyoshi by Fat Cow's Omakase and Teppanyaki Restaurant specialising in choice wagyu, to Royal Taj’s heritage-rich Indian curries and biryani, and Quentin’s Bar and Restaurant’s tantalising Eurasian dishes.
+For gourmands with discerning taste buds, Mess Hall offers an impressive collection of culinary flavours and options, serving diners with fresh produce. Retail and convenience outlets carrying a diverse range of products are also available to cater the needs for patrons. Notable dining establishments include Miyoshi by Fat Cow's Omakase and Teppanyaki Restaurant specialising in choice wagyu, to Royal Taj√É¬ïs heritage-rich Indian curries and biryani, and Quentin√É¬ïs Bar and Restaurant√É¬ïs tantalising Eurasian dishes.
 
 
 
-A gateway to a getaway, Mess Hall is truly a place to eat, drink and chill.",10am - 10pm,"[103.8180122,1.2529085]"
-58,The Coffee Bean & Tea Leaf,Food and Beverage,all,103.8150508,1.2512949,"Enjoy a variety of coffee, coffee-based drinks and a variety of cakes and savoury treats. If the island’s heat has you beat, CBTL’s ice-blended drinks are just what you need from coffee based flavoured drinks to tea-based granitas and more.",8am-10pm,"[103.8150508,1.2512949]"
-59,Baristart Cafe,Food and Beverage,all,103.8120424,1.2540393,"We are a Hokkaido based concept café that uses exceptional imported Hokkaido milk quality, the BIEI Jersey milk from Brown Jersey Cows.
+A gateway to a getaway, Mess Hall is truly a place to eat, drink and chill.",10am - 10pm,"[103.8180122, 1.2529085]"
+55,The Coffee Bean & Tea Leaf,Food and Beverage,all,103.817738,1.251223,"Enjoy a variety of coffee, coffee-based drinks and a variety of cakes and savoury treats. If the island's heat has you beat, CBTL's ice-blended drinks are just what you need from coffee based flavoured drinks to tea-based granitas and more.",8am-10pm,"[103.817738, 1.251223]"
+56,Baristart Cafe,Food and Beverage,all,103.814552,1.254129,"We are a Hokkaido based concept cafe that uses exceptional imported Hokkaido milk quality, the BIEI Jersey milk from Brown Jersey Cows.
 
-Hailing all the way from Hokkaido, Japan, Baristart Coffee first started out in June 2015 as a simple coffee stand where one can hear all about the milk produced in Hokkaido and its relation to the coffee scene in Japan. Today, Baristart Coffee has evolved into a lifestyle café serving up a full-range menu. From coffee to desserts and savouries, Baristart Coffee prides itself on its use of pure uncompromising quality of Hokkaido dairy that is both rich and creamy with a tinge of sweetness.",Weekdays: 9am - 5pm Weekends: 9am - 7pm,"[103.8120424,1.2540393]"
-60,Gelatissimo,Food and Beverage,all,103.8137991,1.2520535,"Obsession and imagination – two ingredients that drive us to create the best tasting gelato.
+Hailing all the way from Hokkaido, Japan, Baristart Coffee first started out in June 2015 as a simple coffee stand where one can hear all about the milk produced in Hokkaido and its relation to the coffee scene in Japan. Today, Baristart Coffee has evolved into a lifestyle caf√Ç¬é serving up a full-range menu. From coffee to desserts and savouries, Baristart Coffee prides itself on its use of pure uncompromising quality of Hokkaido dairy that is both rich and creamy with a tinge of sweetness.",Weekdays: 9am - 5pm Weekends: 9am - 7pm,"[103.814552, 1.254129]"
+57,Gelatissimo,Food and Beverage,all,103.816419,1.25194,"Obsession and imagination: two ingredients that drive us to create the best tasting gelato.
 
-We use traditional gelato making techniques, but there’s nothing traditional about us. With fresh, seasonal ingredients, indulgent inclusions and better for you options, our gelato will inspire all your senses.
+We use traditional gelato making techniques, but there's nothing traditional about us. With fresh, seasonal ingredients, indulgent inclusions and better for you options, our gelato will inspire all your senses.
 
-We believe that flavour is more than taste. That’s why we’re always thinking about what’s next – dedicated to delighting our
-customers wherever they find us. Feel our flavour in-store – with an immersive experience that’s full of surprises, or share in the
-magic of Gelatissimo at home.",11am - 8.30pm,"[103.8137991,1.2520535]"
-61,LiHo Tea,Food and Beverage,all,103.8158323,1.2514055,Singapore's No. 1 Homegrown Bubble Tea Brand,11am - 9pm,"[103.8158323,1.2514055]"
-62,Old Chang Kee,Food and Beverage,all,103.8081074,1.2514055,"For over half a century, Singaporeans from all walks of life have enjoyed Old Chang Kee's delectable hot snacks and lip-smacking quick bites.",10am - 8pm,"[103.8081074,1.2514055]"
-63,Good Old Days Food Court,Food and Beverage,all,103.8123146,1.2516525,"After a sun-kissed day at the beach, head over to the air-conditioned Good Old Days, Sentosa’s only Halal food court that is conveniently located right outside Beach Station to fill up on local nosh at affordable prices. With its newly revamped menu and concept, the food court offers a diverse range of local and Asian favourites.
+We believe that flavour is more than taste. That√É¬ïs why we√É¬ïre always thinking about what√É¬ïs next √É¬ê dedicated to delighting our
+customers wherever they find us. Feel our flavour in-store √É¬ê with an immersive experience that√É¬ïs full of surprises, or share in the
+magic of Gelatissimo at home.",11am - 8.30pm,"[103.816419, 1.25194]"
+58,LiHo Tea,Food and Beverage,all,103.818121,1.251482,Singapore's No. 1 Homegrown Bubble Tea Brand,11am - 9pm,"[103.818121, 1.251482]"
+59,Old Chang Kee,Food and Beverage,all,103.818258,1.251382,"For over half a century, Singaporeans from all walks of life have enjoyedold Chang Kee's delectable hot snacks and lip-smacking quick bites.",10am - 8pm,"[103.818258, 1.251382]"
+60,Good Old Days Food Court,Food and Beverage,all,103.817262,1.251657,"After a sun-kissed day at the beach, head over to the air-conditioned Good Old Days, Sentosa's only Halal food court that is conveniently located right outside Beach Station to fill up on local nosh at affordable prices. With its newly revamped menu and concept, the food court offers a diverse range of local and Asian favourites.
 
 Load up on tantalising local favourites where you will be eager to savour the taste of wok hei in your stir-fried Lobster Hokkien Noodles or the aromatic fragrance of your Nasi Lemak.
 
-Menu is MUIS Halal Certified.",10am - 10pm,"[103.8123146,1.2516525]"
-64,Mr.Coconut,Food and Beverage,all,103.8146106,1.2516525,"Homegrown in Singapore since 2016, Mr. Coconut originated from Malacca with Thailand descent. It brings on rich asian heritage across our variety of smoothly crafted coconut drinks filled with fragrant, supple coconut flesh bound to send a freshing chill into the heart of life.",10.30am - 9.15pm,"[103.8146106,1.2516525]"
-65,The Palawan @ Sentosa,Palawan Beach,all,103.8173531,1.2505009,"Explore an array of thrilling adventures along the shores of Palawan Beach, Sentosa. Discover vibrant attractions like HydroDash floating aqua park, UltraGolf's challenging 18-hole mini-golf course, and HyperDrive—an electrifying indoor gamified electric go-kart circuit. Indulge in unique dining experiences at +Twelve, the luxury beach club, Splash Tribe, perfect for families, and The Palawan Food Trucks. For pet owners, The Palawan Dog Run offers a secure space for dogs to frolic off-leash. Come immerse yourself in fun, relaxation, and unforgettable memories at this Singapore’s premier beach destination!",NA,"[103.8173531,1.2505009]"
-66,#NAME?,Food and Beverage,Ages 16+,103.8187693,1.2498734,"Beach Club For Age 16+ Only — Experience +Twelve, an adults-oriented beach club, serving drinks, beats & elevated vibes. Elevate your week with well-crafted cocktails, bites & epic views from terraced cabanas.",Monday - Thursday: 11am - 9pm Friday - Sunday: 9.30am - 10.30pm,"[103.8187693,1.2498734]"
-67,Blu Kouzina Sentosa,Food and Beverage,all,103.8182583,1.2501854,"Blu Kouzina: Sentosa’s top Greek dining. Beachfront vibes, crafted dishes with family’s olive oil, embracing Mediterranean heritage in Singapore.",11.30am - 10pm,"[103.8182583,1.2501854]"
-68,HydroDash,Palawan Beach,all,103.8184783,1.2500644,"Singapore’s first and only floating aqua park
+Menu is MUIS Halal Certified.",10am - 10pm,"[103.817262, 1.251657]"
+61,Mr.Coconut,Food and Beverage,all,103.817175,1.251659,"Homegrown in Singapore since 2016, Mr. Coconut originated from Malacca with Thailand descent. It brings on rich asian heritage across our variety of smoothly crafted coconut drinks filled with fragrant, supple coconut flesh bound to send a freshing chill into the heart of life.",10.30am - 9.15pm,"[103.817175, 1.251659]"
+62,The Palawan @ Sentosa,Palawan Beach,all,103.8173531,1.2505009,"Explore an array of thrilling adventures along the shores of Palawan Beach, Sentosa. Discover vibrant attractions like HydroDash floating aqua park, UltraGolf's challenging 18-hole mini-golf course, and HyperDrive'ean electrifying indoor gamified electric go-kart circuit. Indulge in unique dining experiences at +Twelve, the luxury beach club, Splash Tribe, perfect for families, and The Palawan Food Trucks. For pet owners, The Palawan Dog Run offers a secure space for dogs to frolic off-leash. Come immerse yourself in fun, relaxation, and unforgettable memories at this Singapore√É¬ïs premier beach destination!",,"[103.8173531, 1.2505009]"
+63,+Twelve,Food and Beverage,Ages 16+,103.8187693,1.2498734,"Beach Club For Age 16+ Only Experience +Twelve, an adults-oriented beach club, serving drinks, beats & elevated vibes. Elevate your week with well-crafted cocktails, bites & epic views from terraced cabanas.",Monday - Thursday: 11am - 9pm Friday - Sunday: 9.30am - 10.30pm,"[103.8187693, 1.2498734]"
+64,Blu Kouzina Sentosa,Food and Beverage,all,103.8182583,1.2501854,"Blu Kouzina: Sentosa's top Greek dining. Beachfront vibes, crafted dishes with family's olive oil, embracing Mediterranean heritage in Singapore.",11.30am - 10pm,"[103.8182583, 1.2501854]"
+65,HydroDash,Palawan Beach,all,103.8184783,1.2500644,"Singapore's first and only floating aqua park
 
-Take on an exciting water adventure and conquer our inflatable obstacle course on the water with varying challenge levels, perfect for bonding over thrills, spills, and laughter!",Temporarily closed,"[103.8184783,1.2500644]"
-69,HyperDrive,Palawan Beach,all,103.8173531,1.2505009,"Asia’s first indoor gamified electric go-kart circuit
+Take on an exciting water adventure and conquer our inflatable obstacle course on the water with varying challenge levels, perfect for bonding over thrills, spills, and laughter!",Temporarily closed,"[103.8184783, 1.2500644]"
+66,HyperDrive,Palawan Beach,all,103.819874,1.250512,"Asia's first indoor gamified electric go-kart circuit
 
 Gear up for an exhilarating experience as you immerse yourself in the world of real-life racing and gaming around a 3-level racetrack.
 
-Recharge with levelled-up diner favourites while catching all the action at HyperDrive Cafe with a gallery view!",Weekday: 12.30pm - 9pm Weekend: 10am - 9pm,"[103.8173531,1.2505009]"
-70,HyperDrive Cafe,Food and Beverage,all,103.8173531,1.2505009,"The best seats for go-kart action and comfort food
+Recharge with levelled-up diner favourites while catching all the action at HyperDrive Cafe with a gallery view!",Weekday: 12.30pm - 9pm Weekend: 10am - 9pm,"[103.819874, 1.250512]"
+67,HyperDrive Cafe,Food and Beverage,all,103.819874,1.250512,"The best seats for go-kart action and comfort food
 
-Indulge in signature SweetStacks pancakes and delicious food and beverages with a view of the go-kart tracks and exciting action.",Weekday: 12.30pm - 9pm Weekend: 10am - 9pm,"[103.8173531,1.2505009]"
-71,Splash Tribe,"Food and Beverage, Entertainment",all,103.8170809,1.2505098,"Singapore’s premier family-oriented beach club
+Indulge in signature SweetStacks pancakes and delicious food and beverages with a view of the go-kart tracks and exciting action.",Weekday: 12.30pm - 9pm Weekend: 10am - 9pm,"[103.819874, 1.250512]"
+68,Splash Tribe,"Food and Beverage, Entertainment",all,103.8170809,1.2505098,"Singapore's premier family-oriented beach club
 
-Splash up an adventure with a sandcastle-themed play zone, infinity-edge pool, and mouth-watering food, perfect for parents and kids to have a day of fun in the sun.",Weekday: 10am - 7pm Weekend: 9.30am - 10.30pm,"[103.8170809,1.2505098]"
-72,The Palawan Dog Run,Palawan Beach,all,103.8150571,1.2505009,"Dedicated doggie paradise on Sentosa Island
+Splash up an adventure with a sandcastle-themed play zone, infinity-edge pool, and mouth-watering food, perfect for parents and kids to have a day of fun in the sun.",Weekday: 10am - 7pm Weekend: 9.30am - 10.30pm,"[103.8170809, 1.2505098]"
+69,The Palawan Dog Run,Palawan Beach,all,103.819909,1.250341,"Dedicated doggie paradise on Sentosa Island
 
-“It’s a Dog’s Life” takes on a whole new meaning at The Palawan Dog Run, with its secure green space and water points. Let our furry friends join in the fun where they can run around and mingle off-leash!",9am - 9pm,"[103.8150571,1.2505009]"
-73,The Palawan Food Trucks,Palawan Beach,all,103.8179553,1.2502614,"Taste flavours of the world in 10 food trucks
+""Its a Dog's Life"" takes on a whole new meaning at The Palawan Dog Run, with its secure green space and water points. Let our furry friends join in the fun where they can run around and mingle off-leash!",9am - 9pm,"[103.819909, 1.250341]"
+70,The Palawan Food Trucks,Palawan Beach,all,103.820523,1.250196,"Taste flavours of the world in 10 food trucks
 
-Jump onboard a culinary adventure with authentic flavours and casual laidback vibes. Grab some epic eats and hit up your fav spot on the beach.","Saturday	12–8_pm
-Sunday	12–8_pm
-Monday	12–8_pm
-Tuesday	12–7_pm
-Wednesday	12–7_pm
-Thursday	12–7_pm
-Friday	12–7_pm","[103.8179553,1.2502614]"
-74,UltraGolf ,beach,all,103.8173531,1.2505009,"Singapore’s only beachside mini golf experience
+Jump onboard a culinary adventure with authentic flavours and casual laidback vibes. Grab some epic eats and hit up your fav spot on the beach.","Saturday	12√É¬ê8_pm
+Sunday	12√É¬ê8_pm
+Monday	12√É¬ê8_pm
+Tuesday	12√É¬ê7_pm
+Wednesday	12√É¬ê7_pm
+Thursday	12√É¬ê7_pm
+Friday	12√É¬ê7_pm","[103.820523, 1.250196]"
+71,UltraGolf ,beach,all,103.8173531,1.2505009,"Singapore's only beachside mini golf experience
 
-Our 18-hole course with 2 tee positions and contouring greens caters to seasoned players, beginners and even the young ones, ensuring a delightful and ‘hole-some’ experience filled with endless fun!",Weekday: 12.30pm - 9pm Weekend: 10am - 9pm,"[103.8173531,1.2505009]"
-75,Sentosa Sensoryscape,attraction,all,103.8161993,1.25311,"Step into Sensoryscape, where a sensory journey from Sentosa's lush ridges to its vibrant reefs unfolds. In this day-to-night experience, each scent, sound, touch, and light display marks the start of an immersive sensory adventure, where every discovery becomes an unforgettable memory.",NA,"[103.8161993,1.25311]"
-76,Madame Tussauds Singapore,attraction,all,103.8150466,1.2540373,Madame Tussauds Singapore is a wax museum and tourist attraction at the Imbiah Lookout of Sentosa Island in Singapore. It officially opened on 25 October 2014 as the seventh Asian branch of the Madame Tussauds chain of wax attractions worldwide.,10am - 7pm,"[103.8150466,1.2540373]"
-77,Singapore Cable Car Sky Network,attraction,all,103.8150466,1.2540373,"Start your Sentosa experience on a high by riding the Singapore Cable Car Sky Network from Mount Faber Peak into the island. En route, view Resorts World Sentosa’s Adventure Cove, Sentosa’s lush jungle foliage and surrounding coastline. With six stops to choose from, the Singapore Cable Car Sky Network is the perfect way to explore Sentosa’s multiple attractions!
+Our 18-hole course with 2 tee positions and contouring greens caters to seasoned players, beginners and even the young ones, ensuring a delightful and wholesome experience filled with endless fun!",Weekday: 12.30pm - 9pm Weekend: 10am - 9pm,"[103.8173531, 1.2505009]"
+72,Sentosa Sensoryscape,attraction,all,103.818674,1.252918,"Step into Sensoryscape, where a sensory journey from Sentosa's lush ridges to its vibrant reefs unfolds. In this day-to-night experience, each scent, sound, touch, and light display marks the start of an immersive sensory adventure, where every discovery becomes an unforgettable memory.",,"[103.818674, 1.252918]"
+73,Madame Tussauds Singapore,attraction,all,103.817765,1.254071,Madame Tussauds Singapore is a wax museum and tourist attraction at the Imbiah Lookout of Sentosa Island in Singapore. It officially opened on 25 October 2014 as the seventh Asian branch of the Madame Tussauds chain of wax attractions worldwide.,10am - 7pm,"[103.817765, 1.254071]"
+74,Singapore Cable Car Sky Network,attraction,all,103.8150466,1.2540373,"Start your Sentosa experience on a high by riding the Singapore Cable Car Sky Network from Mount Faber Peak into the island. En route, view Resorts World Sentosa's Adventure Cove, Sentosa's lush jungle foliage and surrounding coastline. With six stops to choose from, the Singapore Cable Car Sky Network is the perfect way to explore Sentosa's multiple attractions!
 
-Exclusively designed for the Singapore Cable Car, the newly launched SkyOrb Cabin is the world’s first chrome-finished spherical cable car cabin. Cable Car Sky Pass holders can upgrade to the SkyOrb Cabin onsite to enjoy stunning landscapes with the see-through glass floor.
+Exclusively designed for the Singapore Cable Car, the newly launched SkyOrb Cabin is the world√É¬ïs first chrome-finished spherical cable car cabin. Cable Car Sky Pass holders can upgrade to the SkyOrb Cabin onsite to enjoy stunning landscapes with the see-through glass floor.
 
 Important Note: Please visit here if you need to change your visit date. All changes must be made at least 1 day prior to the visit date.","Daily: 8.45am - 10pm
 Last boarding: 9.30pm
 Last ticket sale: 9.15pm The following cable car lines will be temporarily closed during a specific period to facilitate scheduled maintenance.
 
-Sentosa Line: 23 Sep - 4 Oct 2024","[103.8150466,1.2540373]"
-78,Sentosa Nature Discovery,attraction,all,103.8125268,1.2558426,"Experience a more tranquil side of Sentosa at this nature trail with interactive exhibits, sculptures and a lookout point. Pay close attention to the different trees and flowers on show that make up the eight types of habitat found on the island. If you’re lucky you might spot the endangered Magpie Robin.",9am - 5pm,"[103.8125268,1.2558426]"
+Sentosa Line: 23 Sep - 4 Oct 2024","[103.8150466, 1.2540373]"
+75,Sentosa Nature Discovery,attraction,all,103.817321,1.255862,"Experience a more tranquil side of Sentosa at this nature trail with interactive exhibits, sculptures and a lookout point. Pay close attention to the different trees and flowers on show that make up the eight types of habitat found on the island. If you're lucky you might spot the endangered Magpie Robin.",9am - 5pm,"[103.817321, 1.255862]"
