@@ -576,9 +576,11 @@ function recalculateRoute(currentLocation, destination) {
         .then(response => response.json())
         .then(data => {
             const newRoute = data.routes[0].geometry.coordinates;
+            // replace and reset all route memory objects
             route = data.routes[0].geometry;
             steps = data.routes[0].legs[0].steps;
             instructions = getInstructions(steps);
+            routeIndex = 0;
             // Update the map with new route
             map.getSource('route').setData({
                 'type': 'Feature',
@@ -587,8 +589,8 @@ function recalculateRoute(currentLocation, destination) {
                     'coordinates': newRoute
                 }
             });
-            // update navigation instructions:
-            // var instructions = extractRouteInstructions(data.legs, placeNames);
+            // restart tracking:
+            trackUserLocation(route);
             console.log("New route calculated and updated on the map.");
         })
         .catch(error => console.error('Error in recalculating route:', error));
