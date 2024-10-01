@@ -21,7 +21,7 @@ collection = db[collection_name]
 poidb = db[poi]
 
 # Read the CSV file into a DataFrame
-distmat = pd.read_csv(csv_file_path).applymap(lambda x: x.strip() if isinstance(x, str) else x)
+distmat = pd.read_csv(csv_file_path).map(lambda x: x.strip() if isinstance(x, str) else x)
 
 # Convert DataFrame to a list of dictionaries
 data = distmat.to_dict(orient="records")
@@ -30,7 +30,7 @@ data = distmat.to_dict(orient="records")
 collection.delete_many({})
 collection.insert_many(data)
 
-poidf = pd.read_csv(poi_file,encoding='latin1').applymap(lambda x: x.strip() if isinstance(x, str) else x)
+poidf = pd.read_csv(poi_file,encoding='latin1').map(lambda x: x.strip() if isinstance(x, str) else x)
 poidf['location'] = poidf['location'].apply(lambda loc: ast.literal_eval(loc))
 poidf = poidf.to_dict(orient="records")
 
