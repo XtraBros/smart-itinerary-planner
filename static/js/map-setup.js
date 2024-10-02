@@ -23,6 +23,8 @@ let suggestionData;
 let thumbnailURI;
 let endPlaceProt; // end port
 let simulatePoint;
+let suggestionTimer = null;  // To store the timer instance
+const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
 
 function initProperty() {
     routeIndex = 0;
@@ -154,7 +156,9 @@ async function getPoisByLocation(location) {
             }
 
             let nextData = await nextResponse.json();
-
+            if (!chatMessages) {
+                var chatMessages = document.getElementById("chatbot-messages");
+            }
             if (nextData.response) {
                 appendMessage({
                     text: nextData.response,
@@ -237,6 +241,7 @@ window.onload = function () {
         tishiDom.style.display = 'block'
     }
     window.addEventListener('deviceorientation', debounce(function (event) {
+        console.log("User facing direction changed.")
         const alpha = event.alpha;
         if (userMarker) {
             const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
@@ -1333,10 +1338,30 @@ function submitChat(event) {
         if (message !== "") {
             var chatMessages = document.getElementById("chatbot-messages");
             postMessage(message, chatMessages);
-
+            // Start the timer if not running
+            if (!suggestionTimer) {
+                resetTimer();  // Replace "someType" with the actual type if needed
+            }
             inputBox.value = "";
         }
     }
+}
+// Chat timer: track time since last message
+function resetTimer() {
+    // Clear any existing timer
+    if (suggestionTimer) {
+        console.log("Resetting suggstion timer.")
+        clearTimeout(suggestionTimer);
+    }
+    console.log("Starting a timer for suggestions.")
+    // Set a new timer that runs after 5 minutes
+    suggestionTimer = setTimeout(() => {
+        console.log("5 minutes since last message, prompting suggestions.")
+        getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
+        getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
+        clearTimeout(suggestionTimer);  // Stop the timer after suggestion is made
+        suggestionTimer = null;  // Set timer to null, so it can be started again
+    }, suggestionTimeout);
 }
 
 async function postMessage(message, chatMessages) {

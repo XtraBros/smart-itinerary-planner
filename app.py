@@ -276,11 +276,15 @@ def suggest():
 
     samples = {
         1: "Lunchtime is just around the corner, and I have some perfect places for you! ~Feng Shui Inn~, is a top-rated Chinese restaurant where you can find all Chinese cuisines. Ready to experience its delicious, authentic flavors? Click and let me guide you there!",
-        2: "Hot deals alert! ~The Forum~ is having a flash sale now on luxury products at unbeatable prices, just around the corner. Want to score big on high-end goods for less? Click now, and I will show you the way to massive savings!"
+        2: "Hot deals alert! ~The Forum~ is having a flash sale now on luxury products at unbeatable prices, just around the corner. Want to score big on high-end goods for less? Click now, and I will show you the way to massive savings!",
+        3: "Hey there! It looks like you've been enjoying your time on Sentosa! 🌞 After all that walking and exploring, how about taking a little break to recharge? ~Baristart Cafe~ is just a short walk away, and it's the perfect spot to sit down, cool off, and grab something refreshing to drink. 🥤 Whether you're craving a cold drink, a quick snack, or just a cozy place to relax, they've got you covered!",
+        4: "If you still want to enjoy the outdoors, ~The Palawan Food Trucks~ are just around the corner for you to grab a quick snack and cool beverages to beat the heat!"
         }
     sample_pois = {
         1: "Feng Shui Inn",
-        2: "The Forum"
+        2: "The Forum",
+        3: "Baristart Cafe",
+        4: "The Palawan Food Trucks"
         }
     if choice not in samples:
         return jsonify({"error": "Invalid choice provided. Please use 1 or 2."}), 400
@@ -321,9 +325,11 @@ def check_events():
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"""You are an event promoter.
+                {"role": "system", "content": f"""You are an excited event promoter.
                  Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {sentosa_name}, promoting these POIs and events. 
-                 This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion. The message is addressed to a generic audience, and should be as succint as possible.
+                 This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion.
+                 The message is addressed to a generic audience, and should be as succint as possible. Leave out any salutations at the end.
+                 If there are multiple promotions, structure you response as a bulleted list.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
                 {"role": "user", "content": f'Places of interest involved: {found_places}. Events data: {entries}.'}
             ],
@@ -489,7 +495,7 @@ def fetch_poi_data():
 
 def get_poi_by_name(name):
     # Query the MongoDB collection for the document where the 'name' matches the input
-    poi = poi_db.find_one({"name": name})
+    poi = poi_db.find_one({"name": name}, {"_id": 0})
     
     if poi:
         return poi  # Return the data row/document
