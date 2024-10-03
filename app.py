@@ -329,7 +329,7 @@ def check_events():
                  Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {sentosa_name}, promoting these POIs and events. 
                  This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion.
                  The message is addressed to a generic audience, and should be as succint as possible. Leave out any salutations at the end.
-                 If there are multiple promotions, structure you response as a bulleted list.
+                 If there are multiple promotions, structure you response as a numbered list in HTML.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
                 {"role": "user", "content": f'Places of interest involved: {found_places}. Events data: {entries}.'}
             ],
