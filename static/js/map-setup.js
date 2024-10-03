@@ -452,24 +452,29 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
-            // user location control
-            // Add the Geolocate Control to the map
-            map.addControl(geolocateControl);
-            setTimeout(() => {
-                geolocateControl.trigger();
-            }, 100)
+            // setTimeout(() => {
+            //     geolocateControl.trigger();
+            // }, 100)
             // geolocate event 
             geolocateControl.on('geolocate', (position) => {
                 userLocation = {
                     lng: position.coords.longitude,
                     lat: position.coords.latitude
                 };
-                // if (isUserOffRoute(userLocation, result.route)) {
-                //     console.log('User is off-route, recalculating route...');
-                //     recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
-                // }
                 const userLoc = [position.coords.longitude, position.coords.latitude];
                 setUserLocationMark(userLoc);
+                const userHeading = position.coords.heading;
+
+                // Get the current zoom level to preserve it
+                const currentZoom = map.getZoom();
+            
+                // Only update the center and heading of the map without changing zoom
+                map.easeTo({
+                    center: userLoc,
+                    bearing: userHeading,  // Set the map's bearing to the user's heading
+                    zoom: currentZoom,     // Keep the current zoom level
+                    duration: 500         // Animation duration (optional)
+                });
                 // if (Object.keys(route).length && endPlaceProt) {
                 //     const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
                 //     getMapboxWlakRoute(coordinates).then(result => {
@@ -506,6 +511,8 @@ fetch('/config')
                 //     })
                 // }
             });
+            // Add the Geolocate Control to the map
+            map.addControl(geolocateControl);
         });
     })
     .catch(error => {
