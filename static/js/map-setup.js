@@ -303,7 +303,7 @@ function exitNavFunc() {
 
 function domeShowBootFuc() {
     foodBox.classList.add('fadeshowin');
-    getSuggestion(1);
+    // getSuggestion(1);
 }
 
 async function getPlaceCoordWithName(place, isNotMarker) {
@@ -2026,7 +2026,7 @@ function awaitGetPlaceCoordWithName(place) {
 
 function getPromo() {
     idaeBox.classList.add('fadeshowin');
-    getSuggestion(2)
+    // getSuggestion(2);
 }
 
 // Suggestion Button:
