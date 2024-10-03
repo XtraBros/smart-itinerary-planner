@@ -549,7 +549,7 @@ function enableNavigationMode(data) {
     instructionPopup.classList.add('fadeshowin');
     poiSwiper.classList.add('fadeshowin');
     listButton.style.display = 'none';
-    pauseAndpaly.style.display = 'block';
+    // pauseAndpaly.style.display = 'block';
     // Animate the map to tilt and zoom for 3D perspective
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
