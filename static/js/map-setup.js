@@ -438,7 +438,9 @@ fetch('/config')
             // geolocation tracking
             geolocateControl = new mapboxgl.GeolocateControl({
                 positionOptions: {
-                    enableHighAccuracy: true
+                    enableHighAccuracy: true,
+                    timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
+                    maximumAge: 0                  // Prevents caching of location
                 },
                 trackUserLocation: true,
                 showUserHeading: true, // If you want to show user's heading direction
