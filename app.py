@@ -39,7 +39,6 @@ events_db = db[config['EVENTS_DB_NAME']]
 poi_db.create_index([('location', '2dsphere')])
 indexes = poi_db.index_information()
 dist_mat = db[config["DISTANCE_MATRIX"]]
-thumbnails_db = db["THUMBNAILS"]
 fs = gridfs.GridFS(db)
 #cluster_loc = db[config['CLUSTER_LOCATIONS']]
 # LOAD Vector store into memory if needed. Currently kept in db as column.
