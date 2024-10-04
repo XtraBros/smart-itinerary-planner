@@ -374,7 +374,7 @@ fetch('/config')
     .then(data => {
         // Assuming the response contains a JSON object with an 'accessToken' property
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
-        thumbnailURI = data.config.GOOGLE_CLOUD_URI;
+        thumbnailURI = data.config.THUMBNAIL_URI;
         const center = [103.827973, 1.250277]
         map = new mapboxgl.Map({
             container: 'map',
