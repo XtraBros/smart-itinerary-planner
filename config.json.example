@@ -9,5 +9,5 @@
   "DISTANCE_MATRIX": "DISTANCEMATRIX",
   "CLUSTER_LOCATIONS": "CLUSTERLOCATIONS",
   "OPENAI_API_KEY": "@OPENAI_API_KEY@",
-  "THUMBNAIL_URI": "https://guidegeniusthumbnails.blob.core.windows.net/sentosa-thumbnails/
+  "THUMBNAIL_URI": "https://guidegeniusthumbnails.blob.core.windows.net/sentosa-thumbnails/"
 }
