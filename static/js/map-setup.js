@@ -235,13 +235,13 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    // window.addEventListener('deviceorientation', function (event) {
-    //     const alpha = event.alpha;
-    //     if (userMarker) {
-    //         const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-    //         markerElement.style.transform = `rotate(${alpha}deg)`
-    //     }
-    // });
+    window.addEventListener('deviceorientation', function (event) {
+        const alpha = event.alpha;
+        if (userMarker) {
+            const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+            markerElement.style.transform = `rotate(${alpha}deg)`
+        }
+    });
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -452,33 +452,33 @@ fetch('/config')
                 map.setZoom(13);
                 // map.setCenter(userLoc);
                 setUserLocationMark(userLoc);
-            //     if (Object.keys(route).length && endPlaceProt) {
-            //         const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
-            //         getMapboxWlakRoute(coordinates).then(result => {
-            //             if (result.legs && result.route) {
-            //                 initProperty()
-            //                 if (map.getLayer('route')) {
-            //                     map.removeLayer('route');
-            //                 }
-            //                 if (map.getSource('route')) {
-            //                     map.removeSource('route');
-            //                 }
-            //                 if (map.getLayer('walked-route')) {
-            //                     map.removeLayer('walked-route');
-            //                 }
-            //                 if (map.getSource('walked-route')) {
-            //                     map.removeSource('walked-route');
-            //                 }
-            //                 if (simulationRunning || simulationPaused) {
-            //                     simulationRunning = false
-            //                     setMapRoute(result.route)
-            //                     simulateUserLocation(result.route)
-            //                 } else {
-            //                     paintLine(result.route)
-            //                 }
-            //             }
-            //         })
-            //     }
+                if (Object.keys(route).length && endPlaceProt) {
+                    const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
+                    getMapboxWlakRoute(coordinates).then(result => {
+                        if (result.legs && result.route) {
+                            initProperty()
+                            if (map.getLayer('route')) {
+                                map.removeLayer('route');
+                            }
+                            if (map.getSource('route')) {
+                                map.removeSource('route');
+                            }
+                            if (map.getLayer('walked-route')) {
+                                map.removeLayer('walked-route');
+                            }
+                            if (map.getSource('walked-route')) {
+                                map.removeSource('walked-route');
+                            }
+                            if (simulationRunning || simulationPaused) {
+                                simulationRunning = false
+                                setMapRoute(result.route)
+                                simulateUserLocation(result.route)
+                            } else {
+                                paintLine(result.route)
+                            }
+                        }
+                    })
+                }
             });
             geolocateControl._updateCamera = () => {}
         });

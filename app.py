@@ -15,6 +15,7 @@ import requests
 from geopy.distance import geodesic
 import certifi
 import re
+import base64
 import gridfs
 
 
@@ -93,8 +94,7 @@ def ask_plan():
             4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
                 - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
             5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            6) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
-            7) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
+            6) If the user asks for nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
@@ -132,6 +132,7 @@ def ask_plan():
 @app.route('/get_text', methods=['POST'])
 def get_text():
     # Get the 'route' data from the request JSON
+    print(request.json)
     route = request.json['route']
     coordinates = request.json['coordinates']
     print(f"route:{route}")
@@ -157,6 +158,7 @@ def get_text():
 
         # Create hyperlinks with the route names
         hyperlinks = create_hyperlinks(route, coordinates)
+        print(hyperlinks)
         # Insert hyperlinks using the `~` delimiter
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
 
@@ -274,15 +276,11 @@ def suggest():
 
     samples = {
         1: "Lunchtime is just around the corner, and I have some perfect places for you! ~Feng Shui Inn~, is a top-rated Chinese restaurant where you can find all Chinese cuisines. Ready to experience its delicious, authentic flavors? Click and let me guide you there!",
-        2: "Hot deals alert! ~The Forum~ is having a flash sale now on luxury products at unbeatable prices, just around the corner. Want to score big on high-end goods for less? Click now, and I will show you the way to massive savings!",
-        3: "Hey there! It looks like you've been enjoying your time on Sentosa! 🌞 After all that walking and exploring, how about taking a little break to recharge? ~Baristart Cafe~ is just a short walk away, and it's the perfect spot to sit down, cool off, and grab something refreshing to drink. 🥤 Whether you're craving a cold drink, a quick snack, or just a cozy place to relax, they've got you covered!",
-        4: "If you still want to enjoy the outdoors, ~The Palawan Food Trucks~ are just around the corner for you to grab a quick snack and cool beverages to beat the heat!"
+        2: "Hot deals alert! ~The Forum~ is having a flash sale now on luxury products at unbeatable prices, just around the corner. Want to score big on high-end goods for less? Click now, and I will show you the way to massive savings!"
         }
     sample_pois = {
         1: "Feng Shui Inn",
-        2: "The Forum",
-        3: "Baristart Cafe",
-        4: "The Palawan Food Trucks"
+        2: "The Forum"
         }
     if choice not in samples:
         return jsonify({"error": "Invalid choice provided. Please use 1 or 2."}), 400
@@ -323,11 +321,9 @@ def check_events():
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": f"""You are an excited event promoter.
+                {"role": "system", "content": f"""You are an event promoter.
                  Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {sentosa_name}, promoting these POIs and events. 
-                 This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion.
-                 The message is addressed to a generic audience, and should be as succint as possible. Leave out any salutations at the end.
-                 If there are multiple promotions, structure you response as a numbered list in HTML.
+                 This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion. The message is addressed to a generic audience, and should be as succint as possible.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
                 {"role": "user", "content": f'Places of interest involved: {found_places}. Events data: {entries}.'}
             ],
@@ -491,15 +487,6 @@ def fetch_poi_data():
 
     return poi_data
 
-def get_poi_by_name(name):
-    # Query the MongoDB collection for the document where the 'name' matches the input
-    poi = poi_db.find_one({"name": name}, {"_id": 0})
-    
-    if poi:
-        return poi  # Return the data row/document
-    else:
-        return None
-
 def find_nearby_pois(user_location, radius_in_meters=100):
     user_lon = user_location['longitude']
     user_lat = user_location['latitude']
@@ -537,8 +524,7 @@ Function Mapping: map the function names to the function, so that it can be iden
 function_mapping = {
     "fetch_weather_data": fetch_weather_data,
     "fetch_poi_data": fetch_poi_data,
-    "find_nearby_pois": find_nearby_pois,
-    "get_poi_by_name": get_poi_by_name
+    "find_nearby_pois": find_nearby_pois
 }
 '''
 Function Schema:
@@ -550,20 +536,6 @@ function_schemas = [
         "name": "fetch_weather_data",
         "description": "Fetches the 24-hour weather forecast from data.gov.sg",
         "parameters": {}
-    },
-    {
-        "name": "get_poi_by_name",
-        "description": "Retrieve the data row of a Point of Interest (POI) from the database by its name.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "name": {
-                "type": "string",
-                "description": "The name of the POI to search for."
-            }
-            },
-            "required": ["name"]
-        }
     },
     {
         "name": "fetch_poi_data",
