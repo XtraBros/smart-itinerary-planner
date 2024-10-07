@@ -439,9 +439,9 @@ fetch('/config')
             // user location control
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
-            setTimeout(() => {
-                geolocateControl.trigger();
-            }, 100)
+            // setTimeout(() => {
+            //     geolocateControl.trigger();
+            // }, 100)
             // Override the geolocate event to use navigator.geolocation
             geolocateControl.on('geolocate', (position) => {
                 userLocation = {
@@ -480,6 +480,7 @@ fetch('/config')
                     })
                 }
             });
+            geolocateControl._updateCamera = () => {}
         });
     })
     .catch(error => {
