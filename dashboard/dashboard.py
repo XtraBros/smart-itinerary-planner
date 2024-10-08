@@ -28,11 +28,7 @@ mapbox_access_token = config['MAPBOX_ACCESS_TOKEN']
 distance_matrix = pd.DataFrame(list(dist_mat_db.find({}, {"_id": 0})))
 distance_matrix.set_index('name', inplace=True)
 # Initialize the Google Cloud Storage client
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config["GOOGLE_AUTH_FILE"]
-storage_client = storage.Client()
-bucket = storage_client.bucket(config['GOOGLE_BUCKET_NAME'])
-print(bucket)
-folder_name = "sentosa"
+
 
 
 @app.route('/')

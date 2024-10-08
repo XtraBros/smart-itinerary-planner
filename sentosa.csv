@@ -1,6 +1,6 @@
 id,name,category,for,longitude,latitude,description,operating_hours,location
-0,Entrance,NA,all,103.8221477,1.265075218,Entrance to Sentosa Island,,"[103.8221477, 1.265075218]"
-1,Exit,NA,all,103.8221477,1.265075218,Exit of Sentosa Island,,"[103.8221477, 1.265075218]"
+0,Entrance,,all,103.8221477,1.265075218,Entrance to Sentosa Island,,"[103.8221477, 1.265075218]"
+1,Exit,,all,103.8221477,1.265075218,Exit of Sentosa Island,,"[103.8221477, 1.265075218]"
 2,Shangri-La Rasa Sentosa,Hotel,all,103.809791,1.25733,"The only beachfront resort in Singapore, Shangri-La Rasa Sentosa boasts balcony or terrace-rooms that overlook breezy Siloso Beach. Step outside onto your private balcony and take in the breathtaking scenery while sipping on a drink or two.
 
 But the fun doesn't stop there - take a dip in the free-form swimming pool, unwind in one of the outdoor jacuzzis, or pamper yourself with a rejuvenating treatment at the spa.
@@ -274,3 +274,16 @@ Last ticket sale: 9.15pm The following cable car lines will be temporarily close
 
 Sentosa Line: 23 Sep - 4 Oct 2024","[103.8150466, 1.2540373]"
 75,Sentosa Nature Discovery,Attraction,all,103.817321,1.255862,"Experience a more tranquil side of Sentosa at this nature trail with interactive exhibits, sculptures and a lookout point. Pay close attention to the different trees and flowers on show that make up the eight types of habitat found on the island. If you're lucky you might spot the endangered Magpie Robin.",9am - 5pm,"[103.817321, 1.255862]"
+76,Female Toilet @ Wings of Time,Toilet,female,103.817428,1.250989,Female Toilet,,"[103.817428, 1.250989]"
+77,Male Toilet @ Wings of Time,Toilet,male,103.816793,1.251565,Male Toilet,,"[103.816793, 1.251565]"
+,Toilet @ Beach Station,Toilet,all,103.817806,1.251106,Toilet,,"[103.817806, 1.251106]"
+,Vehicle Stand @ Beach Station,Ammenities,all,103.818995,1.251104,Vehicle dropoff/ Taxi stand,,"[103.818995, 1.251104]"
+,Toilet @ iFly Singapore,Toilet,all,103.817245,1.252142,Toilet,,"[103.817245, 1.252142]"
+,Toilet @ SensoryScape,Toilet,all,103.818449,1.253607,Toilet,,"[103.818449, 1.253607]"
+,Toilet @ Imbiah Station,Toilet,all,103.819532,1.254207,Toilet,,"[103.819532, 1.254207]"
+,Imbiah Station,Ammenities,all,103.819461,1.25391,Imbiah Station,,"[103.819461, 1.25391]"
+,Beach Station,Ammenities,all,103.817815,1.251314,Beach Station,,"[103.817815, 1.251314]"
+,Toilet @ Ola Beach Club,Toilet,all,103.815244,1.25309,Toilet,,"[103.815244, 1.25309]"
+,Toilet @ Opp Siloso Beach Resort Station,Toilet,all,103.81408,1.254288,Toilet,,"[103.81408, 1.254288]"
+,Toilet @ Siloso beach,Toilet,all,103.813417,1.254865,Toilet,,"[103.813417, 1.254865]"
+,Toilet @ Sentosa Cable Car Station,Toilet,all,103.817479,1.255507,Toilet,,"[103.817479, 1.255507]"
