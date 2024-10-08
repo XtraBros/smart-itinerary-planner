@@ -342,6 +342,37 @@ def check_events():
     else:
         # Return no content if no entries are found
         return jsonify({}), 204
+    
+# Fetch POIs by category
+@app.route('/fetch_by_category', methods=['POST'])
+def fetch_by_category():
+    try:
+        # Get the category from the incoming JSON request
+        data = request.get_json()
+        category = data.get('category')
+
+        if not category:
+            return jsonify({"error": "No category provided"}), 400
+
+        # Query MongoDB for entries with matching category, excluding _id
+        results = poi_db.find({"category": category}, {"_id": 0, "name": 1, "description": 1, "location": 1})
+
+        # Create a place_info-like structure
+        place_info = {}
+        for result in results:
+            place_name = result['name']
+            description = result['description']
+            location = result['location']
+            place_info[place_name] = {
+                "description": description,
+                "location": location
+            }
+
+        # Return the result as a JSON response
+        return jsonify(place_info), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Not needed in sentosa variant right now.
 # @app.route('/get_centroids', methods=['POST'])

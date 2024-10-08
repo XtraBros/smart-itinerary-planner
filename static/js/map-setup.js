@@ -1956,6 +1956,83 @@ function addMarkers(placeNames, waypoints) {
     });
 }
 
+function displayByCategory(category) {
+    // Remove existing markers from the map
+    if (window.mapMarkers) {
+        for (const [key, value] of Object.entries(window.mapMarkers)) {
+            value.remove();
+        }
+    }
+    window.mapMarkers = {};
+
+    // Fetch places data by category from the Flask endpoint
+    fetch('/fetch_by_category', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ category: category }),
+    })
+    .then(response => response.json())
+    .then(placesData => {
+        fetchTemplate('static/html/info-card.html').then(template => {
+            var parser = new DOMParser();
+
+            // Loop through the placesData and place markers on the map
+            Object.entries(placesData).forEach(([placeName, placeInfo]) => {
+                const { description, location } = placeInfo;
+
+                // Ensure location contains valid coordinates [longitude, latitude]
+                if (!location || location.length !== 2 || isNaN(location[0]) || isNaN(location[1])) {
+                    console.error(`Invalid coordinates for ${placeName}:`, location);
+                    return; // Skip this iteration if coordinates are invalid
+                }
+
+                // Remove unwanted characters from the placeName
+                placeName = placeName.replace(/[\[\]]/g, '');
+                console.log(placeName);
+
+                // Set up the basic place information
+                var place = {
+                    description: description || '',
+                    name: placeName,
+                };
+
+                // Create the thumbnail URL using Google Cloud Storage
+                const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
+                place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
+
+                // Generate the popup content using the template
+                var popupContentString = populateTemplate(template, place);
+                var doc = parser.parseFromString(popupContentString, 'text/html');
+                var popupContent = doc.querySelector('.info-card-content');
+
+                // Add functionality for the button in the popup
+                popupContent.querySelector('button').onclick = async function () {
+                    disminiNav();
+                    await displayRoute([placeName], [location], true);
+                    paintLine(route);
+                };
+
+                // Create a popup and marker for the map
+                var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
+                var popup = new mapboxgl.Popup().setDOMContent(popupContent);
+                var marker = new mapboxgl.Marker()
+                    .setLngLat([location[0], location[1]]) // Use location from the placeInfo
+                    .setPopup(popup)
+                    .addTo(map);
+
+                // Store marker by ID
+                window.mapMarkers[popupId] = marker;
+            });
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching places data:', error);
+    });
+}
+
 function fetchTemplate(url) {
     return fetch(url).then(response => response.text());
 }
