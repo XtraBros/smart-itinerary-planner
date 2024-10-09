@@ -2127,7 +2127,7 @@ function displayByCategory(category) {
                     var popup = new mapboxgl.Popup().setDOMContent(popupContent);
 
                     const el = document.createElement('div');
-                    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/${category}_maker.svg" width="50" alt="" srcset=""></p>`);
+                    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/${category}_maker.svg" width="46" alt="" srcset=""></p>`);
                     var marker = new mapboxgl.Marker({
                         element: el
                     })
