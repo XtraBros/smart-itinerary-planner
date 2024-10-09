@@ -233,6 +233,9 @@ h3 {
 .newHeader::-webkit-scrollbar {
   display: none;
 }
+.newHeader .active p{
+  color: #333; font-weight: bold;
+}
 .list {
   width: 120%;
   margin: 0px;

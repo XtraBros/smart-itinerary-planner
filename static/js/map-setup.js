@@ -2057,7 +2057,14 @@ function addMarkers(placeNames, waypoints) {
     });
 }
 
-function displayByCategory(category) {
+function displayByCategory(category, element) {
+    const munts = document.getElementsByClassName('newHeader')[0]
+    const lis = munts.getElementsByClassName('item')
+    for (let index = 0; index < lis.length; index++) {
+        const item = lis[index];
+        item.classList.remove('active')
+    }
+    element.classList.add('active');
     // Remove existing markers from the map
     if (window.mapMarkers) {
         for (const [key, value] of Object.entries(window.mapMarkers)) {
