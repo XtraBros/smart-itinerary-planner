@@ -281,7 +281,7 @@ window.onload = function () {
 
 function debounce(fn, delay) {
     let timer;
-    return function(...args) {
+    return function (...args) {
         clearTimeout(timer);
         timer = setTimeout(() => fn(...args), delay);
     };
@@ -394,7 +394,8 @@ fetch('/config')
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
             center,
-            zoom: 13
+            zoom: 13,
+            minZoom: 10,
         });
 
         directions = new MapboxDirections({
@@ -452,7 +453,7 @@ fetch('/config')
                 showUserHeading: true, // If you want to show user's heading direction
             });
             // force mapbox to stop changing map view when geolocating
-            geolocateControl._updateCamera = () => {}
+            geolocateControl._updateCamera = () => { }
             map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -475,7 +476,7 @@ fetch('/config')
 
                 // Get the current zoom level to preserve it
                 const currentZoom = map.getZoom();
-            
+
                 // Only update the center and heading of the map without changing zoom
                 map.easeTo({
                     center: userLoc,
@@ -490,7 +491,7 @@ fetch('/config')
                 //             initProperty()
                 //             geolocateControl.on('geolocate', (position) => {
                 //                 const userLocation = [position.coords.longitude, position.coords.latitude];
-                                
+
                 //                 if (isUserOffRoute(userLocation, result.route)) {
                 //                     console.log('User is off-route, recalculating route...');
                 //                     recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
@@ -543,7 +544,7 @@ function enableNavigationMode(data) {
     instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
     const instructionPopup = document.getElementById('navigation');
-    if (routeIndex == 0){
+    if (routeIndex == 0) {
         const firstInstruction = instructions[0];
         // Extract the relevant information for the first instruction
         const instructionTextContent = firstInstruction.instruction; // Text instruction
@@ -1021,51 +1022,135 @@ function setMapRoute(resRoute) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
         setUserLocationMark(resRoute.coordinates[0])
     }
-    // Add route to map
-    if (!map.getSource('route')) {
-        map.addSource('route', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'properties': {},
-                'geometry': resRoute
-            }
-        });
-    }
-
     if (!map.getLayer('route')) {
-        // Add arrows to the route using static png asset
-        if (!map.hasImage('arrow')) {
-            const url = 'static/icons/nav.png';
-            map.loadImage(url, function (err, image) {
-                if (err) {
-                    console.error('Error loading image:', err);
-                    reject(err);
+        map.loadImage(
+            'static/icons/nav.png',
+            (error, image) => {
+                if (error) throw error;
+                if (!map.hasImage('arrow')) {
+                    map.addImage('arrow', image);
                 }
-                map.addImage('arrow', image);
-            });
-        }
-        // Add arrow-line layer
-        map.addLayer({
-            'id': 'route',
-            'type': 'symbol',
-            'source': 'route',
-            'layout': {
-                'symbol-placement': 'line',
-                'symbol-spacing': 2,
-                'icon-image': 'arrow',
-                'icon-size': 0.5,
-                // 'icon-size': [
-                //     'interpolate',
-                //     ['linear'],
-                //     ['zoom'],
-                //     14, 0.4,
-                //     16, 0.6,     // 缩放级别 10 时图标大小为 1
-                //     17, 0.7    // 缩放级别 15 时图标大小为 1.5
-                // ],
-                'icon-allow-overlap': true,
-            },
-        });
+                // Add route to map
+                if (!map.getSource('route')) {
+                    map.addSource('route', {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'properties': {},
+                            'geometry': resRoute
+                        }
+                    });
+                }
+                const lineBaseWidth = 14;
+
+                map.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: 'route',
+                    layout: {
+                        'icon-size': 0.8,
+                        'icon-allow-overlap': false,
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-pattern': 'arrow',
+                        'line-width': [
+                            'interpolate',
+                            ['exponential', 2],
+                            ['zoom'],
+                            0,
+                            lineBaseWidth * 0.5,
+                            0.9999,
+                            lineBaseWidth * 0.5,
+                            1,
+                            lineBaseWidth * 0.5,
+                            1.9999,
+                            lineBaseWidth * 0.5,
+                            2,
+                            lineBaseWidth * 0.5,
+                            2.9999,
+                            lineBaseWidth * 0.5,
+                            3,
+                            lineBaseWidth * 0.5,
+                            3.9999,
+                            lineBaseWidth * 0.5,
+                            4,
+                            lineBaseWidth * 0.5,
+                            4.9999,
+                            lineBaseWidth * 0.5,
+                            5,
+                            lineBaseWidth * 0.5,
+                            5.9999,
+                            lineBaseWidth * 0.5,
+                            6,
+                            lineBaseWidth * 0.5,
+                            6.9999,
+                            lineBaseWidth * 0.5,
+                            7,
+                            lineBaseWidth * 0.5,
+                            7.9999,
+                            lineBaseWidth * 0.5,
+                            8,
+                            lineBaseWidth * 0.5,
+                            8.9999,
+                            lineBaseWidth * 0.5,
+                            9,
+                            lineBaseWidth * 0.5,
+                            9.9999,
+                            lineBaseWidth * 0.5,
+                            10,
+                            lineBaseWidth * 1,
+                            10.9999,
+                            lineBaseWidth * 1,
+                            11,
+                            lineBaseWidth * 1,
+                            11.9999,
+                            lineBaseWidth * 1,
+                            12,
+                            lineBaseWidth * 1,
+                            12.9999,
+                            lineBaseWidth * 2,
+                            13,
+                            lineBaseWidth * 1,
+                            13.9999,
+                            lineBaseWidth * 2,
+                            14,
+                            lineBaseWidth * 1,
+                            14.9999,
+                            lineBaseWidth * 2,
+                            15,
+                            lineBaseWidth * 1,
+                            15.9999,
+                            lineBaseWidth * 2,
+                            16,
+                            lineBaseWidth * 1,
+                            16.9999,
+                            lineBaseWidth * 2,
+                            17,
+                            lineBaseWidth * 1,
+                            17.9999,
+                            lineBaseWidth * 2,
+                            18,
+                            lineBaseWidth * 1,
+                            18.9999,
+                            lineBaseWidth * 2,
+                            19,
+                            lineBaseWidth * 1,
+                            19.9999,
+                            lineBaseWidth * 2,
+                            20,
+                            lineBaseWidth * 1,
+                            20.9999,
+                            lineBaseWidth * 2,
+                            21,
+                            lineBaseWidth * 1,
+                            22,
+                            lineBaseWidth * 2
+                        ]
+                    }
+                });
+            }
+        );
 
         // Update route data on map
         directions.on('route', function (e) {
@@ -1211,7 +1296,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                         userLocation = {
                             lng: position.coords.longitude,
                             lat: position.coords.latitude
-                        };                        
+                        };
                         if (isUserOffRoute(userLocation, result.route)) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
@@ -1985,70 +2070,70 @@ function displayByCategory(category) {
         },
         body: JSON.stringify({ category: category }),
     })
-    .then(response => response.json())
-    .then(placesData => {
-        fetchTemplate('static/html/info-card.html').then(template => {
-            var parser = new DOMParser();
+        .then(response => response.json())
+        .then(placesData => {
+            fetchTemplate('static/html/info-card.html').then(template => {
+                var parser = new DOMParser();
 
-            // Loop through the placesData and place markers on the map
-            Object.entries(placesData).forEach(([placeName, placeInfo]) => {
-                const { description, location } = placeInfo;
+                // Loop through the placesData and place markers on the map
+                Object.entries(placesData).forEach(([placeName, placeInfo]) => {
+                    const { description, location } = placeInfo;
 
-                // Ensure location contains valid coordinates [longitude, latitude]
-                if (!location || location.length !== 2 || isNaN(location[0]) || isNaN(location[1])) {
-                    console.error(`Invalid coordinates for ${placeName}:`, location);
-                    return; // Skip this iteration if coordinates are invalid
-                }
+                    // Ensure location contains valid coordinates [longitude, latitude]
+                    if (!location || location.length !== 2 || isNaN(location[0]) || isNaN(location[1])) {
+                        console.error(`Invalid coordinates for ${placeName}:`, location);
+                        return; // Skip this iteration if coordinates are invalid
+                    }
 
-                // Remove unwanted characters from the placeName
-                placeName = placeName.replace(/[\[\]]/g, '');
-                console.log(placeName);
+                    // Remove unwanted characters from the placeName
+                    placeName = placeName.replace(/[\[\]]/g, '');
+                    console.log(placeName);
 
-                // Set up the basic place information
-                var place = {
-                    description: description || '',
-                    name: placeName,
-                };
+                    // Set up the basic place information
+                    var place = {
+                        description: description || '',
+                        name: placeName,
+                    };
 
-                // Create the thumbnail URL using Google Cloud Storage
-                var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-                // Check if placeName contains "station" or "toilet" and update accordingly
-                if (formattedPlaceName.toLowerCase().includes("toilet")) {
-                    formattedPlaceName = "toilet";
-                } else if (formattedPlaceName.toLowerCase().includes("station")) {
-                    formattedPlaceName = "station";
-                }
-                var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
-                place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
+                    // Create the thumbnail URL using Google Cloud Storage
+                    var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                    // Check if placeName contains "station" or "toilet" and update accordingly
+                    if (formattedPlaceName.toLowerCase().includes("toilet")) {
+                        formattedPlaceName = "toilet";
+                    } else if (formattedPlaceName.toLowerCase().includes("station")) {
+                        formattedPlaceName = "station";
+                    }
+                    var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
+                    place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
 
-                // Generate the popup content using the template
-                var popupContentString = populateTemplate(template, place);
-                var doc = parser.parseFromString(popupContentString, 'text/html');
-                var popupContent = doc.querySelector('.info-card-content');
+                    // Generate the popup content using the template
+                    var popupContentString = populateTemplate(template, place);
+                    var doc = parser.parseFromString(popupContentString, 'text/html');
+                    var popupContent = doc.querySelector('.info-card-content');
 
-                // Add functionality for the button in the popup
-                popupContent.querySelector('button').onclick = async function () {
-                    disminiNav();
-                    await displayRoute([placeName], [location], true);
-                    paintLine(route);
-                };
+                    // Add functionality for the button in the popup
+                    popupContent.querySelector('button').onclick = async function () {
+                        disminiNav();
+                        await displayRoute([placeName], [location], true);
+                        paintLine(route);
+                    };
 
-                // Create a popup and marker for the map
-                var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
-                var popup = new mapboxgl.Popup().setDOMContent(popupContent);
-                var marker = new mapboxgl.Marker()
-                    .setLngLat([location[0], location[1]]) // Use location from the placeInfo
-                    .setPopup(popup)
-                    .addTo(map);
+                    // Create a popup and marker for the map
+                    var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
+                    var popup = new mapboxgl.Popup().setDOMContent(popupContent);
+                    var marker = new mapboxgl.Marker()
+                        .setLngLat([location[0], location[1]]) // Use location from the placeInfo
+                        .setPopup(popup)
+                        .addTo(map);
 
-                // Store marker by ID
-                window.mapMarkers[popupId] = marker;
+                    // Store marker by ID
+                    window.mapMarkers[popupId] = marker;
+                });
             });
+        })
+        .catch(error => {
+            console.error('Error fetching places data:', error);
         });
-    })
-    .catch(error => {
-        console.error('Error fetching places data:', error);
-    });
 }
 
 function fetchTemplate(url) {
