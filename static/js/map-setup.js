@@ -78,7 +78,13 @@ async function getPoisByLocation(location) {
         let listCont = '';
         poisData.forEach((placeName, index) => {
             // Construct the Google Cloud thumbnail URL
-            const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+            var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+            // Check if placeName contains "station" or "toilet" and update accordingly
+            if (placeName.toLowerCase().includes("tiolet")) {
+                formattedPlaceName = "toilet";
+            } else if (placeName.toLowerCase().includes("station")) {
+                formattedPlaceName = "station";
+            }
             const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
 
             contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
@@ -1925,7 +1931,13 @@ function addMarkers(placeNames, waypoints) {
                 };
 
                 // Create the thumbnail URL using Google Cloud Storage
-                const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                // Check if placeName contains "station" or "toilet" and update accordingly
+                if (formattedPlaceName.toLowerCase().includes("toilet")) {
+                    formattedPlaceName = "toilet";
+                } else if (formattedPlaceName.toLowerCase().includes("station")) {
+                    formattedPlaceName = "station";
+                }
                 var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
                 place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
 
@@ -1999,7 +2011,13 @@ function displayByCategory(category) {
                 };
 
                 // Create the thumbnail URL using Google Cloud Storage
-                const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                // Check if placeName contains "station" or "toilet" and update accordingly
+                if (formattedPlaceName.toLowerCase().includes("toilet")) {
+                    formattedPlaceName = "toilet";
+                } else if (formattedPlaceName.toLowerCase().includes("station")) {
+                    formattedPlaceName = "station";
+                }
                 var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
                 place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
 
