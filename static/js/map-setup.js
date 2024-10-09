@@ -109,23 +109,7 @@ async function getPoisByLocation(location) {
                             </div>
                         </div>`;
 
-            listCont += `<div class="itemSlide" key='${index}' data-name='${placeName}'>
-                            <div class="listimg">
-                                <img src="${thumbnailUrl}" alt="${placeName}" width="100%" srcset="">
-                            </div>
-                            <div class="titleBox">
-                                <div class="title">${placeName}</div>
-                                <div class="rightimg">
-                                    <button onclick="navDitle(event, '${placeName}')">
-                                        <img src="static/icons/navimg.svg" alt="" srcset="">
-                                    </button>
-                                    <span>Wait 5 mins</span>
-                                </div>
-                            </div>
-                            <div class="disqu vistDesc">
-                                <span class="islander">Islander earns 50 points</span>
-                            </div>
-                        </div>`;
+            listCont += setMapList({index, thumbnailUrl, placeName});
         });
         swiperconent.innerHTML = contenxt;
         poiList.innerHTML = listCont;
@@ -204,6 +188,26 @@ const totDist = document.getElementById('totDist');
 const chatbotArea = document.getElementById('chatbot-area');
 const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
+
+function setMapList({index, placeName, thumbnailUrl}) {
+    return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
+        <div class="listimg">
+            <img src="${thumbnailUrl}" alt="${placeName}" width="100%" srcset="">
+        </div>
+        <div class="titleBox">
+            <div class="title">${placeName}</div>
+            <div class="rightimg">
+                <button onclick="navDitle(event, '${placeName}')">
+                    <img src="static/icons/navimg.svg" alt="" srcset="">
+                </button>
+                <span>Wait 5 mins</span>
+            </div>
+        </div>
+        <div class="disqu vistDesc">
+            <span class="islander">Islander earns 50 points</span>
+        </div>
+    </div>`;
+}
 
 window.onload = function () {
     window.mapMarkers = {};
@@ -2074,9 +2078,9 @@ function displayByCategory(category) {
         .then(placesData => {
             fetchTemplate('static/html/info-card.html').then(template => {
                 var parser = new DOMParser();
-
+                let listCont = ''
                 // Loop through the placesData and place markers on the map
-                Object.entries(placesData).forEach(([placeName, placeInfo]) => {
+                Object.entries(placesData).forEach(([placeName, placeInfo], index) => {
                     const { description, location } = placeInfo;
 
                     // Ensure location contains valid coordinates [longitude, latitude]
@@ -2110,7 +2114,7 @@ function displayByCategory(category) {
                     var popupContentString = populateTemplate(template, place);
                     var doc = parser.parseFromString(popupContentString, 'text/html');
                     var popupContent = doc.querySelector('.info-card-content');
-
+                    listCont += setMapList({index, thumbnailUrl: place.thumbnail, placeName});
                     // Add functionality for the button in the popup
                     popupContent.querySelector('button').onclick = async function () {
                         disminiNav();
@@ -2121,14 +2125,19 @@ function displayByCategory(category) {
                     // Create a popup and marker for the map
                     var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
                     var popup = new mapboxgl.Popup().setDOMContent(popupContent);
-                    var marker = new mapboxgl.Marker()
+
+                    const el = document.createElement('div');
+                    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/${category}_maker.svg" width="50" alt="" srcset=""></p>`);
+                    var marker = new mapboxgl.Marker({
+                        element: el
+                    })
                         .setLngLat([location[0], location[1]]) // Use location from the placeInfo
                         .setPopup(popup)
                         .addTo(map);
-
                     // Store marker by ID
                     window.mapMarkers[popupId] = marker;
                 });
+                poiList.innerHTML = listCont;
             });
         })
         .catch(error => {
