@@ -271,7 +271,7 @@ window.onload = function () {
         const alpha = event.alpha;
         if (userMarker) {
             const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-            markerElement.style.transform = `rotate(${alpha}deg)`
+            markerElement.style.transform = `rotate(${-alpha}deg)`
         }
     }, 200));
     getUserCurrentPosition();
@@ -941,8 +941,6 @@ function setMapRoute(resRoute) {
                         }
                     });
                 }
-                const lineBaseWidth = 14;
-
                 map.addLayer({
                     id: 'route',
                     type: 'line',
@@ -954,99 +952,7 @@ function setMapRoute(resRoute) {
                     },
                     paint: {
                         'line-pattern': 'arrow',
-                        'line-width': [
-                            'interpolate',
-                            ['exponential', 2],
-                            ['zoom'],
-                            0,
-                            lineBaseWidth * 0.5,
-                            0.9999,
-                            lineBaseWidth * 0.5,
-                            1,
-                            lineBaseWidth * 0.5,
-                            1.9999,
-                            lineBaseWidth * 0.5,
-                            2,
-                            lineBaseWidth * 0.5,
-                            2.9999,
-                            lineBaseWidth * 0.5,
-                            3,
-                            lineBaseWidth * 0.5,
-                            3.9999,
-                            lineBaseWidth * 0.5,
-                            4,
-                            lineBaseWidth * 0.5,
-                            4.9999,
-                            lineBaseWidth * 0.5,
-                            5,
-                            lineBaseWidth * 0.5,
-                            5.9999,
-                            lineBaseWidth * 0.5,
-                            6,
-                            lineBaseWidth * 0.5,
-                            6.9999,
-                            lineBaseWidth * 0.5,
-                            7,
-                            lineBaseWidth * 0.5,
-                            7.9999,
-                            lineBaseWidth * 0.5,
-                            8,
-                            lineBaseWidth * 0.5,
-                            8.9999,
-                            lineBaseWidth * 0.5,
-                            9,
-                            lineBaseWidth * 0.5,
-                            9.9999,
-                            lineBaseWidth * 0.5,
-                            10,
-                            lineBaseWidth * 1,
-                            10.9999,
-                            lineBaseWidth * 1,
-                            11,
-                            lineBaseWidth * 1,
-                            11.9999,
-                            lineBaseWidth * 1,
-                            12,
-                            lineBaseWidth * 1,
-                            12.9999,
-                            lineBaseWidth * 2,
-                            13,
-                            lineBaseWidth * 1,
-                            13.9999,
-                            lineBaseWidth * 2,
-                            14,
-                            lineBaseWidth * 1,
-                            14.9999,
-                            lineBaseWidth * 2,
-                            15,
-                            lineBaseWidth * 1,
-                            15.9999,
-                            lineBaseWidth * 2,
-                            16,
-                            lineBaseWidth * 1,
-                            16.9999,
-                            lineBaseWidth * 2,
-                            17,
-                            lineBaseWidth * 1,
-                            17.9999,
-                            lineBaseWidth * 2,
-                            18,
-                            lineBaseWidth * 1,
-                            18.9999,
-                            lineBaseWidth * 2,
-                            19,
-                            lineBaseWidth * 1,
-                            19.9999,
-                            lineBaseWidth * 2,
-                            20,
-                            lineBaseWidth * 1,
-                            20.9999,
-                            lineBaseWidth * 2,
-                            21,
-                            lineBaseWidth * 1,
-                            22,
-                            lineBaseWidth * 2
-                        ]
+                        'line-width': 10
                     }
                 });
             }
