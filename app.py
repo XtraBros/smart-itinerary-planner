@@ -96,6 +96,7 @@ def ask_plan():
             5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
             6) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
             7) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
+            8) When asked for user location, locate them based on the nearest POI using find_nearest_poi.
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
@@ -150,6 +151,7 @@ def get_text():
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
                  Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
                  If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
+                 Identify the user's location via the nearest place of interest.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list."""},
                 {"role": "user", "content": f'Attractions: {str(route)}. User query: {user_input}'}
             ],
@@ -562,6 +564,34 @@ def find_nearby_pois(user_location, radius_in_meters=100):
         print(f"Error: {e}")
         return []
 
+def find_nearest_poi(user_location):
+    user_lon = user_location['longitude']
+    user_lat = user_location['latitude']
+    print(f"User location in find_nearest_poi: {user_location}")
+    try:
+        # Perform a geospatial query to find the nearest POI
+        nearest_poi = poi_db.find_one({
+            "location": {
+                "$nearSphere": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": [user_lon, user_lat]
+                    },
+                    "$maxDistance": 100000  # Optional: Limit to a max distance in meters (100 km in this example)
+                }
+            }
+        })
+
+        if nearest_poi:
+            print(f"Found nearest POI: {nearest_poi}")
+            return nearest_poi['name']  # Return the name of the nearest POI
+        else:
+            print("No nearby POIs found.")
+            return None
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
 
 '''
 Function Mapping: map the function names to the function, so that it can be identified and called in handle_function_calls()
@@ -570,7 +600,8 @@ function_mapping = {
     "fetch_weather_data": fetch_weather_data,
     "fetch_poi_data": fetch_poi_data,
     "find_nearby_pois": find_nearby_pois,
-    "get_poi_by_name": get_poi_by_name
+    "get_poi_by_name": get_poi_by_name,
+    "find_nearest_poi": find_nearest_poi
 }
 '''
 Function Schema:
@@ -657,8 +688,32 @@ function_schemas = [
                 "required": ["name", "location", "distance"]
             }
         }
+    },
+    {
+        "name": "find_nearest_poi",
+        "description": "Find the nearest point of interest (POI) to the user's location.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "user_location": {
+                "type": "object",
+                "description": "The user's current location with latitude and longitude.",
+                "properties": {
+                "latitude": {
+                    "type": "number",
+                    "description": "The latitude of the user's location."
+                },
+                "longitude": {
+                    "type": "number",
+                    "description": "The longitude of the user's location."
+                }
+                },
+                "required": ["latitude", "longitude"]
+            }
+            },
+            "required": ["user_location"]
+        }
     }
-
 ]
 
 def handle_function_calls(messages, state):
