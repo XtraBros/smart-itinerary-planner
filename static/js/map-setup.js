@@ -23,6 +23,7 @@ let suggestionData;
 let thumbnailURI;
 let endPlaceProt; // end port
 let simulatePoint;
+let isUserRunning = false;
 let suggestionTimer = null;  // To store the timer instance
 const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
 
@@ -39,7 +40,8 @@ function getUserCurrentPosition(callBack, error) {
     navigator.geolocation.getCurrentPosition((position) => {
         userLocation = {
             lng: position.coords.longitude,
-            lat: position.coords.latitude
+            lat: position.coords.latitude,
+            userHeading: position.coords.heading,
         };
         if (callBack) {
             callBack(userLocation)
@@ -475,64 +477,19 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
-            // setTimeout(() => {
-            //     geolocateControl.trigger();
-            // }, 100)
+            setTimeout(() => {
+                geolocateControl.trigger();
+            }, 100)
             // geolocate event 
-            geolocateControl.on('geolocate', (position) => {
-                userLocation = {
-                    lng: position.coords.longitude,
-                    lat: position.coords.latitude
-                };
-                const userLoc = [position.coords.longitude, position.coords.latitude];
-                setUserLocationMark(userLoc);
-                const userHeading = position.coords.heading;
-
-                // Get the current zoom level to preserve it
-                const currentZoom = map.getZoom();
-
-                // Only update the center and heading of the map without changing zoom
+            const userLoc = [userLocation.lng, userLocation.lat];
+            setUserLocationMark(userLoc);
+            geolocateControl.on('trackuserlocationstart', () => {
                 map.easeTo({
-                    center: userLoc,
-                    bearing: userHeading,  // Set the map's bearing to the user's heading
-                    zoom: currentZoom,     // Keep the current zoom level
+                    center: [userLocation.lng, userLocation.lat],
+                    bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
+                    zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
                     duration: 500         // Animation duration (optional)
                 });
-                // if (Object.keys(route).length && endPlaceProt) {
-                //     const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
-                //     getMapboxWlakRoute(coordinates).then(result => {
-                //         if (result.legs && result.route) {
-                //             initProperty()
-                //             geolocateControl.on('geolocate', (position) => {
-                //                 const userLocation = [position.coords.longitude, position.coords.latitude];
-
-                //                 if (isUserOffRoute(userLocation, result.route)) {
-                //                     console.log('User is off-route, recalculating route...');
-                //                     recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
-                //                 }
-                //             });
-                //             if (map.getLayer('route')) {
-                //                 map.removeLayer('route');
-                //             }
-                //             if (map.getSource('route')) {
-                //                 map.removeSource('route');
-                //             }
-                //             if (map.getLayer('walked-route')) {
-                //                 map.removeLayer('walked-route');
-                //             }
-                //             if (map.getSource('walked-route')) {
-                //                 map.removeSource('walked-route');
-                //             }
-                //             if (simulationRunning || simulationPaused) {
-                //                 simulationRunning = false
-                //                 setMapRoute(result.route)
-                //                 trackUserLocation(route)
-                //             } else {
-                //                 paintLine(result.route)
-                //             }
-                //         }
-                //     })
-                // }
             });
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
@@ -557,6 +514,9 @@ async function getRouteObject(userLocation) {
 function enableNavigationMode(data) {
     instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
+    const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
+    geolocate.style.top = '210px'
+    isUserRunning = true
     const instructionPopup = document.getElementById('navigation');
     if (routeIndex == 0) {
         const firstInstruction = instructions[0];
@@ -803,92 +763,6 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 
     return ((θ * 180) / Math.PI + 360) % 360;
 }
-// Function to start simulating user location along the route with smooth movement
-// function simulateUserLocation(route) {
-//     console.log("Starting simulation");
-//     const imgs = pauseAndpaly.getElementsByTagName('img')[0]
-//     imgs.setAttribute('src', `static/icons/pause.svg`);
-//     const targetDistance = 5; // meters per step for interpolation
-
-//     setUserLocationMark(route.coordinates[0]);
-//     walkedRoute.unshift(route.coordinates[0]);
-
-//     function updateLocation() {
-//         if (!simulationRunning) return; // If not running, do nothing
-
-//         if (routeIndex < route.coordinates.length - 1) {
-//             // Simulate the user's location along the route
-//             const currentPosition = {
-//                 lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
-//                 lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
-//             };
-//             const nextPosition = {
-//                 lng: route.coordinates[routeIndex + 1][0],
-//                 lat: route.coordinates[routeIndex + 1][1]
-//             };
-//             getPoisByLocation(currentPosition);
-//             // Calculate the distance between the current and next position
-//             const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
-
-//             // Animate the marker along the path between current and next position
-//             function animateMarker(interpolatedPosition) {
-//                 if (!simulationRunning) return; // If not running, do nothing
-
-//                 // Update the user's location in your app
-//                 updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
-
-//                 // Update marker position
-//                 userMarker.setLngLat(interpolatedPosition);
-//                 simulatePoint = interpolatedPosition
-//                 // Calculate remaining distance to next position
-//                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
-//                 updateWalkedRoute(interpolatedPosition);
-//                 updateRemainingRoute(interpolatedPosition);
-//                 // If the remaining distance is less than the target, move to the next point
-//                 if (remainingDistance <= targetDistance) {
-//                     routeIndex++;
-
-//                     if (routeIndex < route.coordinates.length - 1) {
-//                         setTimeout(updateLocation, 100); // Continue to the next point
-//                     } else {
-//                         closedNavfun();
-//                         navcompleted.classList.add('fadeshowin');
-//                         pauseAndpaly.style.display = 'none';
-//                         simulationRunning = false;
-//                         simulationPaused = false;
-//                         initProperty()
-//                         console.log("Route simulation completed");
-//                     }
-//                 } else {
-//                     // Calculate the new interpolated position
-//                     const fraction = targetDistance / remainingDistance;
-//                     const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
-
-//                     // Continue animating along the current segment
-//                     simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
-//                 }
-
-//                 // Update navigation instructions based on the user's location and the next interpolated position
-//                 console.log("User location: " + JSON.stringify(userLocation));
-//                 updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
-//             }
-
-//             // Start animating along the current segment with initial interpolation
-//             const initialFraction = targetDistance / distance;
-//             const initialInterpolatedPosition = interpolate([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat], initialFraction);
-//             animateMarker(initialInterpolatedPosition);
-
-//         } else {
-//             console.log("Route simulation completed");
-//             simulationRunning = false;
-//         }
-//     }
-
-//     // Start the location simulation
-//     simulationRunning = true;
-//     simulationPaused = false;
-//     updateLocation();
-// }
 
 // Function to use user's current location and update their position along the route
 function trackUserLocation(route) {
@@ -948,7 +822,7 @@ function trackUserLocation(route) {
         updateLocation(position);
     });
     // Trigger the initial location fetch
-    geolocateControl.trigger();
+    // geolocateControl.trigger();
 }
 
 function updateWalkedRoute(currentPosition) {
@@ -1309,7 +1183,8 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                     geolocateControl.on('geolocate', (position) => {
                         userLocation = {
                             lng: position.coords.longitude,
-                            lat: position.coords.latitude
+                            lat: position.coords.latitude,
+                            userHeading: position.coords.heading,
                         };
                         if (isUserOffRoute(userLocation, result.route)) {
                             console.log('User is off-route, recalculating route...');
@@ -1746,12 +1621,9 @@ function closedNavfun() {
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
-    // Keep map markers after cancelling navigation view.
-    // if (window.mapMarkers) {
-    //     for (const [key, value] of Object.entries(window.mapMarkers)) {
-    //         value.remove();
-    //     }
-    // }
+    const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
+    geolocate.style.top = '80px'
+    isUserRunning = false
 }
 
 // creaate template and styles for each visitor/guide message.

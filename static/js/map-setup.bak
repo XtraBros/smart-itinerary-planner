@@ -2,6 +2,7 @@
 var waypoints = [];
 var map;
 var directions;
+var geolocateControl;
 var walkedRoute = [];
 let route = {};
 let api_response = {};
@@ -22,6 +23,9 @@ let suggestionData;
 let thumbnailURI;
 let endPlaceProt; // end port
 let simulatePoint;
+let isUserRunning = false;
+let suggestionTimer = null;  // To store the timer instance
+const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
 
 function initProperty() {
     routeIndex = 0;
@@ -36,7 +40,8 @@ function getUserCurrentPosition(callBack, error) {
     navigator.geolocation.getCurrentPosition((position) => {
         userLocation = {
             lng: position.coords.longitude,
-            lat: position.coords.latitude
+            lat: position.coords.latitude,
+            userHeading: position.coords.heading,
         };
         if (callBack) {
             callBack(userLocation)
@@ -70,56 +75,56 @@ async function getPoisByLocation(location) {
         const placeInfoResponse = await fetchPlacesData(poisData);
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
+        const orderOfVisit = await get_coordinates_without_route(poisData);
 
-        let contenxt = '';
-        let listCont = '';
-        poisData.forEach((placeName, index) => {
-            // Construct the Google Cloud thumbnail URL
-            const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
-
-            contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
-                            <div class="slideItme">
-                                <div class="swperimg">
-                                    <img src="${thumbnailUrl}" alt="${placeName}" srcset="">
+        fetchTemplate('static/html/info-card.html').then(template => {
+            const parser = new DOMParser();
+            let contenxt = '';
+            let listCont = '';
+            poisData.forEach((placeName, index) => {
+                // Construct the Google Cloud thumbnail URL
+                var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                // Check if placeName contains "station" or "toilet" and update accordingly
+                if (placeName.toLowerCase().includes("tiolet")) {
+                    formattedPlaceName = "toilet";
+                } else if (placeName.toLowerCase().includes("station")) {
+                    formattedPlaceName = "station";
+                }
+                const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
+    
+                contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
+                                <div class="slideItme">
+                                    <div class="swperimg">
+                                        <img src="${thumbnailUrl}" alt="${placeName}" srcset="">
+                                    </div>
+                                    <div class="visitors">
+                                        <h4>${placeName}</h4>
+                                        <p class="vistDesc"><span class="islander">Islander earns 50 points</span></p>
+                                        <p class="address">
+                                            <span>
+                                                <img src="static/icons/addess.svg" alt="" srcset="">
+                                                500m
+                                            </span>
+                                            <span>
+                                                <img src="static/icons/time.svg" alt="" srcset="">
+                                                5mins
+                                            </span>
+                                        </p>
+                                    </div>
                                 </div>
-                                <div class="visitors">
-                                    <h4>${placeName}</h4>
-                                    <p class="vistDesc"><span class="islander">Islander earns 50 points</span></p>
-                                    <p class="address">
-                                        <span>
-                                            <img src="static/icons/addess.svg" alt="" srcset="">
-                                            500m
-                                        </span>
-                                        <span>
-                                            <img src="static/icons/time.svg" alt="" srcset="">
-                                            5mins
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>`;
-
-            listCont += `<div class="itemSlide" key='${index}' data-name='${placeName}'>
-                            <div class="listimg">
-                                <img src="${thumbnailUrl}" alt="${placeName}" width="100%" srcset="">
-                            </div>
-                            <div class="titleBox">
-                                <div class="title">${placeName}</div>
-                                <div class="rightimg">
-                                    <button onclick="navDitle(event, '${placeName}')">
-                                        <img src="static/icons/navimg.svg" alt="" srcset="">
-                                    </button>
-                                    <span>Wait 5 mins</span>
-                                </div>
-                            </div>
-                            <div class="disqu vistDesc">
-                                <span class="islander">Islander earns 50 points</span>
-                            </div>
-                        </div>`;
+                            </div>`;
+    
+                listCont += setMapList({index, thumbnailUrl, placeName});
+                orderOfVisit[0].map((item, i) => {
+                    if (item === placeName) {
+                        addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
+                        return orderOfVisit[1][i]
+                    }
+                })
+            });
+            swiperconent.innerHTML = contenxt;
+            poiList.innerHTML = listCont;
         });
-        swiperconent.innerHTML = contenxt;
-        poiList.innerHTML = listCont;
         // prompt suggestion if not recent:
         const placeNames = [];
         const coordinates = [];
@@ -153,7 +158,9 @@ async function getPoisByLocation(location) {
             }
 
             let nextData = await nextResponse.json();
-
+            if (!chatMessages) {
+                var chatMessages = document.getElementById("chatbot-messages");
+            }
             if (nextData.response) {
                 appendMessage({
                     text: nextData.response,
@@ -194,6 +201,26 @@ const chatbotArea = document.getElementById('chatbot-area');
 const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 
+function setMapList({index, placeName, thumbnailUrl}) {
+    return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
+        <div class="listimg">
+            <img src="${thumbnailUrl}" alt="${placeName}" width="100%" srcset="">
+        </div>
+        <div class="titleBox">
+            <div class="title">${placeName}</div>
+            <div class="rightimg">
+                <button onclick="navDitle(event, '${placeName}')">
+                    <img src="static/icons/navimg.svg" alt="" srcset="">
+                </button>
+                <span>Wait 5 mins</span>
+            </div>
+        </div>
+        <div class="disqu vistDesc">
+            <span class="islander">Islander earns 50 points</span>
+        </div>
+    </div>`;
+}
+
 window.onload = function () {
     window.mapMarkers = {};
     const tishiDom = document.getElementById('tishi')
@@ -210,7 +237,7 @@ window.onload = function () {
         if (simulationRunning) {
             pauseSimulation();
         } else {
-            simulateUserLocation(route);
+            //simulateUserLocation(route);
         }
     }
 
@@ -235,13 +262,14 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    window.addEventListener('deviceorientation', function (event) {
+    window.addEventListener('deviceorientation', debounce(function (event) {
+        console.log("User facing direction changed.")
         const alpha = event.alpha;
         if (userMarker) {
             const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
             markerElement.style.transform = `rotate(${alpha}deg)`
         }
-    });
+    }, 200));
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -267,6 +295,14 @@ window.onload = function () {
     });
 }
 
+function debounce(fn, delay) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
+}
+
 function stopNavFunc() {
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
@@ -289,7 +325,7 @@ function exitNavFunc() {
 
 function domeShowBootFuc() {
     foodBox.classList.add('fadeshowin');
-    getSuggestion(1);
+    // getSuggestion(1);
 }
 
 async function getPlaceCoordWithName(place, isNotMarker) {
@@ -361,20 +397,12 @@ function handerMap(e, type) {
     e.target.classList.add('activeButton')
 }
 
-const geolocateControl = new mapboxgl.GeolocateControl({
-    positionOptions: {
-        enableHighAccuracy: true
-    },
-    trackUserLocation: true,
-    showUserHeading: true,
-});
-
 fetch('/config')
     .then(response => response.json())
     .then(data => {
         // Assuming the response contains a JSON object with an 'accessToken' property
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
-        thumbnailURI = data.config.GOOGLE_CLOUD_URI;
+        thumbnailURI = data.config.THUMBNAIL_URI;
         const center = [103.827973, 1.250277]
         map = new mapboxgl.Map({
             container: 'map',
@@ -382,7 +410,8 @@ fetch('/config')
             //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             //center: [103.8285654153839, 1.24791502223719],
             center,
-            zoom: 13
+            zoom: 13,
+            minZoom: 10,
         });
 
         directions = new MapboxDirections({
@@ -429,6 +458,18 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
+            // geolocation tracking
+            geolocateControl = new mapboxgl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true,
+                    timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
+                    maximumAge: 0                  // Prevents caching of location
+                },
+                trackUserLocation: true,
+                showUserHeading: true, // If you want to show user's heading direction
+            });
+            // force mapbox to stop changing map view when geolocating
+            geolocateControl._updateCamera = () => { }
             map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -436,67 +477,62 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
-            // user location control
-            // Add the Geolocate Control to the map
-            map.addControl(geolocateControl);
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
-            // Override the geolocate event to use navigator.geolocation
-            geolocateControl.on('geolocate', (position) => {
-                userLocation = {
-                    lng: position.coords.longitude,
-                    lat: position.coords.latitude
-                };
-                const userLoc = [position.coords.longitude, position.coords.latitude];
-                map.setZoom(13);
-                // map.setCenter(userLoc);
-                setUserLocationMark(userLoc);
-                if (Object.keys(route).length && endPlaceProt) {
-                    const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
-                    getMapboxWlakRoute(coordinates).then(result => {
-                        if (result.legs && result.route) {
-                            initProperty()
-                            if (map.getLayer('route')) {
-                                map.removeLayer('route');
-                            }
-                            if (map.getSource('route')) {
-                                map.removeSource('route');
-                            }
-                            if (map.getLayer('walked-route')) {
-                                map.removeLayer('walked-route');
-                            }
-                            if (map.getSource('walked-route')) {
-                                map.removeSource('walked-route');
-                            }
-                            if (simulationRunning || simulationPaused) {
-                                simulationRunning = false
-                                setMapRoute(result.route)
-                                simulateUserLocation(result.route)
-                            } else {
-                                paintLine(result.route)
-                            }
-                        }
-                    })
-                }
+            // geolocate event 
+            const userLoc = [userLocation.lng, userLocation.lat];
+            setUserLocationMark(userLoc);
+            geolocateControl.on('trackuserlocationstart', () => {
+                map.easeTo({
+                    center: [userLocation.lng, userLocation.lat],
+                    bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
+                    zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
+                    duration: 500         // Animation duration (optional)
+                });
             });
+            // Add the Geolocate Control to the map
+            map.addControl(geolocateControl);
         });
     })
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
 
+// Function to generate the route and return the route object using async/await
+async function getRouteObject(userLocation) {
+    try {
+        // Call genRoute and wait for the result (route object)
+        const result = await genRoute(userLocation);
+        return result.route; // Return the route object directly
+    } catch (error) {
+        console.error('Error fetching route object:', error);
+        throw error; // Rethrow the error for higher-level handling
+    }
+}
 // Navigation Mode 
 function enableNavigationMode(data) {
     instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
+    const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
+    geolocate.style.top = '210px'
+    isUserRunning = true
     const instructionPopup = document.getElementById('navigation');
+    if (routeIndex == 0) {
+        const firstInstruction = instructions[0];
+        // Extract the relevant information for the first instruction
+        const instructionTextContent = firstInstruction.instruction; // Text instruction
+        const distanceToCheckpoint = firstInstruction.distance; // Distance to the next checkpoint
+        const remainingDistance = calculateRemainingDistance(route.coordinates); // Assuming you have a function to calculate total remaining distance
+        const modifier = firstInstruction.modifier; // Modifier for direction icons (left, right, etc.)
+        // Display the first instruction
+        displayInstruction(instructionTextContent, distanceToCheckpoint, remainingDistance, modifier);
+    }
     // Show the pop-up
     instructionPopup.classList.add('fadeshowin');
     poiSwiper.classList.add('fadeshowin');
     listButton.style.display = 'none';
-    pauseAndpaly.style.display = 'block';
-
+    // pauseAndpaly.style.display = 'block';
     // Animate the map to tilt and zoom for 3D perspective
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
@@ -505,10 +541,55 @@ function enableNavigationMode(data) {
         duration: 500 // Animation duration in milliseconds
     });
 
-    // Wait for easeTo animation to complete, then start simulation
-    map.once('moveend', simulateUserLocation(route));
+    // Wait for easeTo animation to complete, then start tracking
+    map.once('moveend', () => trackUserLocation(route));
+}
+// Function to check if user is off-route
+function isUserOffRoute(userLocation, route, tolerance = 0.02) {
+    const userCoordinates = [userLocation.lng, userLocation.lat];
+    // Extract the coordinates from the route object
+    const routeCoordinates = route.coordinates;
+    // Create a turf lineString from route coordinates
+    const routeLine = turf.lineString(routeCoordinates);
+
+    // Create a buffered area around the route with the specified tolerance
+    const bufferedRoute = turf.buffer(routeLine, tolerance, { units: 'kilometers' });
+
+    // Create a point from the user's location
+    const userPoint = turf.point(userCoordinates);
+
+    // Check if the user's point is within the buffered route
+    return !turf.booleanPointInPolygon(userPoint, bufferedRoute);
 }
 
+
+// Handle route recalculation when user goes off-route
+function recalculateRoute(currentLocation, destination) {
+    const directionsRequest = `https://api.mapbox.com/directions/v5/mapbox/walking/${currentLocation.lng},${currentLocation.lat};${destination[0]},${destination[1]}s?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
+
+    fetch(directionsRequest)
+        .then(response => response.json())
+        .then(data => {
+            const newRoute = data.routes[0].geometry.coordinates;
+            // replace and reset all route memory objects
+            route = data.routes[0].geometry;
+            steps = data.routes[0].legs[0].steps;
+            instructions = getInstructions(steps);
+            routeIndex = 0;
+            // Update the map with new route
+            map.getSource('route').setData({
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': newRoute
+                }
+            });
+            // restart tracking:
+            trackUserLocation(route);
+            console.log("New route calculated and updated on the map.");
+        })
+        .catch(error => console.error('Error in recalculating route:', error));
+}
 function setUserLocationMark(coord, angle) {
     console.log('------->>>>>', userMarker)
     if (userMarker) {
@@ -516,7 +597,7 @@ function setUserLocationMark(coord, angle) {
         userMarker = null
     }
     const el = document.createElement('div');
-    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" style="transform: rotate(${angle || 0}deg)" alt="" srcset=""></p>`);
+    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
     userMarker = new mapboxgl.Marker({
         color: 'red',
         element: el
@@ -610,7 +691,7 @@ function calculateDistance(point1, point2) {
 
 // Function to update navigation instructions based on user's current location
 let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
-function updateNavigationInstructions(userLocation, nextPosition) {
+function updateNavigationInstructions(userLocation) {
     const thresholdDistance = 5;
     // Calculate the distance between the user's current location and the next checkpoint
     const checkpoint = {
@@ -619,17 +700,6 @@ function updateNavigationInstructions(userLocation, nextPosition) {
     };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
     console.log("Currently tracking checkpoint: " + JSON.stringify(checkpoint));
-
-    // Calculate the bearing using the next interpolated position instead of the checkpoint
-    const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
-
-    map.easeTo({
-        pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
-        zoom: 20,  // Adjust the zoom level for better street view navigation
-        center: [userLocation.lng, userLocation.lat], // Center map on user's location
-        duration: 500, // Animation duration in milliseconds
-        bearing: userHeading
-    });
 
     let increment = false;
 
@@ -694,90 +764,151 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     return ((θ * 180) / Math.PI + 360) % 360;
 }
 // Function to start simulating user location along the route with smooth movement
-function simulateUserLocation(route) {
-    console.log("Starting simulation");
-    const imgs = pauseAndpaly.getElementsByTagName('img')[0]
-    imgs.setAttribute('src', `static/icons/pause.svg`);
-    const targetDistance = 5; // meters per step for interpolation
+// function simulateUserLocation(route) {
+//     console.log("Starting simulation");
+//     const imgs = pauseAndpaly.getElementsByTagName('img')[0]
+//     imgs.setAttribute('src', `static/icons/pause.svg`);
+//     const targetDistance = 5; // meters per step for interpolation
 
+//     setUserLocationMark(route.coordinates[0]);
+//     walkedRoute.unshift(route.coordinates[0]);
+
+//     function updateLocation() {
+//         if (!simulationRunning) return; // If not running, do nothing
+
+//         if (routeIndex < route.coordinates.length - 1) {
+//             // Simulate the user's location along the route
+//             const currentPosition = {
+//                 lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
+//                 lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
+//             };
+//             const nextPosition = {
+//                 lng: route.coordinates[routeIndex + 1][0],
+//                 lat: route.coordinates[routeIndex + 1][1]
+//             };
+//             getPoisByLocation(currentPosition);
+//             // Calculate the distance between the current and next position
+//             const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
+
+//             // Animate the marker along the path between current and next position
+//             function animateMarker(interpolatedPosition) {
+//                 if (!simulationRunning) return; // If not running, do nothing
+
+//                 // Update the user's location in your app
+//                 updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
+
+//                 // Update marker position
+//                 userMarker.setLngLat(interpolatedPosition);
+//                 simulatePoint = interpolatedPosition
+//                 // Calculate remaining distance to next position
+//                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
+//                 updateWalkedRoute(interpolatedPosition);
+//                 updateRemainingRoute(interpolatedPosition);
+//                 // If the remaining distance is less than the target, move to the next point
+//                 if (remainingDistance <= targetDistance) {
+//                     routeIndex++;
+
+//                     if (routeIndex < route.coordinates.length - 1) {
+//                         setTimeout(updateLocation, 100); // Continue to the next point
+//                     } else {
+//                         closedNavfun();
+//                         navcompleted.classList.add('fadeshowin');
+//                         pauseAndpaly.style.display = 'none';
+//                         simulationRunning = false;
+//                         simulationPaused = false;
+//                         initProperty()
+//                         console.log("Route simulation completed");
+//                     }
+//                 } else {
+//                     // Calculate the new interpolated position
+//                     const fraction = targetDistance / remainingDistance;
+//                     const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
+
+//                     // Continue animating along the current segment
+//                     simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
+//                 }
+
+//                 // Update navigation instructions based on the user's location and the next interpolated position
+//                 console.log("User location: " + JSON.stringify(userLocation));
+//                 updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
+//             }
+
+//             // Start animating along the current segment with initial interpolation
+//             const initialFraction = targetDistance / distance;
+//             const initialInterpolatedPosition = interpolate([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat], initialFraction);
+//             animateMarker(initialInterpolatedPosition);
+
+//         } else {
+//             console.log("Route simulation completed");
+//             simulationRunning = false;
+//         }
+//     }
+
+//     // Start the location simulation
+//     simulationRunning = true;
+//     simulationPaused = false;
+//     updateLocation();
+// }
+
+// Function to use user's current location and update their position along the route
+function trackUserLocation(route) {
+    console.log("Tracking user location");
+    const imgs = pauseAndpaly.getElementsByTagName('img')[0];
+    imgs.setAttribute('src', `static/icons/pause.svg`);
+
+    // Set the user's initial location marker at the starting point
     setUserLocationMark(route.coordinates[0]);
     walkedRoute.unshift(route.coordinates[0]);
-
-    function updateLocation() {
+    // Function to handle location updates from the GeolocateControl
+    function updateLocation(position) {
         if (!simulationRunning) return; // If not running, do nothing
 
-        if (routeIndex < route.coordinates.length - 1) {
-            // Simulate the user's location along the route
-            const currentPosition = {
-                lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
-                lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
-            };
-            const nextPosition = {
-                lng: route.coordinates[routeIndex + 1][0],
-                lat: route.coordinates[routeIndex + 1][1]
-            };
-            getPoisByLocation(currentPosition);
-            // Calculate the distance between the current and next position
-            const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
+        const currentPosition = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude
+        };
+        const nextPosition = {
+            lng: route.coordinates[routeIndex + 1][0],
+            lat: route.coordinates[routeIndex + 1][1]
+        };
+        getPoisByLocation(currentPosition);
+        // Update the user's location in your app
+        updateUserLocation(currentPosition);
 
-            // Animate the marker along the path between current and next position
-            function animateMarker(interpolatedPosition) {
-                if (!simulationRunning) return; // If not running, do nothing
+        // Update the marker position to the user's current location
+        userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
 
-                // Update the user's location in your app
-                updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
+        // Calculate remaining distance to the next position on the route
+        const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 
-                // Update marker position
-                userMarker.setLngLat(interpolatedPosition);
-                simulatePoint = interpolatedPosition
-                // Calculate remaining distance to next position
-                const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
-                updateWalkedRoute(interpolatedPosition);
-                updateRemainingRoute(interpolatedPosition);
-                // If the remaining distance is less than the target, move to the next point
-                if (remainingDistance <= targetDistance) {
-                    routeIndex++;
+        updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
+        updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
 
-                    if (routeIndex < route.coordinates.length - 1) {
-                        setTimeout(updateLocation, 100); // Continue to the next point
-                    } else {
-                        closedNavfun();
-                        navcompleted.classList.add('fadeshowin');
-                        pauseAndpaly.style.display = 'none';
-                        simulationRunning = false;
-                        simulationPaused = false;
-                        initProperty()
-                        console.log("Route simulation completed");
-                    }
-                } else {
-                    // Calculate the new interpolated position
-                    const fraction = targetDistance / remainingDistance;
-                    const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
+        // If the remaining distance is less than the threshold, move to the next point
+        if (remainingDistance <= targetDistance) {
+            routeIndex++;
 
-                    // Continue animating along the current segment
-                    simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
-                }
-
-                // Update navigation instructions based on the user's location and the next interpolated position
-                console.log("User location: " + JSON.stringify(userLocation));
-                updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] }, nextPosition);
+            if (routeIndex >= route.coordinates.length - 1) {
+                // Route completed
+                closedNavfun();
+                navcompleted.classList.add('fadeshowin');
+                pauseAndpaly.style.display = 'none';
+                initProperty();
+                console.log("Route tracking completed");
             }
-
-            // Start animating along the current segment with initial interpolation
-            const initialFraction = targetDistance / distance;
-            const initialInterpolatedPosition = interpolate([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat], initialFraction);
-            animateMarker(initialInterpolatedPosition);
-
-        } else {
-            console.log("Route simulation completed");
-            simulationRunning = false;
         }
+
+        // Update navigation instructions based on the user's current position
+        updateNavigationInstructions(currentPosition);
     }
 
-    // Start the location simulation
-    simulationRunning = true;
-    simulationPaused = false;
-    updateLocation();
+    // Event listener for when the user's location changes
+    geolocateControl.on('geolocate', (position) => {
+        console.log('Updating user location:')
+        updateLocation(position);
+    });
+    // Trigger the initial location fetch
+    // geolocateControl.trigger();
 }
 
 function updateWalkedRoute(currentPosition) {
@@ -834,6 +965,11 @@ function interpolate(p1, p2, fraction) {
 function updateUserLocation(location) {
     userLocation = location;
     console.log("User location updated:", location);
+    // Check if the user is off-route after updating the location
+    if (isUserOffRoute(userLocation, route)) {
+        console.log('User is off-route, recalculating route...');
+        recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+    }
 }
 
 // Function to pause the simulation
@@ -856,71 +992,139 @@ function stopSimulation() {
     console.log("Simulation stopped");
 }
 
-function updateUserLocation(newLocation) {
-    userLocation = newLocation;
-
-    // Update the map view to center on the new location
-    map.flyTo({
-        center: [userLocation.lng, userLocation.lat],
-        essential: true, // Animation is essential
-        zoom: 18 // Adjust zoom level as needed
-    });
-
-    // Update the marker position
-    if (userMarker) {
-        userMarker.setLngLat([userLocation.lng, userLocation.lat]);
-    }
-}
-
 function setMapRoute(resRoute) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
         setUserLocationMark(resRoute.coordinates[0])
     }
-    // Add route to map
-    if (!map.getSource('route')) {
-        map.addSource('route', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'properties': {},
-                'geometry': resRoute
-            }
-        });
-    }
-
     if (!map.getLayer('route')) {
-        // Add arrows to the route using static png asset
-        if (!map.hasImage('arrow')) {
-            const url = 'static/icons/nav.png';
-            map.loadImage(url, function (err, image) {
-                if (err) {
-                    console.error('Error loading image:', err);
-                    reject(err);
+        map.loadImage(
+            'static/icons/nav.png',
+            (error, image) => {
+                if (error) throw error;
+                if (!map.hasImage('arrow')) {
+                    map.addImage('arrow', image);
                 }
-                map.addImage('arrow', image);
-            });
-        }
-        // Add arrow-line layer
-        map.addLayer({
-            'id': 'route',
-            'type': 'symbol',
-            'source': 'route',
-            'layout': {
-                'symbol-placement': 'line',
-                'symbol-spacing': 2,
-                'icon-image': 'arrow',
-                'icon-size': 0.5,
-                // 'icon-size': [
-                //     'interpolate',
-                //     ['linear'],
-                //     ['zoom'],
-                //     14, 0.4,
-                //     16, 0.6,     // 缩放级别 10 时图标大小为 1
-                //     17, 0.7    // 缩放级别 15 时图标大小为 1.5
-                // ],
-                'icon-allow-overlap': true,
-            },
-        });
+                // Add route to map
+                if (!map.getSource('route')) {
+                    map.addSource('route', {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'properties': {},
+                            'geometry': resRoute
+                        }
+                    });
+                }
+                const lineBaseWidth = 14;
+
+                map.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: 'route',
+                    layout: {
+                        'icon-size': 0.8,
+                        'icon-allow-overlap': false,
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-pattern': 'arrow',
+                        'line-width': [
+                            'interpolate',
+                            ['exponential', 2],
+                            ['zoom'],
+                            0,
+                            lineBaseWidth * 0.5,
+                            0.9999,
+                            lineBaseWidth * 0.5,
+                            1,
+                            lineBaseWidth * 0.5,
+                            1.9999,
+                            lineBaseWidth * 0.5,
+                            2,
+                            lineBaseWidth * 0.5,
+                            2.9999,
+                            lineBaseWidth * 0.5,
+                            3,
+                            lineBaseWidth * 0.5,
+                            3.9999,
+                            lineBaseWidth * 0.5,
+                            4,
+                            lineBaseWidth * 0.5,
+                            4.9999,
+                            lineBaseWidth * 0.5,
+                            5,
+                            lineBaseWidth * 0.5,
+                            5.9999,
+                            lineBaseWidth * 0.5,
+                            6,
+                            lineBaseWidth * 0.5,
+                            6.9999,
+                            lineBaseWidth * 0.5,
+                            7,
+                            lineBaseWidth * 0.5,
+                            7.9999,
+                            lineBaseWidth * 0.5,
+                            8,
+                            lineBaseWidth * 0.5,
+                            8.9999,
+                            lineBaseWidth * 0.5,
+                            9,
+                            lineBaseWidth * 0.5,
+                            9.9999,
+                            lineBaseWidth * 0.5,
+                            10,
+                            lineBaseWidth * 1,
+                            10.9999,
+                            lineBaseWidth * 1,
+                            11,
+                            lineBaseWidth * 1,
+                            11.9999,
+                            lineBaseWidth * 1,
+                            12,
+                            lineBaseWidth * 1,
+                            12.9999,
+                            lineBaseWidth * 2,
+                            13,
+                            lineBaseWidth * 1,
+                            13.9999,
+                            lineBaseWidth * 2,
+                            14,
+                            lineBaseWidth * 1,
+                            14.9999,
+                            lineBaseWidth * 2,
+                            15,
+                            lineBaseWidth * 1,
+                            15.9999,
+                            lineBaseWidth * 2,
+                            16,
+                            lineBaseWidth * 1,
+                            16.9999,
+                            lineBaseWidth * 2,
+                            17,
+                            lineBaseWidth * 1,
+                            17.9999,
+                            lineBaseWidth * 2,
+                            18,
+                            lineBaseWidth * 1,
+                            18.9999,
+                            lineBaseWidth * 2,
+                            19,
+                            lineBaseWidth * 1,
+                            19.9999,
+                            lineBaseWidth * 2,
+                            20,
+                            lineBaseWidth * 1,
+                            20.9999,
+                            lineBaseWidth * 2,
+                            21,
+                            lineBaseWidth * 1,
+                            22,
+                            lineBaseWidth * 2
+                        ]
+                    }
+                });
+            }
+        );
 
         // Update route data on map
         directions.on('route', function (e) {
@@ -1062,6 +1266,17 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
             .then(result => {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
+                    geolocateControl.on('geolocate', (position) => {
+                        userLocation = {
+                            lng: position.coords.longitude,
+                            lat: position.coords.latitude,
+                            userHeading: position.coords.heading,
+                        };
+                        if (isUserOffRoute(userLocation, result.route)) {
+                            console.log('User is off-route, recalculating route...');
+                            recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                        }
+                    });
                     // console.log('------result->>>>>>>>>', result)
                     // Extract route instructions
                     if (result.route.coordinates && result.route.coordinates.length) {
@@ -1198,10 +1413,30 @@ function submitChat(event) {
         if (message !== "") {
             var chatMessages = document.getElementById("chatbot-messages");
             postMessage(message, chatMessages);
-
+            // Start the timer if not running
+            if (!suggestionTimer) {
+                resetTimer();  // Replace "someType" with the actual type if needed
+            }
             inputBox.value = "";
         }
     }
+}
+// Chat timer: track time since last message
+function resetTimer() {
+    // Clear any existing timer
+    if (suggestionTimer) {
+        console.log("Resetting suggstion timer.")
+        clearTimeout(suggestionTimer);
+    }
+    console.log("Starting a timer for suggestions.")
+    // Set a new timer that runs after 5 minutes
+    suggestionTimer = setTimeout(() => {
+        console.log("5 minutes since last message, prompting suggestions.")
+        getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
+        getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
+        clearTimeout(suggestionTimer);  // Stop the timer after suggestion is made
+        suggestionTimer = null;  // Set timer to null, so it can be started again
+    }, suggestionTimeout);
 }
 
 async function postMessage(message, chatMessages) {
@@ -1451,9 +1686,9 @@ async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
 }
 
 function closedNavfun() {
-    const navigation = document.getElementById('navigation');
-    navigation.classList.remove('fadeshowin');
-    navigation.classList.add('fadeout');
+    const navigationElem = document.getElementById('navigation');
+    navigationElem.classList.remove('fadeshowin');
+    navigationElem.classList.add('fadeout');
     if (map.getLayer('route')) {
         map.removeLayer('route');
     }
@@ -1472,6 +1707,9 @@ function closedNavfun() {
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
+    const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
+    geolocate.style.top = '80px'
+    isUserRunning = false
     // Keep map markers after cancelling navigation view.
     // if (window.mapMarkers) {
     //     for (const [key, value] of Object.entries(window.mapMarkers)) {
@@ -1737,54 +1975,114 @@ function addMarkers(placeNames, waypoints) {
     window.mapMarkers = {};
     fetchPlacesData(placeNames).then(placesData => {
         fetchTemplate('static/html/info-card.html').then(template => {
-            var parser = new DOMParser();
+            const parser = new DOMParser();
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
                 if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-
-                // Remove unwanted characters from placeName
-                placeName = placeName.replace(/[\[\]]/g, '');
-                console.log(placeName);
-
-                // Set up the basic place information
-                var place = {
-                    description: placesData[placeName] ? placesData[placeName]['description'] : '',
-                    name: placeName,
-                };
-
-                // Create the thumbnail URL using Google Cloud Storage
-                const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-                var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
-                place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
-
-                // Generate the popup content using the template
-                var popupContentString = populateTemplate(template, place);
-                var doc = parser.parseFromString(popupContentString, 'text/html');
-                var popupContent = doc.querySelector('.info-card-content');
-
-                // Add functionality for the button in the popup
-                popupContent.querySelector('button').onclick = async function () {
-                    disminiNav();
-                    await displayRoute([placeName], [coord], true);
-                    paintLine(route)
-                }
-
-                // Create a popup and marker for the map
-                var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
-                var popup = new mapboxgl.Popup().setDOMContent(popupContent);
-                var marker = new mapboxgl.Marker()
-                    .setLngLat([coord[0], coord[1]])
-                    .setPopup(popup)
-                    .addTo(map);
-
-                // Store marker by ID
-                window.mapMarkers[popupId] = marker;
+                const  description = placesData[placeName] ? placesData[placeName]['description'] : ''
+                addMarkertoMap({ placeName, category: 'dinwei', index, template, description, parser, location: coord })
             });
         });
     });
+}
+
+function displayByCategory(category, element) {
+    const munts = document.getElementsByClassName('newHeader')[0]
+    const lis = munts.getElementsByClassName('item')
+    for (let index = 0; index < lis.length; index++) {
+        const item = lis[index];
+        item.classList.remove('active')
+    }
+    element.classList.add('active');
+    // Remove existing markers from the map
+    if (window.mapMarkers) {
+        for (const [key, value] of Object.entries(window.mapMarkers)) {
+            value.remove();
+        }
+    }
+    window.mapMarkers = {};
+
+    // Fetch places data by category from the Flask endpoint
+    fetch('/fetch_by_category', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ category }),
+    })
+        .then(response => response.json())
+        .then(placesData => {
+            fetchTemplate('static/html/info-card.html').then(template => {
+                const parser = new DOMParser();
+                let listCont = ''
+                // Loop through the placesData and place markers on the map
+                Object.entries(placesData).forEach(([placeName, placeInfo], index) => {
+                    const { description, location } = placeInfo;
+                    // Ensure location contains valid coordinates [longitude, latitude]
+                    if (!location || location.length !== 2 || isNaN(location[0]) || isNaN(location[1])) {
+                        console.error(`Invalid coordinates for ${placeName}:`, location);
+                        return; // Skip this iteration if coordinates are invalid
+                    }
+                    listCont += addMarkertoMap({ placeName, category, index, template, description, parser, location })
+                });
+                poiList.innerHTML = listCont;
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching places data:', error);
+        });
+}
+
+function addMarkertoMap({ placeName, category, index, template, description, parser, location }) {
+    // Remove unwanted characters from the placeName
+    placeName = placeName.replace(/[\[\]]/g, '');
+    console.log(placeName);
+
+    // Set up the basic place information
+    const place = {
+        description: description || '',
+        name: placeName,
+    };
+
+    // Create the thumbnail URL using Google Cloud Storage
+    let formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+    if (formattedPlaceName.toLowerCase().includes("toilet")) {
+        formattedPlaceName = "toilet";
+    } else if (formattedPlaceName.toLowerCase().includes("station")) {
+        formattedPlaceName = "station";
+    }
+    const thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
+    place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
+
+    // Generate the popup content using the template
+    const popupContentString = populateTemplate(template, place);
+    const doc = parser.parseFromString(popupContentString, 'text/html');
+    const popupContent = doc.querySelector('.info-card-content');
+    // Add functionality for the button in the popup
+    popupContent.querySelector('button').onclick = async function () {
+        disminiNav();
+        await displayRoute([placeName], [location], true);
+        paintLine(route);
+    };
+
+    // Create a popup and marker for the map
+    const popupId = placeName.replace(/\s+/g, '-').toLowerCase();
+    const popup = new mapboxgl.Popup().setDOMContent(popupContent);
+
+    const el = document.createElement('div');
+    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/${category}_maker.svg" width="46" alt="" srcset=""></p>`);
+    const marker = new mapboxgl.Marker({
+        element: el
+    })
+        .setLngLat([location[0], location[1]]) // Use location from the placeInfo
+        .setPopup(popup)
+        .addTo(map);
+    // Store marker by ID
+    window.mapMarkers[popupId] = marker;
+    return setMapList({index, thumbnailUrl: place.thumbnail, placeName});
 }
 
 function fetchTemplate(url) {
@@ -1859,7 +2157,7 @@ function awaitGetPlaceCoordWithName(place) {
 
 function getPromo() {
     idaeBox.classList.add('fadeshowin');
-    getSuggestion(2)
+    // getSuggestion(2);
 }
 
 // Suggestion Button:
