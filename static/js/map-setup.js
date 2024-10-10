@@ -170,10 +170,13 @@ async function getPoisByLocation(location) {
                     longAndlat: nextData.coordinates,
                     fromUser: '1',
                 });
-
                 attachEventListenersToHyperlinks();
             }
-
+            // if chat box not open, show pop up
+            const popupModal = document.getElementById('popupModal');
+            if (window.getComputedStyle(popupModal).display == 'none') {
+                idaeBox.classList.add('fadeshowin');
+            }
             // Update the last event check timestamp
             localStorage.setItem('lastEventCheckTime', currentTime);
         } else {
@@ -481,15 +484,13 @@ fetch('/config')
                 geolocateControl.trigger();
             }, 100)
             // geolocate event 
-            const userLoc = [userLocation.lng, userLocation.lat];
-            setUserLocationMark(userLoc);
-            geolocateControl.on('trackuserlocationstart', () => {
-                map.easeTo({
-                    center: [userLocation.lng, userLocation.lat],
-                    bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
-                    zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
-                    duration: 500         // Animation duration (optional)
-                });
+            geolocateControl.on('geolocate', (position) => {
+                userLocation = {
+                    lng: position.coords.longitude,
+                    lat: position.coords.latitude
+                };
+                const userLoc = [position.coords.longitude, position.coords.latitude];
+                setUserLocationMark(userLoc);
             });
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
@@ -775,7 +776,8 @@ function trackUserLocation(route) {
     walkedRoute.unshift(route.coordinates[0]);
     // Function to handle location updates from the GeolocateControl
     function updateLocation(position) {
-        if (!simulationRunning) return;
+        if (!simulationRunning) return; // If not running, do nothing
+
         const currentPosition = {
             lng: position.coords.longitude,
             lat: position.coords.latitude
@@ -784,9 +786,7 @@ function trackUserLocation(route) {
             lng: route.coordinates[routeIndex + 1][0],
             lat: route.coordinates[routeIndex + 1][1]
         };
-        debounce(() => {
-            getPoisByLocation(currentPosition);
-        }, 5000)
+        getPoisByLocation(currentPosition);
         // Update the user's location in your app
         updateUserLocation(currentPosition);
 
@@ -820,10 +820,10 @@ function trackUserLocation(route) {
     // Event listener for when the user's location changes
     geolocateControl.on('geolocate', (position) => {
         console.log('Updating user location:')
-        debounce(() => {
-            updateLocation(position);
-        }, 100)
+        updateLocation(position);
     });
+    // Trigger the initial location fetch
+    // geolocateControl.trigger();
 }
 
 function updateWalkedRoute(currentPosition) {
