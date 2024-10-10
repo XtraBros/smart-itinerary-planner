@@ -73,6 +73,7 @@ async function getPoisByLocation(location) {
 
         const poisData = await response.json();
         const placeInfoResponse = await fetchPlacesData(poisData);
+        if (!placeInfoResponse || !placeInfoResponse.length) return
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
         const orderOfVisit = await get_coordinates_without_route(poisData);
