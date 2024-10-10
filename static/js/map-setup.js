@@ -73,46 +73,56 @@ async function getPoisByLocation(location) {
         const placeInfoResponse = await fetchPlacesData(poisData);
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
+        const orderOfVisit = await get_coordinates_without_route(poisData);
 
-        let contenxt = '';
-        let listCont = '';
-        poisData.forEach((placeName, index) => {
-            // Construct the Google Cloud thumbnail URL
-            var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-            // Check if placeName contains "station" or "toilet" and update accordingly
-            if (placeName.toLowerCase().includes("tiolet")) {
-                formattedPlaceName = "toilet";
-            } else if (placeName.toLowerCase().includes("station")) {
-                formattedPlaceName = "station";
-            }
-            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
-
-            contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
-                            <div class="slideItme">
-                                <div class="swperimg">
-                                    <img src="${thumbnailUrl}" alt="${placeName}" srcset="">
+        fetchTemplate('static/html/info-card.html').then(template => {
+            const parser = new DOMParser();
+            let contenxt = '';
+            let listCont = '';
+            poisData.forEach((placeName, index) => {
+                // Construct the Google Cloud thumbnail URL
+                var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                // Check if placeName contains "station" or "toilet" and update accordingly
+                if (placeName.toLowerCase().includes("tiolet")) {
+                    formattedPlaceName = "toilet";
+                } else if (placeName.toLowerCase().includes("station")) {
+                    formattedPlaceName = "station";
+                }
+                const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
+    
+                contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
+                                <div class="slideItme">
+                                    <div class="swperimg">
+                                        <img src="${thumbnailUrl}" alt="${placeName}" srcset="">
+                                    </div>
+                                    <div class="visitors">
+                                        <h4>${placeName}</h4>
+                                        <p class="vistDesc"><span class="islander">Islander earns 50 points</span></p>
+                                        <p class="address">
+                                            <span>
+                                                <img src="static/icons/addess.svg" alt="" srcset="">
+                                                500m
+                                            </span>
+                                            <span>
+                                                <img src="static/icons/time.svg" alt="" srcset="">
+                                                5mins
+                                            </span>
+                                        </p>
+                                    </div>
                                 </div>
-                                <div class="visitors">
-                                    <h4>${placeName}</h4>
-                                    <p class="vistDesc"><span class="islander">Islander earns 50 points</span></p>
-                                    <p class="address">
-                                        <span>
-                                            <img src="static/icons/addess.svg" alt="" srcset="">
-                                            500m
-                                        </span>
-                                        <span>
-                                            <img src="static/icons/time.svg" alt="" srcset="">
-                                            5mins
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>`;
-
-            listCont += setMapList({index, thumbnailUrl, placeName});
+                            </div>`;
+    
+                listCont += setMapList({index, thumbnailUrl, placeName});
+                orderOfVisit[0].map((item, i) => {
+                    if (item === placeName) {
+                        addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
+                        return orderOfVisit[1][i]
+                    }
+                })
+            });
+            swiperconent.innerHTML = contenxt;
+            poiList.innerHTML = listCont;
         });
-        swiperconent.innerHTML = contenxt;
-        poiList.innerHTML = listCont;
         // prompt suggestion if not recent:
         const placeNames = [];
         const coordinates = [];
@@ -2001,57 +2011,15 @@ function addMarkers(placeNames, waypoints) {
     window.mapMarkers = {};
     fetchPlacesData(placeNames).then(placesData => {
         fetchTemplate('static/html/info-card.html').then(template => {
-            var parser = new DOMParser();
+            const parser = new DOMParser();
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
                 if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-
-                // Remove unwanted characters from placeName
-                placeName = placeName.replace(/[\[\]]/g, '');
-                console.log(placeName);
-
-                // Set up the basic place information
-                var place = {
-                    description: placesData[placeName] ? placesData[placeName]['description'] : '',
-                    name: placeName,
-                };
-
-                // Create the thumbnail URL using Google Cloud Storage
-                var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-                // Check if placeName contains "station" or "toilet" and update accordingly
-                if (formattedPlaceName.toLowerCase().includes("toilet")) {
-                    formattedPlaceName = "toilet";
-                } else if (formattedPlaceName.toLowerCase().includes("station")) {
-                    formattedPlaceName = "station";
-                }
-                var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
-                place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
-
-                // Generate the popup content using the template
-                var popupContentString = populateTemplate(template, place);
-                var doc = parser.parseFromString(popupContentString, 'text/html');
-                var popupContent = doc.querySelector('.info-card-content');
-
-                // Add functionality for the button in the popup
-                popupContent.querySelector('button').onclick = async function () {
-                    disminiNav();
-                    await displayRoute([placeName], [coord], true);
-                    paintLine(route)
-                }
-
-                // Create a popup and marker for the map
-                var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
-                var popup = new mapboxgl.Popup().setDOMContent(popupContent);
-                var marker = new mapboxgl.Marker()
-                    .setLngLat([coord[0], coord[1]])
-                    .setPopup(popup)
-                    .addTo(map);
-
-                // Store marker by ID
-                window.mapMarkers[popupId] = marker;
+                const  description = placesData[placeName] ? placesData[placeName]['description'] : ''
+                addMarkertoMap({ placeName, category: 'dinwei', index, template, description, parser, location: coord })
             });
         });
     });
@@ -2079,70 +2047,22 @@ function displayByCategory(category, element) {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ category: category }),
+        body: JSON.stringify({ category }),
     })
         .then(response => response.json())
         .then(placesData => {
             fetchTemplate('static/html/info-card.html').then(template => {
-                var parser = new DOMParser();
+                const parser = new DOMParser();
                 let listCont = ''
                 // Loop through the placesData and place markers on the map
                 Object.entries(placesData).forEach(([placeName, placeInfo], index) => {
                     const { description, location } = placeInfo;
-
                     // Ensure location contains valid coordinates [longitude, latitude]
                     if (!location || location.length !== 2 || isNaN(location[0]) || isNaN(location[1])) {
                         console.error(`Invalid coordinates for ${placeName}:`, location);
                         return; // Skip this iteration if coordinates are invalid
                     }
-
-                    // Remove unwanted characters from the placeName
-                    placeName = placeName.replace(/[\[\]]/g, '');
-                    console.log(placeName);
-
-                    // Set up the basic place information
-                    var place = {
-                        description: description || '',
-                        name: placeName,
-                    };
-
-                    // Create the thumbnail URL using Google Cloud Storage
-                    var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-                    // Check if placeName contains "station" or "toilet" and update accordingly
-                    if (formattedPlaceName.toLowerCase().includes("toilet")) {
-                        formattedPlaceName = "toilet";
-                    } else if (formattedPlaceName.toLowerCase().includes("station")) {
-                        formattedPlaceName = "station";
-                    }
-                    var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
-                    place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
-
-                    // Generate the popup content using the template
-                    var popupContentString = populateTemplate(template, place);
-                    var doc = parser.parseFromString(popupContentString, 'text/html');
-                    var popupContent = doc.querySelector('.info-card-content');
-                    listCont += setMapList({index, thumbnailUrl: place.thumbnail, placeName});
-                    // Add functionality for the button in the popup
-                    popupContent.querySelector('button').onclick = async function () {
-                        disminiNav();
-                        await displayRoute([placeName], [location], true);
-                        paintLine(route);
-                    };
-
-                    // Create a popup and marker for the map
-                    var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
-                    var popup = new mapboxgl.Popup().setDOMContent(popupContent);
-
-                    const el = document.createElement('div');
-                    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/${category}_maker.svg" width="46" alt="" srcset=""></p>`);
-                    var marker = new mapboxgl.Marker({
-                        element: el
-                    })
-                        .setLngLat([location[0], location[1]]) // Use location from the placeInfo
-                        .setPopup(popup)
-                        .addTo(map);
-                    // Store marker by ID
-                    window.mapMarkers[popupId] = marker;
+                    listCont += addMarkertoMap({ placeName, category, index, template, description, parser, location })
                 });
                 poiList.innerHTML = listCont;
             });
@@ -2150,6 +2070,55 @@ function displayByCategory(category, element) {
         .catch(error => {
             console.error('Error fetching places data:', error);
         });
+}
+
+function addMarkertoMap({ placeName, category, index, template, description, parser, location }) {
+    // Remove unwanted characters from the placeName
+    placeName = placeName.replace(/[\[\]]/g, '');
+    console.log(placeName);
+
+    // Set up the basic place information
+    const place = {
+        description: description || '',
+        name: placeName,
+    };
+
+    // Create the thumbnail URL using Google Cloud Storage
+    let formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+    if (formattedPlaceName.toLowerCase().includes("toilet")) {
+        formattedPlaceName = "toilet";
+    } else if (formattedPlaceName.toLowerCase().includes("station")) {
+        formattedPlaceName = "station";
+    }
+    const thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
+    place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
+
+    // Generate the popup content using the template
+    const popupContentString = populateTemplate(template, place);
+    const doc = parser.parseFromString(popupContentString, 'text/html');
+    const popupContent = doc.querySelector('.info-card-content');
+    // Add functionality for the button in the popup
+    popupContent.querySelector('button').onclick = async function () {
+        disminiNav();
+        await displayRoute([placeName], [location], true);
+        paintLine(route);
+    };
+
+    // Create a popup and marker for the map
+    const popupId = placeName.replace(/\s+/g, '-').toLowerCase();
+    const popup = new mapboxgl.Popup().setDOMContent(popupContent);
+
+    const el = document.createElement('div');
+    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/${category}_maker.svg" width="46" alt="" srcset=""></p>`);
+    const marker = new mapboxgl.Marker({
+        element: el
+    })
+        .setLngLat([location[0], location[1]]) // Use location from the placeInfo
+        .setPopup(popup)
+        .addTo(map);
+    // Store marker by ID
+    window.mapMarkers[popupId] = marker;
+    return setMapList({index, thumbnailUrl: place.thumbnail, placeName});
 }
 
 function fetchTemplate(url) {
