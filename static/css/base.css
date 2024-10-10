@@ -868,3 +868,10 @@ a.mapboxgl-ctrl-logo {
     transform: scale(1);
   }
 }
+.user-location-marker {
+  transform-origin: center;
+  background-image: url('../icons/cuser.svg');
+  background-size: contain;
+  width: 70px;
+   height: 70px;
+}

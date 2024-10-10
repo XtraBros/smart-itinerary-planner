@@ -269,8 +269,8 @@ window.onload = function () {
     window.addEventListener('deviceorientation', debounce(function (event) {
         console.log("User facing direction changed.")
         const alpha = event.alpha;
-        if (userMarker) {
-            const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+        if (userMarker && event.alpha !== null) {
+            const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
             markerElement.style.transform = `rotate(${alpha}deg)`
         }
     }, 200));
@@ -608,9 +608,9 @@ function setUserLocationMark(coord, angle) {
         userMarker = null
     }
     const el = document.createElement('div');
-    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
+    el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     userMarker = new mapboxgl.Marker({
-        color: 'red',
+        rotationAlignment: 'map',
         element: el
     })
         .setLngLat(coord)
@@ -1066,8 +1066,8 @@ function paintLine(resRoute) {
     }
     map.fitBounds([startPrit, endProit], {
         // bearing: bers,
-        padding: 30, // 距离屏幕边缘的内边距（以像素为单位）
-        maxZoom: 17,
+        padding: 50, // 距离屏幕边缘的内边距（以像素为单位）
+        maxZoom: 16,
         duration: 1000
     });
 }
@@ -2036,8 +2036,8 @@ function startUserNav() {
         map.removeLayer('lineBorder');
     }
     setMapRoute(route)
-    const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-    markerElement.style.transform = `rotate(0deg)`
+    // const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+    // markerElement.style.transform = `rotate(0deg)`
     startNav.classList.remove('fadeshowin');
     enableNavigationMode(steps);
 }
