@@ -423,6 +423,13 @@ fetch('/config')
             unit: 'metric',
             profile: 'mapbox/walking'
         });
+        const navControl = new mapboxgl.NavigationControl({
+            showCompass: true,  // Show compass (default is true)
+            showZoom: false,
+            rotateInner: true,
+            showDigit: true
+        });
+        map.addControl(navControl, 'top-right')
         // variable to allow resizing function
         window.mapboxMap = map;
         const bounds = [
