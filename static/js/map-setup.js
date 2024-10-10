@@ -481,15 +481,13 @@ fetch('/config')
                 geolocateControl.trigger();
             }, 100)
             // geolocate event 
-            const userLoc = [userLocation.lng, userLocation.lat];
-            setUserLocationMark(userLoc);
-            geolocateControl.on('trackuserlocationstart', () => {
-                map.easeTo({
-                    center: [userLocation.lng, userLocation.lat],
-                    bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
-                    zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
-                    duration: 500         // Animation duration (optional)
-                });
+            geolocateControl.on('geolocate', (position) => {
+                userLocation = {
+                    lng: position.coords.longitude,
+                    lat: position.coords.latitude
+                };
+                const userLoc = [position.coords.longitude, position.coords.latitude];
+                setUserLocationMark(userLoc);
             });
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
@@ -1328,9 +1326,9 @@ function submitChat(event) {
             var chatMessages = document.getElementById("chatbot-messages");
             postMessage(message, chatMessages);
             // Start the timer if not running
-            if (!suggestionTimer) {
-                resetTimer();  // Replace "someType" with the actual type if needed
-            }
+            // if (!suggestionTimer) {
+            //     resetTimer();  // Replace "someType" with the actual type if needed
+            // }
             inputBox.value = "";
         }
     }
@@ -1346,8 +1344,8 @@ function resetTimer() {
     // Set a new timer that runs after 5 minutes
     suggestionTimer = setTimeout(() => {
         console.log("5 minutes since last message, prompting suggestions.")
-        getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
-        getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
+        // getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
+        // getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
         clearTimeout(suggestionTimer);  // Stop the timer after suggestion is made
         suggestionTimer = null;  // Set timer to null, so it can be started again
     }, suggestionTimeout);
@@ -1398,13 +1396,13 @@ async function postMessage(message, chatMessages) {
                 fromUser: '1',
             });
             attachEventListenersToHyperlinks();
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
-            });
+            // let nextResponse = await fetch('/check_events', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json'
+            //     },
+            //     body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
+            // });
 
             // Check if the response status is 204 (No Content)
             if (nextResponse.status === 204) {
@@ -1462,13 +1460,13 @@ async function postMessage(message, chatMessages) {
                 longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
-            });
+            // let nextResponse = await fetch('/check_events', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json'
+            //     },
+            //     body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
+            // });
 
             // Check if the response status is 204 (No Content)
             if (nextResponse.status === 204) {
@@ -1525,13 +1523,13 @@ async function postMessage(message, chatMessages) {
                 longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
-            });
+            // let nextResponse = await fetch('/check_events', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json'
+            //     },
+            //     body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
+            // });
 
             // Check if the response status is 204 (No Content)
             if (nextResponse.status === 204) {
