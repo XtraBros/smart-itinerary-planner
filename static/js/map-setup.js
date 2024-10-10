@@ -484,15 +484,13 @@ fetch('/config')
                 geolocateControl.trigger();
             }, 100)
             // geolocate event 
-            const userLoc = [userLocation.lng, userLocation.lat];
-            setUserLocationMark(userLoc);
-            geolocateControl.on('trackuserlocationstart', (position) => {
-                map.easeTo({
-                    center: [userLocation.lng, userLocation.lat],
-                    bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
-                    zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
-                    duration: 500         // Animation duration (optional)
-                });
+            geolocateControl.on('geolocate', (position) => {
+                userLocation = {
+                    lng: position.coords.longitude,
+                    lat: position.coords.latitude
+                };
+                const userLoc = [position.coords.longitude, position.coords.latitude];
+                setUserLocationMark(userLoc);
             });
             // Add the Geolocate Control to the map
             map.addControl(geolocateControl);
