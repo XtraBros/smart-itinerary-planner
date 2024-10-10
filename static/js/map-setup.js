@@ -173,7 +173,11 @@ async function getPoisByLocation(location) {
 
                 attachEventListenersToHyperlinks();
             }
-
+            // if chat box not open, show pop up
+            const popupModal = document.getElementById('popupModal');
+            if (window.getComputedStyle(popupModal).display == 'none') {
+                idaeBox.classList.add('fadeshowin');
+            }
             // Update the last event check timestamp
             localStorage.setItem('lastEventCheckTime', currentTime);
         } else {
