@@ -783,7 +783,9 @@ function trackUserLocation(route) {
             lng: route.coordinates[routeIndex + 1][0],
             lat: route.coordinates[routeIndex + 1][1]
         };
-        getPoisByLocation(currentPosition);
+        debounce(() => {
+            getPoisByLocation(currentPosition);
+        }, 5000)
         // Update the user's location in your app
         updateUserLocation(currentPosition);
 
