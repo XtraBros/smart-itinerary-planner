@@ -271,7 +271,7 @@ window.onload = function () {
         const alpha = event.alpha;
         if (userMarker) {
             const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-            markerElement.style.transform = `rotate(${-alpha}deg)`
+            markerElement.style.transform = `rotate(${alpha}deg)`
         }
     }, 200));
     getUserCurrentPosition();
