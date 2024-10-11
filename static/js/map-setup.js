@@ -24,6 +24,7 @@ let thumbnailURI;
 let endPlaceProt; // end port
 let simulatePoint;
 let isUserRunning = false;
+let walkStepsNavs;
 let suggestionTimer = null;  // To store the timer instance
 const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
 
@@ -73,7 +74,7 @@ async function getPoisByLocation(location) {
 
         const poisData = await response.json();
         const placeInfoResponse = await fetchPlacesData(poisData);
-        if (!placeInfoResponse || !placeInfoResponse.length) return
+        if (poisData && !poisData.length) return
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
         const orderOfVisit = await get_coordinates_without_route(poisData);
@@ -586,24 +587,31 @@ function recalculateRoute(currentLocation, destination) {
             // replace and reset all route memory objects
             route = data.routes[0].geometry;
             steps = data.routes[0].legs[0].steps;
+            walkStepsNavs = data;
             instructions = getInstructions(steps);
             routeIndex = 0;
             // Update the map with new route
-            map.getSource('route').setData({
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': newRoute
-                }
-            });
+            if (map.getSource('route')) {
+                map.getSource('route').setData({
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': newRoute
+                    }
+                });
+            }
             // restart tracking:
             trackUserLocation(route);
+            if (!isUserRunning) {
+                paintLine(route, false)
+            } else {
+                setDottedLine()
+            }
             console.log("New route calculated and updated on the map.");
         })
         .catch(error => console.error('Error in recalculating route:', error));
 }
 function setUserLocationMark(coord, angle) {
-    console.log('------->>>>>', userMarker)
     if (userMarker) {
         userMarker.remove()
         userMarker = null
@@ -783,7 +791,6 @@ function trackUserLocation(route) {
     imgs.setAttribute('src', `static/icons/pause.svg`);
 
     // Set the user's initial location marker at the starting point
-    setUserLocationMark(route.coordinates[0]);
     walkedRoute.unshift(route.coordinates[0]);
     // Function to handle location updates from the GeolocateControl
     function updateLocation(position) {
@@ -920,9 +927,6 @@ function stopSimulation() {
 }
 
 function setMapRoute(resRoute) {
-    if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
-        setUserLocationMark(resRoute.coordinates[0])
-    }
     if (!map.getLayer('route')) {
         map.loadImage(
             'static/icons/nav.png',
@@ -1010,7 +1014,7 @@ function userCalculate(start, end) {
     return (bearing + 360) % 360; // 确保角度在0-360之间
 }
 
-function paintLine(resRoute) {
+function paintLine(resRoute, isZoom = true) {
     showMapTab();
     let bers = 0;
     const startPrit = [userLocation.lng, userLocation.lat];
@@ -1018,7 +1022,7 @@ function paintLine(resRoute) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
         endProit = resRoute.coordinates[resRoute.coordinates.length - 1]
         bers = userCalculate(resRoute.coordinates[0], endProit);
-        setUserLocationMark(resRoute.coordinates[0], bers)
+        setDottedLine()
     }
     if (!map.getSource('previewRoute')) {
         map.addSource('previewRoute', {
@@ -1065,12 +1069,61 @@ function paintLine(resRoute) {
             }
         });
     }
+    if (!isZoom) return
     map.fitBounds([startPrit, endProit], {
         // bearing: bers,
         padding: 50, // 距离屏幕边缘的内边距（以像素为单位）
         maxZoom: 16,
         duration: 1000
     });
+}
+
+function setDottedLine() {
+    if (walkStepsNavs && walkStepsNavs.waypoints.length) {
+        const userfirstDistance = walkStepsNavs.waypoints[0].distance
+        if (userfirstDistance > 5) {
+            const geometry = {
+                coordinates: [
+                    [userLocation.lng, userLocation.lat],
+                    walkStepsNavs.waypoints[0].location
+                ],
+                type: "LineString",
+            }
+            if (!map.getSource('dottedLine')) {
+                map.addSource('dottedLine', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'properties': {},
+                        'geometry': geometry,
+                    }
+                });
+            } else {
+                map.getSource('dottedLine').setData({
+                    "type": "Feature",
+                    "geometry": geometry,
+                });
+            }
+            if (!map.getLayer('dottedLineroute')) {
+                map.addLayer({
+                    id: 'dottedLineroute',
+                    type: 'line',
+                    source: 'dottedLine',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#4a5367',
+                        'line-width': 5,
+                        'line-dasharray': [2, 2]
+                    }
+                });
+            }
+        } else if (map.getLayer('dottedLineroute')) {
+            map.removeLayer('dottedLineroute');
+        }
+    }
 }
 
 function displayRoute(placeNames, rawCoordinates, fromUser) {
@@ -1105,6 +1158,8 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             lat: position.coords.latitude,
                             userHeading: position.coords.heading,
                         };
+                        setUserLocationMark([position.coords.longitude, position.coords.latitude]);
+                        setDottedLine()
                         if (isUserOffRoute(userLocation, result.route)) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
@@ -1159,6 +1214,7 @@ function getMapboxWlakRoute(coordinates) {
                 }
                 route = data.routes[0].geometry;
                 steps = data.routes[0].legs[0].steps;
+                walkStepsNavs = data
                 return { legs, route };
             } else {
                 console.error('No route found: ', data);
@@ -1539,6 +1595,9 @@ function closedNavfun() {
     }
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
+    }
+    if (map.getLayer('dottedLineroute')) {
+        map.removeLayer('dottedLineroute');
     }
     const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
     geolocate.style.top = '80px'
@@ -2036,9 +2095,8 @@ function startUserNav() {
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
+    setDottedLine()
     setMapRoute(route)
-    // const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-    // markerElement.style.transform = `rotate(0deg)`
     startNav.classList.remove('fadeshowin');
     enableNavigationMode(steps);
 }
