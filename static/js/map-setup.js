@@ -92,6 +92,10 @@ async function getPoisByLocation(location) {
                 } else if (placeName.toLowerCase().includes("station")) {
                     formattedPlaceName = "station";
                 }
+                // Skip adding markers for toilets and stations
+                if (formattedPlaceName === "toilet" || formattedPlaceName === "station") {
+                    return;  // Continue to the next POI without adding a marker
+                }
                 const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
     
                 contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
