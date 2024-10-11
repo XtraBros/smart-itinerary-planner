@@ -299,6 +299,10 @@ window.onload = function () {
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
     });
+    window.addEventListener('beforeunload', function (event) {
+        // confimration to leave page
+        event.preventDefault();
+    });
 }
 
 function debounce(fn, delay) {
