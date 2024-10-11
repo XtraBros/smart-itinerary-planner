@@ -579,8 +579,20 @@ function isUserOffRoute(userLocation, route, tolerance = 0.02) {
     // Create a point from the user's location
     const userPoint = turf.point(userCoordinates);
 
-    // Check if the user's point is within the buffered route
-    return !turf.booleanPointInPolygon(userPoint, bufferedRoute);
+    // 计算点到线的最小距离
+    const distance = turf.pointToLineDistance(userPoint, routeLine, { units: "miles" }) * 1069;
+    const nearestPointOnLine = turf.nearestPointOnLine(routeLine, userPoint, { units: "meters" });
+    const notStartLine = turf.lineSlice(nearestPointOnLine, turf.point(route.coordinates[route.coordinates.length - 1]), routeLine);
+    const walkedLine = turf.lineSlice(turf.point(route.coordinates[0]), nearestPointOnLine, routeLine);
+    if (map.getSource('walked-route')) {
+        map.getSource('walked-route').setData(walkedLine);
+    }
+    if (map.getSource('route')) {
+        map.getSource('route').setData(notStartLine);
+    }
+    const isInPolygon = turf.booleanPointInPolygon(userPoint, bufferedRoute);
+    console.log(`user distance: ${distance}(m)`, isInPolygon)
+    return { distance, isInPolygon}
 }
 
 
@@ -823,7 +835,7 @@ function trackUserLocation(route) {
         // Calculate remaining distance to the next position on the route
         const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 
-        updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
+        // updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
         updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
 
         // If the remaining distance is less than the threshold, move to the next point
@@ -853,9 +865,9 @@ function trackUserLocation(route) {
     });
 }
 
-function updateWalkedRoute(currentPosition) {
+function updateWalkedRoute(line) {
     // Add the current position to the walked route
-    walkedRoute.push(currentPosition);
+    // walkedRoute.push(currentPosition);
 
     // Update the map with the walked route
     map.getSource('walked-route').setData({
@@ -908,7 +920,7 @@ function updateUserLocation(location) {
     userLocation = location;
     console.log("User location updated:", location);
     // Check if the user is off-route after updating the location
-    if (isUserOffRoute(userLocation, route)) {
+    if (isUserOffRoute(userLocation, route).distance > 10) {
         console.log('User is off-route, recalculating route...');
         recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
     }
@@ -1088,8 +1100,9 @@ function paintLine(resRoute, isZoom = true) {
 
 function setDottedLine() {
     if (walkStepsNavs && walkStepsNavs.waypoints.length) {
-        const userfirstDistance = walkStepsNavs.waypoints[0].distance
-        if (userfirstDistance > 5) {
+        const userfirstDistance = walkStepsNavs.waypoints[0].distance;
+        const { distance, isInPolygon} = isUserOffRoute(userLocation, route);
+        if (userfirstDistance > 5 && distance > 5 && !isInPolygon) {
             const geometry = {
                 coordinates: [
                     [userLocation.lng, userLocation.lat],
@@ -1168,7 +1181,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                         };
                         setUserLocationMark([position.coords.longitude, position.coords.latitude]);
                         setDottedLine()
-                        if (isUserOffRoute(userLocation, result.route)) {
+                        if (isUserOffRoute(userLocation, result.route).distance > 10) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
                         }
