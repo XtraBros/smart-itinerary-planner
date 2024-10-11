@@ -97,6 +97,7 @@ def ask_plan():
             6) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
             7) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
             8) When asked for user location, locate them based on the nearest POI using find_nearest_poi.
+            9) Avoid suggesting toilets and amenities unless requested.
             **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
         """},
         {"role": "user", "content": user_input}
