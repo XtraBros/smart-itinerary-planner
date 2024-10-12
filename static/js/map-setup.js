@@ -279,7 +279,7 @@ window.onload = function () {
             const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
             markerElement.style.transform = `rotate(${alpha}deg)`
         }
-    }, 200));
+    }, 20));
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -1179,7 +1179,9 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             lat: position.coords.latitude,
                             userHeading: position.coords.heading,
                         };
-                        setUserLocationMark([position.coords.longitude, position.coords.latitude]);
+                        if (userMarker) {
+                            userMarker.setLngLat([position.coords.longitude, position.coords.latitude])
+                        }
                         setDottedLine()
                         if (isUserOffRoute(userLocation, result.route).distance > 10) {
                             console.log('User is off-route, recalculating route...');
