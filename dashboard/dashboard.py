@@ -234,25 +234,25 @@ def commit_changes():
     change_log = {}
     return jsonify({"message": f"Committed {num_changes} changes to the database"})
 
-@app.route('/upload_thumbnail', methods=['POST'])
-def upload_thumbnail():
-    if 'thumbnail' not in request.files or 'fileName' not in request.form:
-        return jsonify({"error": "No file or filename provided"}), 400
+# @app.route('/upload_thumbnail', methods=['POST'])
+# def upload_thumbnail():
+#     if 'thumbnail' not in request.files or 'fileName' not in request.form:
+#         return jsonify({"error": "No file or filename provided"}), 400
 
-    file = request.files['thumbnail']
-    file_name = request.form['fileName']
+#     file = request.files['thumbnail']
+#     file_name = request.form['fileName']
 
-    try:
-        # Set the destination path within the bucket (folder)
-        destination_blob_name = f"{folder_name}/{file_name}"
-        blob = bucket.blob(destination_blob_name)
+#     try:
+#         # Set the destination path within the bucket (folder)
+#         destination_blob_name = f"{folder_name}/{file_name}"
+#         blob = bucket.blob(destination_blob_name)
 
-        # Upload the file
-        blob.upload_from_file(file.stream, content_type='image/jpeg')
+#         # Upload the file
+#         blob.upload_from_file(file.stream, content_type='image/jpeg')
 
-        return jsonify({"message": f"Thumbnail {file_name} uploaded successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+#         return jsonify({"message": f"Thumbnail {file_name} uploaded successfully"}), 200
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 ####################################################################################################################################
 ####################################################################################################################################
