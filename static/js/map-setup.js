@@ -433,13 +433,6 @@ fetch('/config')
             unit: 'metric',
             profile: 'mapbox/walking'
         });
-        const navControl = new mapboxgl.NavigationControl({
-            showCompass: true,  // Show compass (default is true)
-            showZoom: false,
-            rotateInner: true,
-            showDigit: true
-        });
-        map.addControl(navControl, 'top-right')
         // variable to allow resizing function
         window.mapboxMap = map;
         const bounds = [
@@ -450,6 +443,13 @@ fetch('/config')
         map.on('load', function () {
             // Define and set bounds for the map
             // 3D Layer for navigation view.    
+            const navControl = new mapboxgl.NavigationControl({
+                showCompass: true,  // Show compass (default is true)
+                showZoom: false,
+                rotateInner: true,
+                showDigit: true
+            });
+            map.addControl(navControl, 'top-right')
             map.addLayer({
                 'id': '3d-buildings',
                 'source': 'composite',
@@ -489,6 +489,7 @@ fetch('/config')
                 trackUserLocation: true,
                 showUserHeading: true, // If you want to show user's heading direction
             });
+            map.addControl(geolocateControl);
             // force mapbox to stop changing map view when geolocating
             geolocateControl._updateCamera = () => { }
             map.loadImage('static/icons/walked.png', function (err, image) {
@@ -511,9 +512,7 @@ fetch('/config')
                     zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
                     duration: 500         // Animation duration (optional)
                 });
-            });
-            // Add the Geolocate Control to the map
-            map.addControl(geolocateControl);
+            });            
         });
     })
     .catch(error => {
