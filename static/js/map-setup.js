@@ -121,12 +121,12 @@ async function getPoisByLocation(location) {
                             </div>`;
     
                 listCont += setMapList({index, thumbnailUrl, placeName});
-                orderOfVisit[0].map((item, i) => {
-                    if (item === placeName) {
-                        addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
-                        return orderOfVisit[1][i]
-                    }
-                })
+                // orderOfVisit[0].map((item, i) => {
+                //     if (item === placeName) {
+                //         addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
+                //         return orderOfVisit[1][i]
+                //     }
+                // })
             });
             swiperconent.innerHTML = contenxt;
             poiList.innerHTML = listCont;
@@ -1771,6 +1771,15 @@ function addMarkers(placeNames, waypoints) {
 }
 
 function displayByCategory(category, element) {
+    if (element.getAttribute('class').includes('active')) {
+        element.classList.remove('active')
+        if (window.mapMarkers) {
+            for (const [key, value] of Object.entries(window.mapMarkers)) {
+                value.remove();
+            }
+        }
+        return;
+    }
     const munts = document.getElementsByClassName('newHeader')[0]
     const lis = munts.getElementsByClassName('item')
     for (let index = 0; index < lis.length; index++) {
