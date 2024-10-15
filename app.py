@@ -79,56 +79,42 @@ def ask_plan():
 
     # Initial messages with RAG data
     if profile == "DEFAULT":
-        prompt = f"""You are a helpful tour guide working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}. The visitor is currently at {user_location}.
-            
+        prompt = f"""You are a text processor. Your task is to understand the user's query and suggest attractions in {sentosa_name}. The visitor is currently at {user_location}.
             Important Guidelines:
-            1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
-            2) The "operation" key can only have one of the following values: "message", "location", "route" or "wayfinding".
-                - "message": Used when your response does not include locations, and is a direct reply to the user.
-                - "location": Used when your response includes locations without providing directions.
-                - "route": Used when your response involves providing a route between multiple places of interest.
-                - "wayfinding": Used when your response involves providing directions for the user to navigate to a destination.
+            1) Your response **MUST** be structured as a SINGLE Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
+            2) The "operation" key can only have one of the values: "message" or "location".
+                - "message": Used when your response does not include places or attractions, and is a direct reply to the user.
+                - "location": Used when your response includes names of places.
             3) The "response" key's value depends on the "operation" key:
                 - If "operation" is "message", "response" should contain a single string with your text response.
-                - If "operation" is "location", "route" or "wayfinding", "response" should contain a list of the names of the places of interest.
-            4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
-                - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
-            5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            6) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
-            7) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
-            8) When asked for user location, locate them based on the nearest POI using find_nearest_poi.
-            9) Avoid suggesting toilets and amenities unless requested.
-            **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
+                - If "operation" is "location", "response" should contain a list of the names of the places of interest.
+            4) Use the exact names of the places as provided in this list: {sentosa_places_list}.
+            5) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
+            6) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
+            7) When asked for user location, locate them based on the nearest POI using find_nearest_poi.
+            8) Avoid suggesting toilets and amenities unless requested, and limit to 5 attractions unless the user requests otherwise.
         """
     else:
-        user_profile = profile_db.find_one({"profile": {profile}})['description']
-        prompt = f"""You are a helpful tour guide working in {sentosa_name}. 
-            Your task is to advise visitors on features and attractions in {sentosa_name}. The visitor is currently at {user_location}.
-            
+        user_profile = profile_db.find_one({"profile": profile})
+        print(user_profile)
+        prompt = f"""You are a text processor. Your task is to understand the user's query and suggest attractions in {sentosa_name}. The visitor is currently at {user_location}.
             Important Guidelines:
-            1) Your response **MUST** be structured as a **single** Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
-            2) The "operation" key can only have one of the following values: "message", "location", "route" or "wayfinding".
-                - "message": Used when your response does not include locations, and is a direct reply to the user.
-                - "location": Used when your response includes locations without providing directions.
-                - "route": Used when your response involves providing a route between multiple places of interest.
-                - "wayfinding": Used when your response involves providing directions for the user to navigate to a destination.
+            1) Your response **MUST** be structured as a SINGLE Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
+            2) The "operation" key can only have one of the values: "message" or "location".
+                - "message": Used when your response does not include places or attractions, and is a direct reply to the user.
+                - "location": Used when your response includes names of places.
             3) The "response" key's value depends on the "operation" key:
                 - If "operation" is "message", "response" should contain a single string with your text response.
-                - If "operation" is "location", "route" or "wayfinding", "response" should contain a list of the names of the places of interest.
-            4) Start from the user's location unless the user specifies otherwise. When starting from the user's location, list only the destination(s) in "response".
-                - Example: {{"operation":"route","response":["Din Tai Fung"]}} (implies routing from the user's location to Din Tai Fung)
-            5) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            6) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
-            7) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
-            8) When asked for user location, locate them based on the nearest POI using find_nearest_poi.
-            9) Avoid suggesting toilets and amenities unless requested.
-            10) This is the user's profile: {user_profile}. Ensure the recommendations are catered towards this profile.
-
-            **Critical Note:** Ensure your response is a valid Python dictionary with the correct "operation" and "response" structure.
+                - If "operation" is "location", "response" should contain a list of the names of the places of interest.
+            4) Use the exact names of the places as provided in this list: {sentosa_places_list}.
+            5) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
+            6) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
+            7) When asked for user location, locate them based on the nearest POI using find_nearest_poi.
+            8) Avoid suggesting toilets and amenities unless requested, and limit to 5 attractions unless the user requests otherwise.
+            9) The user: {user_profile}. Cater towards this profile.
         """
     messages = [
-        {"role": "system", "content": {prompt}},
+        {"role": "system", "content": prompt},
         {"role": "user", "content": user_input}
     ]
 
@@ -178,7 +164,7 @@ def get_text():
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
                 """
     else:
-        user_profile = profile_db.find_one({"profile": {profile}})['description']
+        user_profile = profile_db.find_one({"profile": profile})['description']
         prompt = f"""You are a tour guide at {sentosa_name}. 
                  Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                  Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
