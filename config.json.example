@@ -1,5 +1,5 @@
 {
-  "GPT_MODEL": "gpt-4",
+  "GPT_MODEL": "gpt-4o",
   "MAPBOX_MAPTILES": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   "MAPBOX_ACCESS_TOKEN": "@MAPBOX_ACCESS_TOKEN@",
   "MONGO_CLUSTER_URI": "mongodb+srv://zacwong:zacwong@cluster0.v6x6jtv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
