@@ -77,8 +77,6 @@ async function getPoisByLocation(location) {
         if (poisData && !poisData.length) return
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
-        const orderOfVisit = await get_coordinates_without_route(poisData);
-
         fetchTemplate('static/html/info-card.html').then(template => {
             const parser = new DOMParser();
             let contenxt = '';
@@ -131,6 +129,29 @@ async function getPoisByLocation(location) {
             swiperconent.innerHTML = contenxt;
             poiList.innerHTML = listCont;
         });
+    } catch (error) {
+        console.error('Get Pois by Location', error);
+        return null;
+    }
+}
+
+async function checkNearbyEvent(location) {
+    try {
+        const response = await fetch('/find_nearby_pois', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 20 })
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const poisData = await response.json();
+        const placeInfoResponse = await fetchPlacesData(poisData);
+        if (poisData && !poisData.length) return
         // prompt suggestion if not recent:
         const placeNames = [];
         const coordinates = [];
@@ -188,7 +209,7 @@ async function getPoisByLocation(location) {
             localStorage.setItem('lastEventCheckTime', currentTime);
         } else {
             console.log('Skipping event check. Less than 5 minutes since the last check.');
-        }
+        };
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;
@@ -824,6 +845,7 @@ function trackUserLocation(route) {
         };
         debounce(() => {
             getPoisByLocation(currentPosition);
+            checkNearbyEvent(currentPosition);
         }, 5000)
         // Update the user's location in your app
         updateUserLocation(currentPosition);
