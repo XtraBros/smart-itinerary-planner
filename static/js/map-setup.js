@@ -27,7 +27,7 @@ let isUserRunning = false;
 let walkStepsNavs;
 let suggestionTimer = null;  // To store the timer instance
 const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
-
+let switchoverState = 'POSINIT'; // POSINIT or FOCUS
 function initProperty() {
     routeIndex = 0;
     currentStepIndex = 0;
@@ -231,6 +231,7 @@ const totDist = document.getElementById('totDist');
 const chatbotArea = document.getElementById('chatbot-area');
 const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
+const dingwenndId = document.getElementById('dingwennd');
 
 function setMapList({index, placeName, thumbnailUrl}) {
     return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
@@ -295,10 +296,21 @@ window.onload = function () {
     }
     window.addEventListener('deviceorientation', debounce(function (event) {
         console.log("User facing direction changed.")
-        const alpha = event.alpha;
-        if (userMarker && event.alpha !== null) {
+        const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
+        // if (mapUserLocation) {
+        //         document.getElementsByClassName('newHeader')[0].innerText = `${mapUserLocation.style.transform}`
+        // }
+        if (map && event.alpha !== null && switchoverState === 'FOCUS') {
+            const userHeading = (360 - event.alpha) % 360 ;
+            map.rotateTo(userHeading);
+        }
+        if (userMarker) {
             const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
-            markerElement.style.transform = `rotate(${alpha}deg)`
+            if (switchoverState === 'POSINIT') {
+                markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
+            } else {
+                markerElement.style.transform = `rotateZ(0deg)`
+            }
         }
     }, 20));
     getUserCurrentPosition();
@@ -339,6 +351,9 @@ function debounce(fn, delay) {
 }
 
 function stopNavFunc() {
+    map.setZoom(14);
+    switchoverState = 'POSINIT'
+    copyState = switchoverState
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
@@ -430,6 +445,39 @@ function handerMap(e, type) {
     }
     e.preventDefault();
     e.target.classList.add('activeButton')
+}
+let copyState = switchoverState
+function switchoverHandled(state) {
+    if (state) {
+        switchoverState = state
+    } else {
+        switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
+    }
+    copyState = switchoverState
+    const img = dingwenndId.getElementsByTagName('img')[0]
+    img.setAttribute('src', `static/icons/${switchoverState === 'FOCUS' ? 'nios' : 'posinit'}.svg`);
+    if (isUserRunning) {
+        return
+    }
+    if (switchoverState === 'FOCUS') {
+        map.setZoom(17);
+        map.setPitch(60, {duration: 10});
+        map.setCenter([userLocation.lng, userLocation.lat]);
+    } else {
+        map.setZoom(14);
+        map.setPitch(0, {duration: 10});
+        map.resetNorth({duration: 10});
+    }
+}
+
+function getRotateZ(transform) {
+    if (!transform) return 0;
+    const match = transform.match(/rotateZ\(([-0-9.]+)deg\)/);
+    if (match) {
+        return parseFloat(match[1]); // 返回角度值
+    } else {
+        return 0; // 如果没有 rotateZ，则返回 0
+    }
 }
 
 fetch('/config')
@@ -535,6 +583,12 @@ fetch('/config')
                 });
             });            
         });
+        map.on('touchstart', () => {
+            switchoverState = ''
+        });
+        map.on('touchend', () => {
+            switchoverState = copyState
+        });
     })
     .catch(error => {
         console.error('Error fetching the access token:', error);
@@ -579,9 +633,10 @@ function enableNavigationMode(data) {
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
         zoom: 20,  // Adjust the zoom level for better street view navigation
         center: [userLocation.lng, userLocation.lat], // Center map on user's location
-        duration: 500 // Animation duration in milliseconds
+        duration: 10 // Animation duration in milliseconds
     });
-
+    switchoverState = 'FOCUS'
+    copyState = switchoverState
     // Wait for easeTo animation to complete, then start tracking
     map.once('moveend', () => trackUserLocation(route));
 }
@@ -659,7 +714,7 @@ function setUserLocationMark(coord, angle) {
     const el = document.createElement('div');
     el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     userMarker = new mapboxgl.Marker({
-        rotationAlignment: 'map',
+        // rotationAlignment: 'map',
         element: el
     })
         .setLngLat(coord)
@@ -1035,17 +1090,31 @@ function setMapRoute(resRoute) {
     }
 
     if (!map.getLayer('walked-route')) {
+        // map.addLayer({
+        //     "id": "walked-route",
+        //     "type": "symbol",
+        //     "source": "walked-route",
+        //     'layout': {
+        //         'symbol-placement': 'line',
+        //         'symbol-spacing': 2,
+        //         'icon-image': 'walkedArrow',
+        //         'icon-size': 0.5,
+        //         'icon-allow-overlap': true,
+        //     },
+        // });
         map.addLayer({
-            "id": "walked-route",
-            "type": "symbol",
-            "source": "walked-route",
-            'layout': {
-                'symbol-placement': 'line',
-                'symbol-spacing': 2,
-                'icon-image': 'walkedArrow',
-                'icon-size': 0.5,
-                'icon-allow-overlap': true,
+            id: 'walked-route',
+            type: 'line',
+            source: 'walked-route',
+            layout: {
+                'icon-size': 0.8,
+                'icon-allow-overlap': false,
+                'line-cap': 'round'
             },
+            paint: {
+                'line-pattern': 'walkedArrow',
+                'line-width': 10
+            }
         });
     }
 }
