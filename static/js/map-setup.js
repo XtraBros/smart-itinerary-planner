@@ -314,7 +314,7 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    if (detectDevice() === 'iOS' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         // iOS 13+ 需要请求权限
         DeviceOrientationEvent.requestPermission()
             .then(response => {
