@@ -586,7 +586,7 @@ function enableNavigationMode(data) {
     map.once('moveend', () => trackUserLocation(route));
 }
 // Function to check if user is off-route
-function isUserOffRoute(userLocation, route, tolerance = 0.02) {
+function isUserOffRoute(userLocation, route, tolerance = 0.03) {
     const userCoordinates = [userLocation.lng, userLocation.lat];
     // Extract the coordinates from the route object
     const routeCoordinates = route.coordinates;
@@ -937,13 +937,23 @@ function interpolate(p1, p2, fraction) {
 }
 
 // Function to update user location in your app
+let lastRecalculationTime = 0;  // Track the last time the route was recalculated
+const recalculationDelay = 5000; // Set a delay (e.g., 5000ms = 5 seconds)
+
 function updateUserLocation(location) {
     userLocation = location;
-    console.log("User location updated:", location);
-    // Check if the user is off-route after updating the location
-    if (isUserOffRoute(userLocation, route).distance > 10) {
-        console.log('User is off-route, recalculating route...');
-        recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+    // console.log("User location updated:", location);  // Disabled for frequency control
+    
+    const currentTime = Date.now(); // Get the current time in milliseconds
+
+    // Check if enough time has passed since the last recalculation
+    if (currentTime - lastRecalculationTime >= recalculationDelay) {
+        // Check if the user is off-route
+        if (isUserOffRoute(userLocation, route).distance > 30) {
+            console.log('User is off-route, recalculating route...');
+            recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+            lastRecalculationTime = currentTime;  // Update the last recalculation time
+        }
     }
 }
 
@@ -1204,7 +1214,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             userMarker.setLngLat([position.coords.longitude, position.coords.latitude])
                         }
                         setDottedLine()
-                        if (isUserOffRoute(userLocation, result.route).distance > 10) {
+                        if (isUserOffRoute(userLocation, result.route).distance > 30) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
                         }
@@ -1417,47 +1427,11 @@ async function postMessage(message, chatMessages) {
                 longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
-            // let nextResponse = await fetch('/check_events', {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json'
-            //     },
-            //     body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
-            // });
-
-            // Check if the response status is 204 (No Content)
-            if (nextResponse.status === 204) {
-                // Do nothing if the response is empty
-                console.log('No events found for the provided places.');
-                return;  // Exit early
-            }
-
-            // Proceed if the response is ok and not empty
-            if (!nextResponse.ok) {
-                throw new Error('Network response was not ok ' + nextResponse.statusText);
-            }
-
-            let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
-
-            // Check if the response contains the necessary data and append the message
-            if (nextData.response) {
-                appendMessage({
-                    text: nextData.response,
-                    chatMessages,
-                    type: 'message',
-                    placeNames: nextData.found_places,  // Use found_places from the response
-                    longAndlat: nextData.coordinates,   // Use coordinates from the response
-                    fromUser: '1',
-                });
-
-                // Attach event listeners to the hyperlinks
-                attachEventListenersToHyperlinks();
-            }
         } else {
             appendMessage({ text: data.response, chatMessages });
         }
     } catch (error) {
-        console.error('Error:', JSON.stringify(error));
+        console.error('Error:', error.message || error);
     }
 }
 
