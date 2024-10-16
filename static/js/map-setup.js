@@ -294,6 +294,18 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
+    // if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    //     // iOS 13+ 需要请求权限
+    //     DeviceOrientationEvent.requestPermission()
+    //         .then(response => {
+    //             if (response === 'granted') {
+    //                 window.addEventListener('deviceorientation', handleOrientationChange);
+    //             } else {
+    //                 alert('未授予设备方向传感器权限');
+    //             }
+    //         })
+    //         .catch(console.error);
+    // }
     window.addEventListener('deviceorientation', debounce(function (event) {
         console.log("User facing direction changed.")
         const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
@@ -353,7 +365,6 @@ function debounce(fn, delay) {
 function stopNavFunc() {
     map.setZoom(14);
     switchoverState = 'POSINIT'
-    copyState = switchoverState
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
@@ -446,17 +457,14 @@ function handerMap(e, type) {
     e.preventDefault();
     e.target.classList.add('activeButton')
 }
-let copyState = switchoverState
-function switchoverHandled(state) {
-    if (state) {
-        switchoverState = state
-    } else {
-        switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
-    }
-    copyState = switchoverState
+function switchoverHandled() {
+    switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
     const img = dingwenndId.getElementsByTagName('img')[0]
     img.setAttribute('src', `static/icons/${switchoverState === 'FOCUS' ? 'nios' : 'posinit'}.svg`);
     if (isUserRunning) {
+        if (switchoverState === 'FOCUS') {
+            map.setCenter([userLocation.lng, userLocation.lat]);
+        }
         return
     }
     if (switchoverState === 'FOCUS') {
@@ -464,10 +472,14 @@ function switchoverHandled(state) {
         map.setPitch(60, {duration: 10});
         map.setCenter([userLocation.lng, userLocation.lat]);
     } else {
-        map.setZoom(14);
-        map.setPitch(0, {duration: 10});
-        map.resetNorth({duration: 10});
+        outFoucsMode()
     }
+}
+
+function outFoucsMode() {
+    map.setZoom(14);
+    map.setPitch(0, {duration: 10});
+    map.resetNorth({duration: 10});
 }
 
 function getRotateZ(transform) {
@@ -583,11 +595,16 @@ fetch('/config')
                 });
             });            
         });
-        map.on('touchstart', () => {
-            switchoverState = ''
+        map.on('dragstart', () => {
+            switchoverState = 'POSINIT'
+            const img = dingwenndId.getElementsByTagName('img')[0]
+            img.setAttribute('src', `static/icons/posinit.svg`);
         });
-        map.on('touchend', () => {
-            switchoverState = copyState
+        map.on('dragend', () => {
+            // if (switchoverState === 'POSINIT' && !isUserRunning) {
+            //     map.setPitch(0, {duration: 500});
+            //     map.setZoom(14);
+            // }
         });
     })
     .catch(error => {
@@ -636,7 +653,6 @@ function enableNavigationMode(data) {
         duration: 10 // Animation duration in milliseconds
     });
     switchoverState = 'FOCUS'
-    copyState = switchoverState
     // Wait for easeTo animation to complete, then start tracking
     map.once('moveend', () => trackUserLocation(route));
 }
