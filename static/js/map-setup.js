@@ -586,7 +586,7 @@ function enableNavigationMode(data) {
     map.once('moveend', () => trackUserLocation(route));
 }
 // Function to check if user is off-route
-function isUserOffRoute(userLocation, route, tolerance = 0.05) {
+function isUserOffRoute(userLocation, route, tolerance = 0.03) {
     const userCoordinates = [userLocation.lng, userLocation.lat];
     // Extract the coordinates from the route object
     const routeCoordinates = route.coordinates;
@@ -941,7 +941,7 @@ function updateUserLocation(location) {
     userLocation = location;
     console.log("User location updated:", location);
     // Check if the user is off-route after updating the location
-    if (isUserOffRoute(userLocation, route).distance > 10) {
+    if (isUserOffRoute(userLocation, route).distance > 30) {
         console.log('User is off-route, recalculating route...');
         recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
     }
@@ -1204,7 +1204,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             userMarker.setLngLat([position.coords.longitude, position.coords.latitude])
                         }
                         setDottedLine()
-                        if (isUserOffRoute(userLocation, result.route).distance > 10) {
+                        if (isUserOffRoute(userLocation, result.route).distance > 30) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
                         }
