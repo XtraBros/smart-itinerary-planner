@@ -872,9 +872,6 @@ function trackUserLocation(route) {
                 console.log("Route tracking completed");
             }
         }
-
-        // Update navigation instructions based on the user's current position
-        updateNavigationInstructions(currentPosition);
     }
 
     // Event listener for when the user's location changes
@@ -883,6 +880,9 @@ function trackUserLocation(route) {
         debounce(() => {
             updateLocation(position);
         }, 100)
+        debounce(() => {
+            updateNavigationInstructions(position);
+        }, 3000)
     });
 }
 
@@ -1695,8 +1695,8 @@ function getInstructions(data) {
         };
         instructions.push(formattedInstruction);
     });
-    console.log("instructions length: " + instructions.length);
-    console.log("Full instr: " + JSON.stringify(instructions));
+    // update the display:
+
     return instructions;
 }
 
