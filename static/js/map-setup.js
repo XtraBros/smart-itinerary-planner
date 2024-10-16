@@ -938,7 +938,7 @@ function interpolate(p1, p2, fraction) {
 
 // Function to update user location in your app
 let lastRecalculationTime = 0;  // Track the last time the route was recalculated
-const recalculationDelay = 30000; // Set a delay (e.g., 5000ms = 5 seconds)
+const recalculationDelay = 5000; // Set a delay (e.g., 5000ms = 5 seconds)
 
 function updateUserLocation(location) {
     userLocation = location;
