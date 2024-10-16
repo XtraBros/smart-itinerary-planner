@@ -586,7 +586,7 @@ function enableNavigationMode(data) {
     map.once('moveend', () => trackUserLocation(route));
 }
 // Function to check if user is off-route
-function isUserOffRoute(userLocation, route, tolerance = 0.02) {
+function isUserOffRoute(userLocation, route, tolerance = 0.05) {
     const userCoordinates = [userLocation.lng, userLocation.lat];
     // Extract the coordinates from the route object
     const routeCoordinates = route.coordinates;
