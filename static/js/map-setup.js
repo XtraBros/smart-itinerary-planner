@@ -658,6 +658,7 @@ function isUserOffRoute(userLocation, route, tolerance = 0.03) {
     const distance = turf.pointToLineDistance(userPoint, routeLine, { units: "miles" }) * 1069;
     const nearestPointOnLine = turf.nearestPointOnLine(routeLine, userPoint, { units: "meters" });
     const notStartLine = turf.lineSlice(nearestPointOnLine, turf.point(route.coordinates[route.coordinates.length - 1]), routeLine);
+    console.log('------->>>>>>>>>>>', nearestPointOnLine)
     const walkedLine = turf.lineSlice(turf.point(route.coordinates[0]), nearestPointOnLine, routeLine);
     if (map.getSource('walked-route')) {
         map.getSource('walked-route').setData(walkedLine);
@@ -667,7 +668,7 @@ function isUserOffRoute(userLocation, route, tolerance = 0.03) {
     }
     const isInPolygon = turf.booleanPointInPolygon(userPoint, bufferedRoute);
     console.log(`user distance: ${distance}(m)`, isInPolygon)
-    return { distance, isInPolygon}
+    return { distance, isInPolygon, nearestPointOnLine }
 }
 
 
@@ -1279,11 +1280,12 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             lat: position.coords.latitude,
                             userHeading: position.coords.heading,
                         };
+                        const { distance, nearestPointOnLine  } = isUserOffRoute(userLocation, result.route);
                         if (userMarker) {
-                            userMarker.setLngLat([position.coords.longitude, position.coords.latitude])
+                            userMarker.setLngLat(distance > 8 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates)
                         }
                         setDottedLine()
-                        if (isUserOffRoute(userLocation, result.route).distance > 30) {
+                        if (distance > 30) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
                         }
