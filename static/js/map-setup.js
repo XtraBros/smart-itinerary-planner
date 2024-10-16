@@ -253,6 +253,26 @@ function setMapList({index, placeName, thumbnailUrl}) {
     </div>`;
 }
 
+function handleOrientationChange(event) {
+    console.log("User facing direction changed.")
+    const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
+    // if (mapUserLocation) {
+    //         document.getElementsByClassName('newHeader')[0].innerText = `${mapUserLocation.style.transform}`
+    // }
+    if (map && event.alpha !== null && switchoverState === 'FOCUS') {
+        const userHeading = (360 - event.alpha) % 360 ;
+        map.rotateTo(userHeading);
+    }
+    if (userMarker) {
+        const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
+        if (switchoverState === 'POSINIT') {
+            markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
+        } else {
+            markerElement.style.transform = `rotateZ(0deg)`
+        }
+    }
+}
+
 window.onload = function () {
     window.mapMarkers = {};
     const tishiDom = document.getElementById('tishi')
@@ -294,37 +314,22 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    // if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-    //     // iOS 13+ 需要请求权限
-    //     DeviceOrientationEvent.requestPermission()
-    //         .then(response => {
-    //             if (response === 'granted') {
-    //                 window.addEventListener('deviceorientation', handleOrientationChange);
-    //             } else {
-    //                 alert('未授予设备方向传感器权限');
-    //             }
-    //         })
-    //         .catch(console.error);
-    // }
-    window.addEventListener('deviceorientation', debounce(function (event) {
-        console.log("User facing direction changed.")
-        const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
-        // if (mapUserLocation) {
-        //         document.getElementsByClassName('newHeader')[0].innerText = `${mapUserLocation.style.transform}`
-        // }
-        if (map && event.alpha !== null && switchoverState === 'FOCUS') {
-            const userHeading = (360 - event.alpha) % 360 ;
-            map.rotateTo(userHeading);
-        }
-        if (userMarker) {
-            const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
-            if (switchoverState === 'POSINIT') {
-                markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
-            } else {
-                markerElement.style.transform = `rotateZ(0deg)`
-            }
-        }
-    }, 20));
+    if (detectDevice() === 'iOS' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ 需要请求权限
+        DeviceOrientationEvent.requestPermission()
+            .then(response => {
+                if (response === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientationChange);
+                } else {
+                    alert('未授予设备方向传感器权限');
+                }
+            })
+            .catch(console.error);
+    } else {
+        window.addEventListener('deviceorientation', debounce(function (event) {
+            handleOrientationChange(event)
+        }, 20));
+    }
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -352,6 +357,19 @@ window.onload = function () {
         // confimration to leave page
         event.preventDefault();
     });
+}
+
+function detectDevice() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+        return 'iOS';
+    }
+    if (/android/i.test(userAgent)) {
+        return 'Android';
+    }
+    return 'Unknown';
 }
 
 function debounce(fn, delay) {
