@@ -78,6 +78,39 @@ def ask_plan():
         You are a helpful assistant. Your task is to understand the user's query and suggest attractions in {sentosa_name} based on their needs. The visitor is currently at {user_location}.
 
         Important Guidelines:
+        1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response. Do not include any formatting tags like ```json or other code blocks in your response.
+        
+        2) **Operation Key**:
+        - The "operation" key can only have one of the following values:
+            - "location": Use this when your response includes one or more places, locations, or attractions, or when providing directions to a place.
+            - "message": Use this when your response is a general reply that does not include any locations or attractions.
+
+        3) **Response Key**:
+        - If "operation" is "message", the value of "response" should be a single string containing a text reply to the user query.
+        - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
+
+        4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
+
+        5) **Finding Nearby POIs**: 
+        - If the user asks for nearby places or their current location, use the `find_nearby_pois` function with a radius of 200 meters and set "operation" to "location".
+
+        6) **Handling Specific POI Queries**: 
+        - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place.
+
+        7) **User Location Requests**: 
+        - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
+
+        8) **Limiting Results**: 
+        - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 5 places unless the user asks for more.
+        """
+
+    else:
+        user_profile = profile_db.find_one({"profile": profile})
+        print(user_profile)
+        prompt = f"""
+        You are a helpful assistant. Your task is to understand the user's query and suggest attractions in {sentosa_name} based on their needs. The visitor is currently at {user_location}.
+
+        Important Guidelines:
         1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
         
         2) **Operation Key**:
@@ -102,26 +135,7 @@ def ask_plan():
 
         8) **Limiting Results**: 
         - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 5 places unless the user asks for more.
-        """
-
-    else:
-        user_profile = profile_db.find_one({"profile": profile})
-        print(user_profile)
-        prompt = f"""You are a text processor. Your task is to understand the user's query and suggest attractions in {sentosa_name}. The visitor is currently at {user_location}.
-            Important Guidelines:
-            1) Your response **MUST** be structured as a SINGLE Python dictionary with two keys: "operation" and "response". Do not include any other text or additional keys. You response contain ONLY ONE dictionary.
-            2) The "operation" key can only have one of the values: "message" or "location".
-                - "message": Used when your response does not include places or attractions, and is a direct reply to the user.
-                - "location": Used when your response includes names of places.
-            3) The "response" key's value depends on the "operation" key:
-                - If "operation" is "message", "response" should contain a single string with your text response.
-                - If "operation" is "location", "response" should contain a list of the names of the places of interest.
-            4) Use the exact names of the places as provided in this list: {sentosa_places_list}.
-            5) If the user asks for their location or nearby POIs, use the find_nearby_pois function with a radius of 200, and classify as "operation" == "location".
-            6) When asked about a specific POI, use get_poi_by_name function to get the accurate information about the place.
-            7) When asked for user location, locate them based on the nearest POI using find_nearest_poi.
-            8) Avoid suggesting toilets and amenities unless requested, and limit to 5 attractions unless the user requests otherwise.
-            9) The user: {user_profile}. Cater towards this profile.
+        9) The user: {user_profile}. Cater towards this profile.
         """
     messages = [
         {"role": "system", "content": prompt},
