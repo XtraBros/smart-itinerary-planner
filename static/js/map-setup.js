@@ -658,7 +658,6 @@ function isUserOffRoute(userLocation, route, tolerance = 0.03) {
     const distance = turf.pointToLineDistance(userPoint, routeLine, { units: "miles" }) * 1069;
     const nearestPointOnLine = turf.nearestPointOnLine(routeLine, userPoint, { units: "meters" });
     const notStartLine = turf.lineSlice(nearestPointOnLine, turf.point(route.coordinates[route.coordinates.length - 1]), routeLine);
-    console.log('------->>>>>>>>>>>', nearestPointOnLine)
     const walkedLine = turf.lineSlice(turf.point(route.coordinates[0]), nearestPointOnLine, routeLine);
     if (map.getSource('walked-route')) {
         map.getSource('walked-route').setData(walkedLine);
@@ -1838,13 +1837,13 @@ function addMarkers(placeNames, waypoints) {
 }
 
 function displayByCategory(category, element) {
+    if (window.mapMarkers) {
+        for (const [key, value] of Object.entries(window.mapMarkers)) {
+            value.remove();
+        }
+    }
     if (element.getAttribute('class').includes('active')) {
         element.classList.remove('active')
-        if (window.mapMarkers) {
-            for (const [key, value] of Object.entries(window.mapMarkers)) {
-                value.remove();
-            }
-        }
         return;
     }
     const munts = document.getElementsByClassName('newHeader')[0]
