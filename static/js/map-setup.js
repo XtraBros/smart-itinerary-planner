@@ -937,13 +937,23 @@ function interpolate(p1, p2, fraction) {
 }
 
 // Function to update user location in your app
+let lastRecalculationTime = 0;  // Track the last time the route was recalculated
+const recalculationDelay = 30000; // Set a delay (e.g., 5000ms = 5 seconds)
+
 function updateUserLocation(location) {
     userLocation = location;
-    console.log("User location updated:", location);
-    // Check if the user is off-route after updating the location
-    if (isUserOffRoute(userLocation, route).distance > 30) {
-        console.log('User is off-route, recalculating route...');
-        recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+    // console.log("User location updated:", location);  // Disabled for frequency control
+    
+    const currentTime = Date.now(); // Get the current time in milliseconds
+
+    // Check if enough time has passed since the last recalculation
+    if (currentTime - lastRecalculationTime >= recalculationDelay) {
+        // Check if the user is off-route
+        if (isUserOffRoute(userLocation, route).distance > 30) {
+            console.log('User is off-route, recalculating route...');
+            recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+            lastRecalculationTime = currentTime;  // Update the last recalculation time
+        }
     }
 }
 
