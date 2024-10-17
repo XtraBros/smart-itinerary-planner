@@ -940,7 +940,7 @@ function trackUserLocation(route) {
             checkNearbyEvent(currentPosition);
         }, 5000)
         // Update the user's location in your app
-        // updateUserLocation(currentPosition);
+        updateUserLocation(currentPosition);
 
         // Update the marker position to the user's current location
         // userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
@@ -1317,7 +1317,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             userHeading: position.coords.heading,
                         };
                         userLocation = cuerrorUserLoc
-                        const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, result.route);
+                        const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, route);
                         if (userMarker) {
                             userMarker.setLngLat(distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates)
                         }
