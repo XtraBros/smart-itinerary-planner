@@ -263,7 +263,7 @@ function handleOrientationChange(event) {
         const userHeading = (360 - event.alpha) % 360 ;
         map.rotateTo(userHeading);
     }
-    if (userMarker) {
+    if (userMarker && mapUserLocation) {
         const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
         if (switchoverState === 'POSINIT') {
             markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
@@ -381,6 +381,7 @@ function debounce(fn, delay) {
 }
 
 function stopNavFunc() {
+    endPlaceProt = null
     map.setZoom(14);
     switchoverState = 'POSINIT'
     closedNavfun();
@@ -394,6 +395,7 @@ function stopNavFunc() {
 }
 
 function exitNavFunc() {
+    endPlaceProt = null
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
@@ -472,8 +474,8 @@ function handerMap(e, type) {
         mapEl.style.display = 'block'
         poiList.style.display = 'none'
     }
-    e.preventDefault();
     e.target.classList.add('activeButton')
+    e.preventDefault();
 }
 function switchoverHandled() {
     switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
@@ -719,6 +721,7 @@ function recalculateRoute(currentLocation, destination) {
             walkStepsNavs = data;
             instructions = getInstructions(steps);
             routeIndex = 0;
+            if (!endPlaceProt) return
             // Update the map with new route
             if (map.getSource('route')) {
                 map.getSource('route').setData({
@@ -740,7 +743,7 @@ function recalculateRoute(currentLocation, destination) {
         })
         .catch(error => console.error('Error in recalculating route:', error));
 }
-function setUserLocationMark(coord, angle) {
+function setUserLocationMark(coord) {
     if (userMarker) {
         userMarker.remove()
         userMarker = null
@@ -937,10 +940,10 @@ function trackUserLocation(route) {
             checkNearbyEvent(currentPosition);
         }, 5000)
         // Update the user's location in your app
-        updateUserLocation(currentPosition);
+        // updateUserLocation(currentPosition);
 
         // Update the marker position to the user's current location
-        userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
+        // userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
 
         // Calculate remaining distance to the next position on the route
         const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
@@ -1038,9 +1041,9 @@ function updateUserLocation(location) {
     // Check if enough time has passed since the last recalculation
     if (currentTime - lastRecalculationTime >= recalculationDelay) {
         // Check if the user is off-route
-        if (isUserOffRoute(userLocation, route).distance > 30) {
+        if (isUserOffRoute(location, route).distance > 30 && endPlaceProt) {
             console.log('User is off-route, recalculating route...');
-            recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+            recalculateRoute(location, endPlaceProt);  // Call reroute function
             lastRecalculationTime = currentTime;  // Update the last recalculation time
         }
     }
@@ -1233,7 +1236,7 @@ function paintLine(resRoute, isZoom = true) {
 }
 
 function setDottedLine() {
-    if (walkStepsNavs && walkStepsNavs.waypoints.length) {
+    if (endPlaceProt && walkStepsNavs && walkStepsNavs.waypoints.length) {
         const userfirstDistance = walkStepsNavs.waypoints[0].distance;
         const { distance, isInPolygon} = isUserOffRoute(userLocation, route);
         if (userfirstDistance > 5 && distance > 5 && !isInPolygon) {
@@ -1308,19 +1311,20 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
                     geolocateControl.on('geolocate', (position) => {
-                        userLocation = {
+                        const cuerrorUserLoc = {
                             lng: position.coords.longitude,
                             lat: position.coords.latitude,
                             userHeading: position.coords.heading,
                         };
-                        const { distance, nearestPointOnLine  } = isUserOffRoute(userLocation, result.route);
+                        userLocation = cuerrorUserLoc
+                        const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, result.route);
                         if (userMarker) {
-                            userMarker.setLngLat(distance > 8 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates)
+                            userMarker.setLngLat(distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates)
                         }
                         setDottedLine()
-                        if (distance > 30) {
+                        if ((distance > 20 || !isInPolygon) && endPlaceProt) {
                             console.log('User is off-route, recalculating route...');
-                            recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+                            recalculateRoute(cuerrorUserLoc, endPlaceProt);  // Call reroute function
                         }
                     });
                     // console.log('------result->>>>>>>>>', result)
@@ -1597,6 +1601,7 @@ function closedNavfun() {
     const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
     geolocate.style.top = '80px'
     isUserRunning = false
+    endPlaceProt = null
 }
 
 // creaate template and styles for each visitor/guide message.
@@ -2105,11 +2110,12 @@ function startUserNav() {
     enableNavigationMode(steps);
 }
 function cancelNav() {
+    endPlaceProt = null
     closedNavfun();
     map.easeTo({
         pitch: 0, // Back to 2D top-down view
         bearing: 0,
-        zoom: 13, // Adjust zoom level if needed
+        zoom: 15, // Adjust zoom level if needed
         duration: 1000
     });
     listButton.style.display = 'block';

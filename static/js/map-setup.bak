@@ -24,9 +24,10 @@ let thumbnailURI;
 let endPlaceProt; // end port
 let simulatePoint;
 let isUserRunning = false;
+let walkStepsNavs;
 let suggestionTimer = null;  // To store the timer instance
 const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
-
+let switchoverState = 'POSINIT'; // POSINIT or FOCUS
 function initProperty() {
     routeIndex = 0;
     currentStepIndex = 0;
@@ -73,10 +74,9 @@ async function getPoisByLocation(location) {
 
         const poisData = await response.json();
         const placeInfoResponse = await fetchPlacesData(poisData);
+        if (poisData && !poisData.length) return
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
-        const orderOfVisit = await get_coordinates_without_route(poisData);
-
         fetchTemplate('static/html/info-card.html').then(template => {
             const parser = new DOMParser();
             let contenxt = '';
@@ -89,6 +89,10 @@ async function getPoisByLocation(location) {
                     formattedPlaceName = "toilet";
                 } else if (placeName.toLowerCase().includes("station")) {
                     formattedPlaceName = "station";
+                }
+                // Skip adding markers for toilets and stations
+                if (formattedPlaceName === "toilet" || formattedPlaceName === "station") {
+                    return;  // Continue to the next POI without adding a marker
                 }
                 const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
     
@@ -115,16 +119,39 @@ async function getPoisByLocation(location) {
                             </div>`;
     
                 listCont += setMapList({index, thumbnailUrl, placeName});
-                orderOfVisit[0].map((item, i) => {
-                    if (item === placeName) {
-                        addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
-                        return orderOfVisit[1][i]
-                    }
-                })
+                // orderOfVisit[0].map((item, i) => {
+                //     if (item === placeName) {
+                //         addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
+                //         return orderOfVisit[1][i]
+                //     }
+                // })
             });
             swiperconent.innerHTML = contenxt;
             poiList.innerHTML = listCont;
         });
+    } catch (error) {
+        console.error('Get Pois by Location', error);
+        return null;
+    }
+}
+
+async function checkNearbyEvent(location) {
+    try {
+        const response = await fetch('/find_nearby_pois', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 20 })
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const poisData = await response.json();
+        const placeInfoResponse = await fetchPlacesData(poisData);
+        if (poisData && !poisData.length) return
         // prompt suggestion if not recent:
         const placeNames = [];
         const coordinates = [];
@@ -173,12 +200,16 @@ async function getPoisByLocation(location) {
 
                 attachEventListenersToHyperlinks();
             }
-
+            // if chat box not open, show pop up
+            const popupModal = document.getElementById('popupModal');
+            if (window.getComputedStyle(popupModal).display == 'none') {
+                idaeBox.classList.add('fadeshowin');
+            }
             // Update the last event check timestamp
             localStorage.setItem('lastEventCheckTime', currentTime);
         } else {
             console.log('Skipping event check. Less than 5 minutes since the last check.');
-        }
+        };
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;
@@ -200,6 +231,7 @@ const totDist = document.getElementById('totDist');
 const chatbotArea = document.getElementById('chatbot-area');
 const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
+const dingwenndId = document.getElementById('dingwennd');
 
 function setMapList({index, placeName, thumbnailUrl}) {
     return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
@@ -219,6 +251,26 @@ function setMapList({index, placeName, thumbnailUrl}) {
             <span class="islander">Islander earns 50 points</span>
         </div>
     </div>`;
+}
+
+function handleOrientationChange(event) {
+    console.log("User facing direction changed.")
+    const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
+    // if (mapUserLocation) {
+    //         document.getElementsByClassName('newHeader')[0].innerText = `${mapUserLocation.style.transform}`
+    // }
+    if (map && event.alpha !== null && switchoverState === 'FOCUS') {
+        const userHeading = (360 - event.alpha) % 360 ;
+        map.rotateTo(userHeading);
+    }
+    if (userMarker && mapUserLocation) {
+        const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
+        if (switchoverState === 'POSINIT') {
+            markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
+        } else {
+            markerElement.style.transform = `rotateZ(0deg)`
+        }
+    }
 }
 
 window.onload = function () {
@@ -262,14 +314,22 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    window.addEventListener('deviceorientation', debounce(function (event) {
-        console.log("User facing direction changed.")
-        const alpha = event.alpha;
-        if (userMarker) {
-            const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-            markerElement.style.transform = `rotate(${alpha}deg)`
-        }
-    }, 200));
+    if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ 需要请求权限
+        DeviceOrientationEvent.requestPermission()
+            .then(response => {
+                if (response === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientationChange);
+                } else {
+                    alert('未授予设备方向传感器权限');
+                }
+            })
+            .catch(console.error);
+    } else {
+        window.addEventListener('deviceorientation', debounce(function (event) {
+            handleOrientationChange(event)
+        }, 20));
+    }
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -293,6 +353,23 @@ window.onload = function () {
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
     });
+    window.addEventListener('beforeunload', function (event) {
+        // confimration to leave page
+        event.preventDefault();
+    });
+}
+
+function detectDevice() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+        return 'iOS';
+    }
+    if (/android/i.test(userAgent)) {
+        return 'Android';
+    }
+    return 'Unknown';
 }
 
 function debounce(fn, delay) {
@@ -304,6 +381,8 @@ function debounce(fn, delay) {
 }
 
 function stopNavFunc() {
+    map.setZoom(14);
+    switchoverState = 'POSINIT'
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
@@ -393,8 +472,42 @@ function handerMap(e, type) {
         mapEl.style.display = 'block'
         poiList.style.display = 'none'
     }
-    e.preventDefault();
     e.target.classList.add('activeButton')
+    e.preventDefault();
+}
+function switchoverHandled() {
+    switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
+    const img = dingwenndId.getElementsByTagName('img')[0]
+    img.setAttribute('src', `static/icons/${switchoverState === 'FOCUS' ? 'nios' : 'posinit'}.svg`);
+    if (isUserRunning) {
+        if (switchoverState === 'FOCUS') {
+            map.setCenter([userLocation.lng, userLocation.lat]);
+        }
+        return
+    }
+    if (switchoverState === 'FOCUS') {
+        map.setZoom(17);
+        map.setPitch(60, {duration: 10});
+        map.setCenter([userLocation.lng, userLocation.lat]);
+    } else {
+        outFoucsMode()
+    }
+}
+
+function outFoucsMode() {
+    map.setZoom(14);
+    map.setPitch(0, {duration: 10});
+    map.resetNorth({duration: 10});
+}
+
+function getRotateZ(transform) {
+    if (!transform) return 0;
+    const match = transform.match(/rotateZ\(([-0-9.]+)deg\)/);
+    if (match) {
+        return parseFloat(match[1]); // 返回角度值
+    } else {
+        return 0; // 如果没有 rotateZ，则返回 0
+    }
 }
 
 fetch('/config')
@@ -429,6 +542,13 @@ fetch('/config')
         map.on('load', function () {
             // Define and set bounds for the map
             // 3D Layer for navigation view.    
+            const navControl = new mapboxgl.NavigationControl({
+                showCompass: true,  // Show compass (default is true)
+                showZoom: false,
+                rotateInner: true,
+                showDigit: true
+            });
+            map.addControl(navControl, 'top-right')
             map.addLayer({
                 'id': '3d-buildings',
                 'source': 'composite',
@@ -468,6 +588,7 @@ fetch('/config')
                 trackUserLocation: true,
                 showUserHeading: true, // If you want to show user's heading direction
             });
+            map.addControl(geolocateControl);
             // force mapbox to stop changing map view when geolocating
             geolocateControl._updateCamera = () => { }
             map.loadImage('static/icons/walked.png', function (err, image) {
@@ -490,9 +611,18 @@ fetch('/config')
                     zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
                     duration: 500         // Animation duration (optional)
                 });
-            });
-            // Add the Geolocate Control to the map
-            map.addControl(geolocateControl);
+            });            
+        });
+        map.on('dragstart', () => {
+            switchoverState = 'POSINIT'
+            const img = dingwenndId.getElementsByTagName('img')[0]
+            img.setAttribute('src', `static/icons/posinit.svg`);
+        });
+        map.on('dragend', () => {
+            // if (switchoverState === 'POSINIT' && !isUserRunning) {
+            //     map.setPitch(0, {duration: 500});
+            //     map.setZoom(14);
+            // }
         });
     })
     .catch(error => {
@@ -538,14 +668,14 @@ function enableNavigationMode(data) {
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
         zoom: 20,  // Adjust the zoom level for better street view navigation
         center: [userLocation.lng, userLocation.lat], // Center map on user's location
-        duration: 500 // Animation duration in milliseconds
+        duration: 10 // Animation duration in milliseconds
     });
-
+    switchoverState = 'FOCUS'
     // Wait for easeTo animation to complete, then start tracking
     map.once('moveend', () => trackUserLocation(route));
 }
 // Function to check if user is off-route
-function isUserOffRoute(userLocation, route, tolerance = 0.02) {
+function isUserOffRoute(userLocation, route, tolerance = 0.03) {
     const userCoordinates = [userLocation.lng, userLocation.lat];
     // Extract the coordinates from the route object
     const routeCoordinates = route.coordinates;
@@ -558,8 +688,20 @@ function isUserOffRoute(userLocation, route, tolerance = 0.02) {
     // Create a point from the user's location
     const userPoint = turf.point(userCoordinates);
 
-    // Check if the user's point is within the buffered route
-    return !turf.booleanPointInPolygon(userPoint, bufferedRoute);
+    // 计算点到线的最小距离
+    const distance = turf.pointToLineDistance(userPoint, routeLine, { units: "miles" }) * 1069;
+    const nearestPointOnLine = turf.nearestPointOnLine(routeLine, userPoint, { units: "meters" });
+    const notStartLine = turf.lineSlice(nearestPointOnLine, turf.point(route.coordinates[route.coordinates.length - 1]), routeLine);
+    const walkedLine = turf.lineSlice(turf.point(route.coordinates[0]), nearestPointOnLine, routeLine);
+    if (map.getSource('walked-route')) {
+        map.getSource('walked-route').setData(walkedLine);
+    }
+    if (map.getSource('route')) {
+        map.getSource('route').setData(notStartLine);
+    }
+    const isInPolygon = turf.booleanPointInPolygon(userPoint, bufferedRoute);
+    console.log(`user distance: ${distance}(m)`, isInPolygon)
+    return { distance, isInPolygon, nearestPointOnLine }
 }
 
 
@@ -574,32 +716,39 @@ function recalculateRoute(currentLocation, destination) {
             // replace and reset all route memory objects
             route = data.routes[0].geometry;
             steps = data.routes[0].legs[0].steps;
+            walkStepsNavs = data;
             instructions = getInstructions(steps);
             routeIndex = 0;
             // Update the map with new route
-            map.getSource('route').setData({
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'LineString',
-                    'coordinates': newRoute
-                }
-            });
+            if (map.getSource('route')) {
+                map.getSource('route').setData({
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': newRoute
+                    }
+                });
+            }
             // restart tracking:
             trackUserLocation(route);
+            if (!isUserRunning) {
+                paintLine(route, false)
+            } else {
+                setDottedLine()
+            }
             console.log("New route calculated and updated on the map.");
         })
         .catch(error => console.error('Error in recalculating route:', error));
 }
-function setUserLocationMark(coord, angle) {
-    console.log('------->>>>>', userMarker)
+function setUserLocationMark(coord) {
     if (userMarker) {
         userMarker.remove()
         userMarker = null
     }
     const el = document.createElement('div');
-    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" alt="" srcset=""></p>`);
+    el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     userMarker = new mapboxgl.Marker({
-        color: 'red',
+        // rotationAlignment: 'map',
         element: el
     })
         .setLngLat(coord)
@@ -763,92 +912,6 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 
     return ((θ * 180) / Math.PI + 360) % 360;
 }
-// Function to start simulating user location along the route with smooth movement
-// function simulateUserLocation(route) {
-//     console.log("Starting simulation");
-//     const imgs = pauseAndpaly.getElementsByTagName('img')[0]
-//     imgs.setAttribute('src', `static/icons/pause.svg`);
-//     const targetDistance = 5; // meters per step for interpolation
-
-//     setUserLocationMark(route.coordinates[0]);
-//     walkedRoute.unshift(route.coordinates[0]);
-
-//     function updateLocation() {
-//         if (!simulationRunning) return; // If not running, do nothing
-
-//         if (routeIndex < route.coordinates.length - 1) {
-//             // Simulate the user's location along the route
-//             const currentPosition = {
-//                 lng: simulatePoint ? simulatePoint[0] : route.coordinates[routeIndex][0],
-//                 lat: simulatePoint ? simulatePoint[1] : route.coordinates[routeIndex][1]
-//             };
-//             const nextPosition = {
-//                 lng: route.coordinates[routeIndex + 1][0],
-//                 lat: route.coordinates[routeIndex + 1][1]
-//             };
-//             getPoisByLocation(currentPosition);
-//             // Calculate the distance between the current and next position
-//             const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
-
-//             // Animate the marker along the path between current and next position
-//             function animateMarker(interpolatedPosition) {
-//                 if (!simulationRunning) return; // If not running, do nothing
-
-//                 // Update the user's location in your app
-//                 updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
-
-//                 // Update marker position
-//                 userMarker.setLngLat(interpolatedPosition);
-//                 simulatePoint = interpolatedPosition
-//                 // Calculate remaining distance to next position
-//                 const remainingDistance = distanceBetweenPoints(interpolatedPosition, [nextPosition.lng, nextPosition.lat]);
-//                 updateWalkedRoute(interpolatedPosition);
-//                 updateRemainingRoute(interpolatedPosition);
-//                 // If the remaining distance is less than the target, move to the next point
-//                 if (remainingDistance <= targetDistance) {
-//                     routeIndex++;
-
-//                     if (routeIndex < route.coordinates.length - 1) {
-//                         setTimeout(updateLocation, 100); // Continue to the next point
-//                     } else {
-//                         closedNavfun();
-//                         navcompleted.classList.add('fadeshowin');
-//                         pauseAndpaly.style.display = 'none';
-//                         simulationRunning = false;
-//                         simulationPaused = false;
-//                         initProperty()
-//                         console.log("Route simulation completed");
-//                     }
-//                 } else {
-//                     // Calculate the new interpolated position
-//                     const fraction = targetDistance / remainingDistance;
-//                     const newInterpolatedPosition = interpolate(interpolatedPosition, [nextPosition.lng, nextPosition.lat], fraction);
-
-//                     // Continue animating along the current segment
-//                     simulationTimeout = setTimeout(() => animateMarker(newInterpolatedPosition), 1200);
-//                 }
-
-//                 // Update navigation instructions based on the user's location and the next interpolated position
-//                 console.log("User location: " + JSON.stringify(userLocation));
-//                 updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
-//             }
-
-//             // Start animating along the current segment with initial interpolation
-//             const initialFraction = targetDistance / distance;
-//             const initialInterpolatedPosition = interpolate([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat], initialFraction);
-//             animateMarker(initialInterpolatedPosition);
-
-//         } else {
-//             console.log("Route simulation completed");
-//             simulationRunning = false;
-//         }
-//     }
-
-//     // Start the location simulation
-//     simulationRunning = true;
-//     simulationPaused = false;
-//     updateLocation();
-// }
 
 // Function to use user's current location and update their position along the route
 function trackUserLocation(route) {
@@ -857,12 +920,10 @@ function trackUserLocation(route) {
     imgs.setAttribute('src', `static/icons/pause.svg`);
 
     // Set the user's initial location marker at the starting point
-    setUserLocationMark(route.coordinates[0]);
     walkedRoute.unshift(route.coordinates[0]);
     // Function to handle location updates from the GeolocateControl
     function updateLocation(position) {
-        if (!simulationRunning) return; // If not running, do nothing
-
+        if (!simulationRunning) return;
         const currentPosition = {
             lng: position.coords.longitude,
             lat: position.coords.latitude
@@ -871,7 +932,10 @@ function trackUserLocation(route) {
             lng: route.coordinates[routeIndex + 1][0],
             lat: route.coordinates[routeIndex + 1][1]
         };
-        getPoisByLocation(currentPosition);
+        debounce(() => {
+            getPoisByLocation(currentPosition);
+            checkNearbyEvent(currentPosition);
+        }, 5000)
         // Update the user's location in your app
         updateUserLocation(currentPosition);
 
@@ -881,7 +945,7 @@ function trackUserLocation(route) {
         // Calculate remaining distance to the next position on the route
         const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 
-        updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
+        // updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
         updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
 
         // If the remaining distance is less than the threshold, move to the next point
@@ -897,23 +961,23 @@ function trackUserLocation(route) {
                 console.log("Route tracking completed");
             }
         }
-
-        // Update navigation instructions based on the user's current position
-        updateNavigationInstructions(currentPosition);
     }
 
     // Event listener for when the user's location changes
     geolocateControl.on('geolocate', (position) => {
         console.log('Updating user location:')
-        updateLocation(position);
+        debounce(() => {
+            updateLocation(position);
+        }, 100)
+        debounce(() => {
+            updateNavigationInstructions(position);
+        }, 3000)
     });
-    // Trigger the initial location fetch
-    // geolocateControl.trigger();
 }
 
-function updateWalkedRoute(currentPosition) {
+function updateWalkedRoute(line) {
     // Add the current position to the walked route
-    walkedRoute.push(currentPosition);
+    // walkedRoute.push(currentPosition);
 
     // Update the map with the walked route
     map.getSource('walked-route').setData({
@@ -962,13 +1026,23 @@ function interpolate(p1, p2, fraction) {
 }
 
 // Function to update user location in your app
+let lastRecalculationTime = 0;  // Track the last time the route was recalculated
+const recalculationDelay = 5000; // Set a delay (e.g., 5000ms = 5 seconds)
+
 function updateUserLocation(location) {
     userLocation = location;
-    console.log("User location updated:", location);
-    // Check if the user is off-route after updating the location
-    if (isUserOffRoute(userLocation, route)) {
-        console.log('User is off-route, recalculating route...');
-        recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+    // console.log("User location updated:", location);  // Disabled for frequency control
+    
+    const currentTime = Date.now(); // Get the current time in milliseconds
+
+    // Check if enough time has passed since the last recalculation
+    if (currentTime - lastRecalculationTime >= recalculationDelay) {
+        // Check if the user is off-route
+        if (isUserOffRoute(userLocation, route).distance > 30) {
+            console.log('User is off-route, recalculating route...');
+            recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
+            lastRecalculationTime = currentTime;  // Update the last recalculation time
+        }
     }
 }
 
@@ -993,9 +1067,6 @@ function stopSimulation() {
 }
 
 function setMapRoute(resRoute) {
-    if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
-        setUserLocationMark(resRoute.coordinates[0])
-    }
     if (!map.getLayer('route')) {
         map.loadImage(
             'static/icons/nav.png',
@@ -1015,8 +1086,6 @@ function setMapRoute(resRoute) {
                         }
                     });
                 }
-                const lineBaseWidth = 14;
-
                 map.addLayer({
                     id: 'route',
                     type: 'line',
@@ -1028,99 +1097,7 @@ function setMapRoute(resRoute) {
                     },
                     paint: {
                         'line-pattern': 'arrow',
-                        'line-width': [
-                            'interpolate',
-                            ['exponential', 2],
-                            ['zoom'],
-                            0,
-                            lineBaseWidth * 0.5,
-                            0.9999,
-                            lineBaseWidth * 0.5,
-                            1,
-                            lineBaseWidth * 0.5,
-                            1.9999,
-                            lineBaseWidth * 0.5,
-                            2,
-                            lineBaseWidth * 0.5,
-                            2.9999,
-                            lineBaseWidth * 0.5,
-                            3,
-                            lineBaseWidth * 0.5,
-                            3.9999,
-                            lineBaseWidth * 0.5,
-                            4,
-                            lineBaseWidth * 0.5,
-                            4.9999,
-                            lineBaseWidth * 0.5,
-                            5,
-                            lineBaseWidth * 0.5,
-                            5.9999,
-                            lineBaseWidth * 0.5,
-                            6,
-                            lineBaseWidth * 0.5,
-                            6.9999,
-                            lineBaseWidth * 0.5,
-                            7,
-                            lineBaseWidth * 0.5,
-                            7.9999,
-                            lineBaseWidth * 0.5,
-                            8,
-                            lineBaseWidth * 0.5,
-                            8.9999,
-                            lineBaseWidth * 0.5,
-                            9,
-                            lineBaseWidth * 0.5,
-                            9.9999,
-                            lineBaseWidth * 0.5,
-                            10,
-                            lineBaseWidth * 1,
-                            10.9999,
-                            lineBaseWidth * 1,
-                            11,
-                            lineBaseWidth * 1,
-                            11.9999,
-                            lineBaseWidth * 1,
-                            12,
-                            lineBaseWidth * 1,
-                            12.9999,
-                            lineBaseWidth * 2,
-                            13,
-                            lineBaseWidth * 1,
-                            13.9999,
-                            lineBaseWidth * 2,
-                            14,
-                            lineBaseWidth * 1,
-                            14.9999,
-                            lineBaseWidth * 2,
-                            15,
-                            lineBaseWidth * 1,
-                            15.9999,
-                            lineBaseWidth * 2,
-                            16,
-                            lineBaseWidth * 1,
-                            16.9999,
-                            lineBaseWidth * 2,
-                            17,
-                            lineBaseWidth * 1,
-                            17.9999,
-                            lineBaseWidth * 2,
-                            18,
-                            lineBaseWidth * 1,
-                            18.9999,
-                            lineBaseWidth * 2,
-                            19,
-                            lineBaseWidth * 1,
-                            19.9999,
-                            lineBaseWidth * 2,
-                            20,
-                            lineBaseWidth * 1,
-                            20.9999,
-                            lineBaseWidth * 2,
-                            21,
-                            lineBaseWidth * 1,
-                            22,
-                            lineBaseWidth * 2
-                        ]
+                        'line-width': 10
                     }
                 });
             }
@@ -1147,17 +1124,31 @@ function setMapRoute(resRoute) {
     }
 
     if (!map.getLayer('walked-route')) {
+        // map.addLayer({
+        //     "id": "walked-route",
+        //     "type": "symbol",
+        //     "source": "walked-route",
+        //     'layout': {
+        //         'symbol-placement': 'line',
+        //         'symbol-spacing': 2,
+        //         'icon-image': 'walkedArrow',
+        //         'icon-size': 0.5,
+        //         'icon-allow-overlap': true,
+        //     },
+        // });
         map.addLayer({
-            "id": "walked-route",
-            "type": "symbol",
-            "source": "walked-route",
-            'layout': {
-                'symbol-placement': 'line',
-                'symbol-spacing': 2,
-                'icon-image': 'walkedArrow',
-                'icon-size': 0.5,
-                'icon-allow-overlap': true,
+            id: 'walked-route',
+            type: 'line',
+            source: 'walked-route',
+            layout: {
+                'icon-size': 0.8,
+                'icon-allow-overlap': false,
+                'line-cap': 'round'
             },
+            paint: {
+                'line-pattern': 'walkedArrow',
+                'line-width': 10
+            }
         });
     }
 }
@@ -1177,7 +1168,7 @@ function userCalculate(start, end) {
     return (bearing + 360) % 360; // 确保角度在0-360之间
 }
 
-function paintLine(resRoute) {
+function paintLine(resRoute, isZoom = true) {
     showMapTab();
     let bers = 0;
     const startPrit = [userLocation.lng, userLocation.lat];
@@ -1185,7 +1176,7 @@ function paintLine(resRoute) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
         endProit = resRoute.coordinates[resRoute.coordinates.length - 1]
         bers = userCalculate(resRoute.coordinates[0], endProit);
-        setUserLocationMark(resRoute.coordinates[0], bers)
+        setDottedLine()
     }
     if (!map.getSource('previewRoute')) {
         map.addSource('previewRoute', {
@@ -1232,12 +1223,62 @@ function paintLine(resRoute) {
             }
         });
     }
+    if (!isZoom) return
     map.fitBounds([startPrit, endProit], {
         // bearing: bers,
-        padding: 30, // 距离屏幕边缘的内边距（以像素为单位）
-        maxZoom: 17,
+        padding: 50, // 距离屏幕边缘的内边距（以像素为单位）
+        maxZoom: 16,
         duration: 1000
     });
+}
+
+function setDottedLine() {
+    if (walkStepsNavs && walkStepsNavs.waypoints.length) {
+        const userfirstDistance = walkStepsNavs.waypoints[0].distance;
+        const { distance, isInPolygon} = isUserOffRoute(userLocation, route);
+        if (userfirstDistance > 5 && distance > 5 && !isInPolygon) {
+            const geometry = {
+                coordinates: [
+                    [userLocation.lng, userLocation.lat],
+                    walkStepsNavs.waypoints[0].location
+                ],
+                type: "LineString",
+            }
+            if (!map.getSource('dottedLine')) {
+                map.addSource('dottedLine', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'properties': {},
+                        'geometry': geometry,
+                    }
+                });
+            } else {
+                map.getSource('dottedLine').setData({
+                    "type": "Feature",
+                    "geometry": geometry,
+                });
+            }
+            if (!map.getLayer('dottedLineroute')) {
+                map.addLayer({
+                    id: 'dottedLineroute',
+                    type: 'line',
+                    source: 'dottedLine',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#4a5367',
+                        'line-width': 5,
+                        'line-dasharray': [2, 2]
+                    }
+                });
+            }
+        } else if (map.getLayer('dottedLineroute')) {
+            map.removeLayer('dottedLineroute');
+        }
+    }
 }
 
 function displayRoute(placeNames, rawCoordinates, fromUser) {
@@ -1272,7 +1313,12 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             lat: position.coords.latitude,
                             userHeading: position.coords.heading,
                         };
-                        if (isUserOffRoute(userLocation, result.route)) {
+                        const { distance, nearestPointOnLine  } = isUserOffRoute(userLocation, result.route);
+                        if (userMarker) {
+                            userMarker.setLngLat(distance > 8 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates)
+                        }
+                        setDottedLine()
+                        if (distance > 30) {
                             console.log('User is off-route, recalculating route...');
                             recalculateRoute(userLocation, endPlaceProt);  // Call reroute function
                         }
@@ -1326,6 +1372,7 @@ function getMapboxWlakRoute(coordinates) {
                 }
                 route = data.routes[0].geometry;
                 steps = data.routes[0].legs[0].steps;
+                walkStepsNavs = data
                 return { legs, route };
             } else {
                 console.error('No route found: ', data);
@@ -1414,9 +1461,9 @@ function submitChat(event) {
             var chatMessages = document.getElementById("chatbot-messages");
             postMessage(message, chatMessages);
             // Start the timer if not running
-            if (!suggestionTimer) {
-                resetTimer();  // Replace "someType" with the actual type if needed
-            }
+            // if (!suggestionTimer) {
+            //     resetTimer();  // Replace "someType" with the actual type if needed
+            // }
             inputBox.value = "";
         }
     }
@@ -1432,8 +1479,8 @@ function resetTimer() {
     // Set a new timer that runs after 5 minutes
     suggestionTimer = setTimeout(() => {
         console.log("5 minutes since last message, prompting suggestions.")
-        getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
-        getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
+        // getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
+        // getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
         clearTimeout(suggestionTimer);  // Stop the timer after suggestion is made
         suggestionTimer = null;  // Set timer to null, so it can be started again
     }, suggestionTimeout);
@@ -1457,71 +1504,7 @@ async function postMessage(message, chatMessages) {
         let data = await response.json();
         console.log("GPT response: " + JSON.stringify(data));
         // check for operation type and run route functions if neccesarry.
-        if (data.operation == "route" && data.response.length > 1) {
-            console.log("PLaces: " + data.response);
-            let cleanedPlaceNames = data.response;
-
-            console.log(cleanedPlaceNames); // Check the cleaned list
-            // Get the route from the get_coordinates function
-            let orderOfVisit = await get_coordinates(cleanedPlaceNames, false);
-            let textResponse = await fetch('/get_text', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
-            });
-            if (!textResponse.ok) {
-                throw new Error('Network response was not ok ' + textResponse.statusText);
-            }
-            let textData = await textResponse.json();
-            appendMessage({
-                text: textData.response,
-                chatMessages,
-                type: 'route',
-                placeNames: orderOfVisit[0],
-                longAndlat: orderOfVisit[1],
-                fromUser: '1',
-            });
-            attachEventListenersToHyperlinks();
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
-            });
-
-            // Check if the response status is 204 (No Content)
-            if (nextResponse.status === 204) {
-                // Do nothing if the response is empty
-                console.log('No events found for the provided places.');
-                return;  // Exit early
-            }
-
-            // Proceed if the response is ok and not empty
-            if (!nextResponse.ok) {
-                throw new Error('Network response was not ok ' + nextResponse.statusText);
-            }
-
-            let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
-
-            // Check if the response contains the necessary data and append the message
-            if (nextData.response) {
-                appendMessage({
-                    text: nextData.response,
-                    chatMessages,
-                    type: 'message',
-                    placeNames: nextData.found_places,  // Use found_places from the response
-                    longAndlat: nextData.coordinates,   // Use coordinates from the response
-                    fromUser: '1',
-                });
-
-                // Attach event listeners to the hyperlinks
-                attachEventListenersToHyperlinks();
-            }
-
-        } else if (data.operation == "location") {
+        if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
 
             console.log(cleanedPlaceNames); // Check the cleaned list
@@ -1548,110 +1531,11 @@ async function postMessage(message, chatMessages) {
                 longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
-            });
-
-            // Check if the response status is 204 (No Content)
-            if (nextResponse.status === 204) {
-                // Do nothing if the response is empty
-                console.log('No events found for the provided places.');
-                return;  // Exit early
-            }
-
-            // Proceed if the response is ok and not empty
-            if (!nextResponse.ok) {
-                throw new Error('Network response was not ok ' + nextResponse.statusText);
-            }
-
-            let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
-
-            // Check if the response contains the necessary data and append the message
-            if (nextData.response) {
-                appendMessage({
-                    text: nextData.response,
-                    chatMessages,
-                    type: 'message',
-                    placeNames: nextData.found_places,  // Use found_places from the response
-                    longAndlat: nextData.coordinates,   // Use coordinates from the response
-                    fromUser: '1',
-                });
-
-                // Attach event listeners to the hyperlinks
-                attachEventListenersToHyperlinks();
-            }
-        } else if (data.operation == "wayfinding") {
-            console.log("PLaces: " + data.response);
-            let cleanedPlaceNames = data.response;
-
-            console.log(cleanedPlaceNames); // Check the cleaned list
-            // Get the route from the get_coordinates function
-            let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
-            addMarkers(orderOfVisit[0], orderOfVisit[1]);
-            let textResponse = await fetch('/get_text', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
-            });
-            if (!textResponse.ok) {
-                throw new Error('Network response was not ok ' + textResponse.statusText);
-            }
-            let textData = await textResponse.json();
-            appendMessage({
-                text: textData.response,
-                chatMessages,
-                type: 'route',
-                placeNames: orderOfVisit[0],
-                longAndlat: orderOfVisit[1],
-            });
-            attachEventListenersToHyperlinks();
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: orderOfVisit[0], coordinates: orderOfVisit[1] })
-            });
-
-            // Check if the response status is 204 (No Content)
-            if (nextResponse.status === 204) {
-                // Do nothing if the response is empty
-                console.log('No events found for the provided places.');
-                return;  // Exit early
-            }
-
-            // Proceed if the response is ok and not empty
-            if (!nextResponse.ok) {
-                throw new Error('Network response was not ok ' + nextResponse.statusText);
-            }
-
-            let nextData = await nextResponse.json();  // Retrieve the JSON data from the response
-
-            // Check if the response contains the necessary data and append the message
-            if (nextData.response) {
-                appendMessage({
-                    text: nextData.response,
-                    chatMessages,
-                    type: 'message',
-                    placeNames: nextData.found_places,  // Use found_places from the response
-                    longAndlat: nextData.coordinates,   // Use coordinates from the response
-                    fromUser: '1',
-                });
-
-                // Attach event listeners to the hyperlinks
-                attachEventListenersToHyperlinks();
-            }
         } else {
             appendMessage({ text: data.response, chatMessages });
         }
     } catch (error) {
-        console.error('Error:', JSON.stringify(error));
+        console.error('Error:', error.message || error);
     }
 }
 
@@ -1707,15 +1591,12 @@ function closedNavfun() {
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
+    if (map.getLayer('dottedLineroute')) {
+        map.removeLayer('dottedLineroute');
+    }
     const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
     geolocate.style.top = '80px'
     isUserRunning = false
-    // Keep map markers after cancelling navigation view.
-    // if (window.mapMarkers) {
-    //     for (const [key, value] of Object.entries(window.mapMarkers)) {
-    //         value.remove();
-    //     }
-    // }
 }
 
 // creaate template and styles for each visitor/guide message.
@@ -1918,8 +1799,8 @@ function getInstructions(data) {
         };
         instructions.push(formattedInstruction);
     });
-    console.log("instructions length: " + instructions.length);
-    console.log("Full instr: " + JSON.stringify(instructions));
+    // update the display:
+
     return instructions;
 }
 
@@ -1990,6 +1871,15 @@ function addMarkers(placeNames, waypoints) {
 }
 
 function displayByCategory(category, element) {
+    if (window.mapMarkers) {
+        for (const [key, value] of Object.entries(window.mapMarkers)) {
+            value.remove();
+        }
+    }
+    if (element.getAttribute('class').includes('active')) {
+        element.classList.remove('active')
+        return;
+    }
     const munts = document.getElementsByClassName('newHeader')[0]
     const lis = munts.getElementsByClassName('item')
     for (let index = 0; index < lis.length; index++) {
@@ -2209,9 +2099,8 @@ function startUserNav() {
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
+    setDottedLine()
     setMapRoute(route)
-    const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
-    markerElement.style.transform = `rotate(0deg)`
     startNav.classList.remove('fadeshowin');
     enableNavigationMode(steps);
 }
