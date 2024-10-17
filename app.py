@@ -694,7 +694,7 @@ function_schemas = [
     },
     {
         "name": "find_nearby_pois",
-        "description": "Finds places of interest (POIs) within a specified radius of the user's location, sorted by proximity.",
+        "description": "Finds places of interest (POIs) within a specified radius of the user's location. Returns an empty list if no POIs were found.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -788,8 +788,7 @@ def handle_function_calls(messages, state):
 
     message = response.choices[0].message
     print(f"===message==> {message}")
-    
-    # Check if the message contains a function call
+
     if hasattr(message, 'function_call') and message.function_call:
         function_name = message.function_call.name
         print(f"===function call==> {function_name}")
@@ -798,17 +797,9 @@ def handle_function_calls(messages, state):
         # Convert function_args from string to dictionary
         function_args = {}
         if function_args_str:
-            try:
-                function_args = json.loads(function_args_str)
-            except json.JSONDecodeError as e:
-                print(f"Error decoding function arguments: {str(e)}")
-                function_args = {}
+            function_args = json.loads(function_args_str)
 
-        # Prevent duplicate function calls by updating the state before handling the function
         if function_name not in state["called_functions"]:
-            # Mark function as called before executing it
-            state["called_functions"].add(function_name)
-
             function_to_call = function_mapping.get(function_name)
             if function_to_call:
                 try:
@@ -816,36 +807,36 @@ def handle_function_calls(messages, state):
                 except TypeError as e:
                     function_result = {"error": f"Function call error: {str(e)}"}
 
-                # Store the function result in the state
+                # Check if the result is empty (specific to find_nearby_pois)
+                if function_name == "find_nearby_pois" and not function_result:
+                    # Generate a custom message for empty result
+                    function_result = {"message": "No nearby attractions were found within the specified radius."}
+
+                # Store the function result
+                state["called_functions"].add(function_name)
                 state["function_results"][function_name] = function_result
 
-                # Append the function result to the messages
+                # Append the function result as a message
                 messages.append({
                     "role": "function",
                     "name": function_name,
                     "content": json.dumps(function_result)  # Ensure content is JSON encoded
                 })
 
-                # After updating the state and appending to messages, recursively handle further function calls
+                # Recursive call to handle further function calls
                 return handle_function_calls(messages, state)
             else:
+                # Handle case when function is not implemented
                 messages.append({
                     "role": "function",
                     "name": function_name,
                     "content": json.dumps({"error": "Function not implemented"})
                 })
                 return handle_function_calls(messages, state)
-
-    # Return the content of the message if no further function calls are needed
-    message_content = getattr(message, 'content', None)
-    if message_content is not None:
-        return message_content
-    elif hasattr(message, 'function_call'):
-        # Since content is None, but a function call is present, return an indication of the function call
-        return f"Function {message.function_call.name} was called."
     else:
-        # Fallback case if no content or function call exists
-        return "No content received from GPT-4 response."
+        # If no further function call, return the message content
+        return message.content
+
 
 ###########################################################################################################
 if __name__ == '__main__':
