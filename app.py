@@ -92,7 +92,7 @@ def ask_plan():
         4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
 
         5) **Finding Nearby POIs**: 
-        - If the user asks for nearby places or their current location, use the `find_nearby_pois` function with a radius of 200 meters and set "operation" to "location".
+        - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
 
         6) **Handling Specific POI Queries**: 
         - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place.
@@ -125,7 +125,7 @@ def ask_plan():
         4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
 
         5) **Finding Nearby POIs**: 
-        - If the user asks for nearby places or their current location, use the `find_nearby_pois` function with a radius of 200 meters and set "operation" to "location".
+        - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
 
         6) **Handling Specific POI Queries**: 
         - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place.
@@ -149,7 +149,7 @@ def ask_plan():
         "function_results": {}
     }
     message = handle_function_calls(messages, state)
-    print(message)
+    print(f"===ask_plan==> {message}")
     # Initialize operation
     operation = 'message'
 
@@ -788,6 +788,8 @@ def handle_function_calls(messages, state):
 
     message = response.choices[0].message
     print(f"===message==> {message}")
+    
+    # Check if the message contains a function call
     if hasattr(message, 'function_call') and message.function_call:
         function_name = message.function_call.name
         print(f"===function call==> {function_name}")
@@ -796,9 +798,17 @@ def handle_function_calls(messages, state):
         # Convert function_args from string to dictionary
         function_args = {}
         if function_args_str:
-            function_args = json.loads(function_args_str)
+            try:
+                function_args = json.loads(function_args_str)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding function arguments: {str(e)}")
+                function_args = {}
 
+        # Prevent duplicate function calls by updating the state before handling the function
         if function_name not in state["called_functions"]:
+            # Mark function as called before executing it
+            state["called_functions"].add(function_name)
+
             function_to_call = function_mapping.get(function_name)
             if function_to_call:
                 try:
@@ -806,20 +816,17 @@ def handle_function_calls(messages, state):
                 except TypeError as e:
                     function_result = {"error": f"Function call error: {str(e)}"}
 
-                state["called_functions"].add(function_name)
+                # Store the function result in the state
                 state["function_results"][function_name] = function_result
 
-                # # Check if the result is from query_expansion and return immediately
-                # if function_name == "query_expansion":
-                #     return function_result['clarifying_question']
-
+                # Append the function result to the messages
                 messages.append({
                     "role": "function",
                     "name": function_name,
                     "content": json.dumps(function_result)  # Ensure content is JSON encoded
                 })
 
-                # Recursive call to handle further function calls
+                # After updating the state and appending to messages, recursively handle further function calls
                 return handle_function_calls(messages, state)
             else:
                 messages.append({
@@ -828,9 +835,17 @@ def handle_function_calls(messages, state):
                     "content": json.dumps({"error": "Function not implemented"})
                 })
                 return handle_function_calls(messages, state)
-    else:
-        return message.content
 
+    # Return the content of the message if no further function calls are needed
+    message_content = getattr(message, 'content', None)
+    if message_content is not None:
+        return message_content
+    elif hasattr(message, 'function_call'):
+        # Since content is None, but a function call is present, return an indication of the function call
+        return f"Function {message.function_call.name} was called."
+    else:
+        # Fallback case if no content or function call exists
+        return "No content received from GPT-4 response."
 
 ###########################################################################################################
 if __name__ == '__main__':
