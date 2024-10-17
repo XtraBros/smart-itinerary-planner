@@ -2098,6 +2098,8 @@ async function getSuggestion(type) {
 // start
 function startUserNav() {
     console.log('-----steps-->>>', steps)
+    const img = dingwenndId.getElementsByTagName('img')[0]
+    img.setAttribute('src', `static/icons/nios.svg`);
     if (map.getLayer('prewroute')) {
         map.removeLayer('prewroute');
     }
