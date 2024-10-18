@@ -27,7 +27,6 @@ with open(CONFIG_FILE, 'r') as file:
 
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
-profile = config['PROFILE']
 ######################### MONGO #########################
 # Connect to MongoDB
 mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
@@ -71,72 +70,37 @@ def ask_plan():
     user_input = request.json['message']
     user_location = request.json['userLocation']
     print(request)
+    prompt = f"""
+    You are a helpful assistant. Your task is to understand the user's query and suggest attractions in {sentosa_name} based on their needs. The visitor is currently at {user_location}.
 
-    # Initial messages with RAG data
-    if profile == "DEFAULT":
-        prompt = f"""
-        You are a helpful assistant. Your task is to understand the user's query and suggest attractions in {sentosa_name} based on their needs. The visitor is currently at {user_location}.
+    Important Guidelines:
+    1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
+    
+    2) **Operation Key**:
+    - The "operation" key can only have one of the following values:
+        - "location": Use this when your response includes one or more places, locations, or attractions, or when providing directions to a place.
+        - "message": Use this when your response is a general reply that does not include any locations or attractions.
 
-        Important Guidelines:
-        1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response. Do not include any formatting tags like ```json or other code blocks in your response.
-        
-        2) **Operation Key**:
-        - The "operation" key can only have one of the following values:
-            - "location": Use this when your response includes one or more places, locations, or attractions, or when providing directions to a place.
-            - "message": Use this when your response is a general reply that does not include any locations or attractions.
+    3) **Response Key**:
+    - If "operation" is "message", the value of "response" should be a single string containing your text reply.
+    - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
 
-        3) **Response Key**:
-        - If "operation" is "message", the value of "response" should be a single string containing a text reply to the user query.
-        - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
+    4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
 
-        4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
+    5) **Finding Nearby POIs**: 
+    - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
 
-        5) **Finding Nearby POIs**: 
-        - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
+    6) **Handling Specific POI Queries**: 
+    - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place.
 
-        6) **Handling Specific POI Queries**: 
-        - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place.
+    7) **User Location Requests**: 
+    - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
 
-        7) **User Location Requests**: 
-        - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
+    8) **Limiting Results**: 
+    - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 5 places unless the user asks for more.
 
-        8) **Limiting Results**: 
-        - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 5 places unless the user asks for more.
-        """
-
-    else:
-        user_profile = profile_db.find_one({"profile": profile})
-        print(user_profile)
-        prompt = f"""
-        You are a helpful assistant. Your task is to understand the user's query and suggest attractions in {sentosa_name} based on their needs. The visitor is currently at {user_location}.
-
-        Important Guidelines:
-        1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
-        
-        2) **Operation Key**:
-        - The "operation" key can only have one of the following values:
-            - "location": Use this when your response includes one or more places, locations, or attractions, or when providing directions to a place.
-            - "message": Use this when your response is a general reply that does not include any locations or attractions.
-
-        3) **Response Key**:
-        - If "operation" is "message", the value of "response" should be a single string containing your text reply.
-        - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
-
-        4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
-
-        5) **Finding Nearby POIs**: 
-        - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
-
-        6) **Handling Specific POI Queries**: 
-        - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place.
-
-        7) **User Location Requests**: 
-        - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
-
-        8) **Limiting Results**: 
-        - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 5 places unless the user asks for more.
-        9) The user: {user_profile}. Cater towards this profile.
-        """
+    9) Use the get_user_profile function to determine the user specific considerations. Cater the recommendations towards this user's group dynamics, dietary preferences and racial profile.
+    """
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": user_input}
@@ -148,7 +112,7 @@ def ask_plan():
         "called_functions": set(),
         "function_results": {}
     }
-    message = handle_function_calls(messages, state)
+    message = remove_code_blocks(handle_function_calls(messages, state))
     print(f"===ask_plan==> {message}")
     # Initialize operation
     operation = 'message'
@@ -178,25 +142,15 @@ def get_text():
     coordinates = request.json['coordinates']
     print(f"route:{route}")
     user_input = request.json['message']
-    if profile == "DEFAULT":
-        prompt = f"""You are a tour guide at {sentosa_name}. 
-                 Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
-                 Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
-                 Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
-                 If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
-                 Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html or other code blocks in your response.
-                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
-                """
-    else:
-        user_profile = profile_db.find_one({"profile": profile})['description']
-        prompt = f"""You are a tour guide at {sentosa_name}. 
-                 Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
-                 Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
-                 Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
-                 If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
-                 Identify the user's location via the nearest place of interest. Do not include any formatting tags like ```html or other code blocks in your response. Some notes about the user: {user_profile}
-                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
-                """
+    prompt = f"""You are a tour guide at {sentosa_name}. 
+                Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
+                Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
+                Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
+                If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
+                Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html or other code blocks in your response.
+
+                Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
+            """
                 
     if route[0]:
         if isinstance(route[0], list):
@@ -525,6 +479,16 @@ def remove_dupes(response_text):
         # If no dictionary is found, return the original response
         return response_text
 
+# handle code chunks and ``` tags 
+def remove_code_blocks(content):
+    # Use a regular expression to find and remove code blocks starting with ```
+    cleaned_content = re.sub(r'```[a-zA-Z]*\n.*?\n```', '', content, flags=re.DOTALL)
+    
+    # Remove any leftover backticks (``` without a language identifier)
+    cleaned_content = re.sub(r'```\n.*?\n```', '', cleaned_content, flags=re.DOTALL)
+    
+    return cleaned_content.strip()
+
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list, coordinates):
     hyperlinks = {}
@@ -649,6 +613,13 @@ def find_nearest_poi(user_location):
     
 def get_poi_list():
     return sentosa_places_list
+
+def get_user_profile():
+    user_profile = profile_db.find_one({"profile": 0})
+    print(user_profile)
+    if user_profile:
+        return user_profile["description"]
+    return "No special considerations"
 '''
 Function Mapping: map the function names to the function, so that it can be identified and called in handle_function_calls()
 '''
@@ -657,7 +628,8 @@ function_mapping = {
     "fetch_poi_data": fetch_poi_data,
     "find_nearby_pois": find_nearby_pois,
     "get_poi_by_name": get_poi_by_name,
-    "find_nearest_poi": find_nearest_poi
+    "find_nearest_poi": find_nearest_poi,
+    "get_user_profile": get_user_profile
     # "get_poi_list":get_poi_list
 }
 '''
@@ -774,6 +746,11 @@ function_schemas = [
     {
         "name": "get_poi_list",
         "description": "Retrieve a list of names for all available POIs (Points of Interest) in Sentosa.",
+        "parameters": {}
+    },
+    {
+        "name": "get_user_profile",
+        "description": "Fetches the user profile from the database. Includes racial profile, group dynamics and other relevant considerations required to make a recommendation.",
         "parameters": {}
     }
 ]
