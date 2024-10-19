@@ -91,7 +91,7 @@ def ask_plan():
     - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
 
     6) **Handling Specific POI Queries**: 
-    - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place.
+    - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place, and answer the query with operation "message". Include important links and details if there are notes.
 
     7) **User Location Requests**: 
     - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
@@ -147,7 +147,7 @@ def get_text():
                 Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
                 Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
                 If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
-                Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html or other code blocks in your response.
+                Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html and escape sequences like \n in your response.
 
                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
             """
@@ -481,11 +481,17 @@ def remove_dupes(response_text):
 
 # handle code chunks and ``` tags 
 def remove_code_blocks(content):
-    # Use a regular expression to find and remove code blocks starting with ```
+    # Step 1: Remove code blocks (```json, ```html, etc.)
     cleaned_content = re.sub(r'```[a-zA-Z]*\n.*?\n```', '', content, flags=re.DOTALL)
     
-    # Remove any leftover backticks (``` without a language identifier)
+    # Step 2: Remove any remaining code blocks without a language identifier
     cleaned_content = re.sub(r'```\n.*?\n```', '', cleaned_content, flags=re.DOTALL)
+    
+    # Step 3: Remove escape sequences like \n, \t, etc.
+    cleaned_content = cleaned_content.replace('\\n', ' ').replace('\\t', ' ')
+    
+    # Optional: Remove any multiple spaces caused by replacements
+    cleaned_content = re.sub(r'\s+', ' ', cleaned_content)
     
     return cleaned_content.strip()
 
@@ -546,6 +552,7 @@ def fetch_poi_data():
 def get_poi_by_name(name):
     # Query the MongoDB collection for the document where the 'name' matches the input
     poi = poi_db.find_one({"name": name}, {"_id": 0})
+    print(poi)
     
     if poi:
         return poi  # Return the data row/document
