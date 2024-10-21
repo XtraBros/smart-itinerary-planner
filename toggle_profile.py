@@ -23,3 +23,7 @@ profile_df.to_csv(profile_csv, index = False)
 data = profile_df.to_dict(orient="records") 
 profiledb.delete_many({})
 profiledb.insert_many(data)
+print("Profiles toggled")
+
+user_profile = profiledb.find_one({"profile": 0})
+print(f"using profile: {user_profile}")
