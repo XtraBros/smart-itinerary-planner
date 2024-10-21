@@ -28,6 +28,7 @@ let walkStepsNavs;
 let suggestionTimer = null;  // To store the timer instance
 const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
 let switchoverState = 'POSINIT'; // POSINIT or FOCUS
+let userTouch = false;
 function initProperty() {
     routeIndex = 0;
     currentStepIndex = 0;
@@ -478,6 +479,7 @@ function handerMap(e, type) {
     e.preventDefault();
 }
 function switchoverHandled() {
+    userTouch = false
     switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
     const img = dingwenndId.getElementsByTagName('img')[0]
     img.setAttribute('src', `static/icons/${switchoverState === 'FOCUS' ? 'nios' : 'posinit'}.svg`);
@@ -607,6 +609,7 @@ fetch('/config')
             const userLoc = [userLocation.lng, userLocation.lat];
             setUserLocationMark(userLoc);
             geolocateControl.on('trackuserlocationstart', () => {
+                userTouch = false
                 map.easeTo({
                     center: [userLocation.lng, userLocation.lat],
                     bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
@@ -616,6 +619,7 @@ fetch('/config')
             });            
         });
         map.on('dragstart', () => {
+            userTouch = true
             switchoverState = 'POSINIT'
             const img = dingwenndId.getElementsByTagName('img')[0]
             img.setAttribute('src', `static/icons/posinit.svg`);
@@ -1321,7 +1325,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                         if (userMarker) {
                             const CunrrPoint = distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates
                             userMarker.setLngLat(CunrrPoint)
-                            if (switchoverState === 'FOCUS') {
+                            if (!userTouch) {
                                 map.setCenter(CunrrPoint);
                             }
                         }
