@@ -29,6 +29,7 @@ let suggestionTimer = null;  // To store the timer instance
 const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
 let switchoverState = 'POSINIT'; // POSINIT or FOCUS
 let userTouch = false;
+let firstCilck = false;
 function initProperty() {
     routeIndex = 0;
     currentStepIndex = 0;
@@ -45,6 +46,7 @@ function getUserCurrentPosition(callBack, error) {
             lat: position.coords.latitude,
             userHeading: position.coords.heading,
         };
+        setUserLocationMark([position.coords.longitude, position.coords.latitude]);
         if (callBack) {
             callBack(userLocation)
         }
@@ -254,6 +256,8 @@ function setMapList({index, placeName, thumbnailUrl}) {
     </div>`;
 }
 
+let firstTime = null;
+
 function handleOrientationChange(event) {
     // console.log("User facing direction changed.")
     const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
@@ -262,7 +266,17 @@ function handleOrientationChange(event) {
     // }
     if (map && event.alpha !== null && switchoverState === 'FOCUS') {
         const userHeading = (360 - event.alpha) % 360 ;
-        map.rotateTo(userHeading);
+        if (firstCilck) {
+            if (!firstTime) {
+                firstTime = setTimeout(() => {
+                    clearTimeout(firstTime);
+                    firstTime = null
+                    firstCilck = false
+                }, 600)
+            }
+        } else {
+            map.rotateTo(userHeading, { animate: false });
+        }
     }
     if (userMarker && mapUserLocation) {
         const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
@@ -329,7 +343,7 @@ window.onload = function () {
     } else {
         window.addEventListener('deviceorientation', debounce(function (event) {
             handleOrientationChange(event)
-        }, 20));
+        }, 10));
     }
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
@@ -605,18 +619,24 @@ fetch('/config')
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
-            // geolocate event 
-            const userLoc = [userLocation.lng, userLocation.lat];
-            setUserLocationMark(userLoc);
             geolocateControl.on('trackuserlocationstart', () => {
                 userTouch = false
+                if(!userLocation) return
+                setUserLocationMark([userLocation.lng, userLocation.lat]);
                 map.easeTo({
                     center: [userLocation.lng, userLocation.lat],
                     bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
                     zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
                     duration: 500         // Animation duration (optional)
                 });
-            });            
+            }); 
+            const compassButton = document.querySelector('.mapboxgl-ctrl-compass')
+            if (compassButton) {
+                compassButton.addEventListener('click', function(e) {
+                    userTouch = true
+                    e.preventDefault();
+                });
+            }
         });
         map.on('dragstart', () => {
             userTouch = true
@@ -674,7 +694,7 @@ function enableNavigationMode(data) {
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
         zoom: 20,  // Adjust the zoom level for better street view navigation
         center: [userLocation.lng, userLocation.lat], // Center map on user's location
-        duration: 10 // Animation duration in milliseconds
+        duration: 600 // Animation duration in milliseconds
     });
     switchoverState = 'FOCUS'
     // Wait for easeTo animation to complete, then start tracking
@@ -748,10 +768,7 @@ function recalculateRoute(currentLocation, destination) {
         .catch(error => console.error('Error in recalculating route:', error));
 }
 function setUserLocationMark(coord) {
-    if (userMarker) {
-        userMarker.remove()
-        userMarker = null
-    }
+    if (userMarker) return;
     const el = document.createElement('div');
     el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     userMarker = new mapboxgl.Marker({
@@ -1325,7 +1342,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                         if (userMarker) {
                             const CunrrPoint = distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates
                             userMarker.setLngLat(CunrrPoint)
-                            if (!userTouch) {
+                            if (!userTouch && !firstCilck) {
                                 map.setCenter(CunrrPoint);
                             }
                         }
@@ -2105,6 +2122,8 @@ async function getSuggestion(type) {
 
 // start
 function startUserNav() {
+    firstCilck = true
+    userTouch = false
     console.log('-----steps-->>>', steps)
     const img = dingwenndId.getElementsByTagName('img')[0]
     img.setAttribute('src', `static/icons/nios.svg`);
