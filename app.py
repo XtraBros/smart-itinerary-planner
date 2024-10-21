@@ -121,11 +121,11 @@ def ask_plan():
         # Parse the message as a Python dictionary
         evaluated_message = json.loads(remove_dupes(message))
         response = evaluated_message['response']
+        response = url_to_hyperlink(response)
         operation = evaluated_message['operation']
         if isinstance(response, dict):
             # If 'response' is a dictionary, set 'response' and 'operation' to its values
             response = response.get('response', response)
-            response = url_to_hyperlink(response)
             operation = response.get('operation', operation)
         print(f"'response': {response}, 'operation': {operation}")
         return jsonify({'response': response, 'operation': operation})
