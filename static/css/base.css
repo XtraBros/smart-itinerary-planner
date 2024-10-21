@@ -780,7 +780,7 @@ a.mapboxgl-ctrl-logo {
 .cancelBottm {
   background-color: white; border: 1px solid #FF8A00; color: #FF8A00;
 }
-.mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { display: none; }
+/* .mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { display: none; } */
 #dingwennd { width: 46px; height: 46px; border-radius: 26px; background-color: white !important; text-align: center; line-height: 62px; }
 .minumts { color: #2C2C2C; font-weight: 600; font-size: 18px; padding: 3px 0px; }
 /* 移出动画 */
