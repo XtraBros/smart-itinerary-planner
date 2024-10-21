@@ -501,8 +501,8 @@ def url_to_hyperlink(text):
     markdown_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
     text = re.sub(markdown_pattern, r'<a href="\2">\1</a>', text)
     
-    # Find plain URLs (without markdown) and convert to HTML
-    url_pattern = r'(https?://[^\s]+)'
+    # Convert plain URLs (that are not already part of a link)
+    url_pattern = r'(?<!href=")(https?://[^\s]+)'
     text = re.sub(url_pattern, r'<a href="\1">\1</a>', text)
     
     return text
