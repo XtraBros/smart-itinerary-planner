@@ -536,11 +536,11 @@ fetch('/config')
         });
         // variable to allow resizing function
         window.mapboxMap = map;
-        const bounds = [
-            [103.6, 1.2],  // 西南角 (大致在西南海域)
-            [104.1, 1.5]   // 东北角 (大致在东北海域)
-        ];
-        map.setMaxBounds(bounds);
+        // const bounds = [
+        //     [103.6, 1.2],  // 西南角 (大致在西南海域)
+        //     [104.1, 1.5]   // 东北角 (大致在东北海域)
+        // ];
+        // map.setMaxBounds(bounds);
         map.on('load', function () {
             // Define and set bounds for the map
             // 3D Layer for navigation view.    
@@ -1319,7 +1319,11 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                         userLocation = cuerrorUserLoc
                         const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, route);
                         if (userMarker) {
-                            userMarker.setLngLat(distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates)
+                            const CunrrPoint = distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates
+                            userMarker.setLngLat(CunrrPoint)
+                            if (switchoverState === 'FOCUS') {
+                                map.setCenter(CunrrPoint);
+                            }
                         }
                         setDottedLine()
                         if ((distance > 20 || !isInPolygon) && endPlaceProt) {
