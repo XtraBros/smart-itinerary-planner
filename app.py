@@ -78,7 +78,7 @@ def ask_plan():
     
     2) **Operation Key**:
     - The "operation" key can only have one of the following values:
-        - "location": Use this when your response includes one or more places, locations, or attractions, or when providing directions to a place.
+        - "location": Use this when your response includes any place, location, attraction, or when providing directions.
         - "message": Use this when your response is a general reply that does not include any locations or attractions.
 
     3) **Response Key**:
@@ -91,7 +91,7 @@ def ask_plan():
     - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
 
     6) **Handling Specific POI Queries**: 
-    - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place, and answer the query with operation "message". Include important links and details if there are notes.
+    - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place. Include important links and details if there are notes using operation "message". Otherwise, use operation "location".
 
     7) **User Location Requests**: 
     - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
