@@ -97,7 +97,7 @@ def ask_plan():
     - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
 
     8) **Limiting Results**: 
-    - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 5 places unless the user asks for more.
+    - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 3 places unless the user asks for more.
 
     9) Use the get_user_profile function to determine the user specific considerations. Cater the recommendations towards this user's group dynamics, dietary preferences and racial profile.
     """
