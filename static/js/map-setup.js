@@ -85,7 +85,7 @@ async function getPoisByLocation(location) {
                 // Construct the Google Cloud thumbnail URL
                 var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
                 // Check if placeName contains "station" or "toilet" and update accordingly
-                if (placeName.toLowerCase().includes("tiolet")) {
+                if (placeName.toLowerCase().includes("toilet")) {
                     formattedPlaceName = "toilet";
                 } else if (placeName.toLowerCase().includes("station")) {
                     formattedPlaceName = "station";
