@@ -91,7 +91,8 @@ def ask_plan():
     - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
 
     6) **Handling Specific POI Queries**: 
-    - If the user asks about a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place. Include important links and details if there are notes using operation "message". Otherwise, use operation "location".
+    - If the user asks to locate the POI, use operation "location".
+    - If the user asks for more information a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place, including important links and details if there are notes using operation "message". 
 
     7) **User Location Requests**: 
     - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
@@ -481,20 +482,22 @@ def remove_dupes(response_text):
         return response_text
 
 # handle code chunks and ``` tags 
+
 def remove_code_blocks(content):
-    # Step 1: Remove code blocks (```json, ```html, etc.)
-    cleaned_content = re.sub(r'```[a-zA-Z]*\n.*?\n```', '', content, flags=re.DOTALL)
+    # Step 1: Remove language identifiers in code blocks (e.g., ```json, ```html), but keep the content inside
+    cleaned_content = re.sub(r'```[a-zA-Z]+\n', '', content)
     
-    # Step 2: Remove any remaining code blocks without a language identifier
-    cleaned_content = re.sub(r'```\n.*?\n```', '', cleaned_content, flags=re.DOTALL)
+    # Step 2: Remove closing code block tags (```)
+    cleaned_content = re.sub(r'```', '', cleaned_content)
     
-    # Step 3: Remove escape sequences like \n, \t, etc.
-    cleaned_content = cleaned_content.replace('\\n', ' ').replace('\\t', ' ')
+    # Step 3: Remove escape sequences like \n (newline), \t (tab), etc.
+    cleaned_content = cleaned_content.replace('\n', ' ').replace('\t', ' ')
     
-    # Optional: Remove any multiple spaces caused by replacements
+    # Step 4: Remove multiple spaces caused by newline/tab replacements
     cleaned_content = re.sub(r'\s+', ' ', cleaned_content)
     
     return cleaned_content.strip()
+
 
 def url_to_hyperlink(text):
     if isinstance(text,list):
