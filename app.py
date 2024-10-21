@@ -497,6 +497,8 @@ def remove_code_blocks(content):
     return cleaned_content.strip()
 
 def url_to_hyperlink(text):
+    if isinstance(text,list):
+        return text
     # Convert markdown-style links [text](url) to HTML
     markdown_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
     text = re.sub(markdown_pattern, r'<a href="\2">\1</a>', text)
