@@ -125,6 +125,7 @@ def ask_plan():
         if isinstance(response, dict):
             # If 'response' is a dictionary, set 'response' and 'operation' to its values
             response = response.get('response', response)
+            response = url_to_hyperlink(response)
             operation = response.get('operation', operation)
         print(f"'response': {response}, 'operation': {operation}")
         return jsonify({'response': response, 'operation': operation})
@@ -494,6 +495,17 @@ def remove_code_blocks(content):
     cleaned_content = re.sub(r'\s+', ' ', cleaned_content)
     
     return cleaned_content.strip()
+
+def url_to_hyperlink(text):
+    # Convert markdown-style links [text](url) to HTML
+    markdown_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
+    text = re.sub(markdown_pattern, r'<a href="\2">\1</a>', text)
+    
+    # Find plain URLs (without markdown) and convert to HTML
+    url_pattern = r'(https?://[^\s]+)'
+    text = re.sub(url_pattern, r'<a href="\1">\1</a>', text)
+    
+    return text
 
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list, coordinates):
