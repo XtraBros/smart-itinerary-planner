@@ -10,7 +10,7 @@ let navigationEnabled = false;
 let simulationRunning = false; // Flag to indicate if the simulation is running
 let simulationPaused = false;  // Flag to indicate if the simulation is paused
 let simulationTimeout;         // Variable to store the timeout ID
-let userMarker;
+let userMarker = null;
 let userLocation;
 let isFirstOpen = false;
 let startMarker;
@@ -777,7 +777,10 @@ function recalculateRoute(currentLocation, destination) {
         .catch(error => console.error('Error in recalculating route:', error));
 }
 function setUserLocationMark(coord) {
-    if (userMarker) return;
+    if (userMarker) {
+        userMarker.remove()
+        userMarker = null
+    }
     const el = document.createElement('div');
     el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     userMarker = new mapboxgl.Marker({
