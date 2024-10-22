@@ -12,7 +12,8 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
-from geopy.distance import geodesic
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import PromptTemplate
 import certifi
 import re
 import gridfs
@@ -27,6 +28,8 @@ with open(CONFIG_FILE, 'r') as file:
 
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
+# Initialize memory for conversation
+memory = ConversationBufferMemory(memory_key="history", return_messages=True)
 ######################### MONGO #########################
 # Connect to MongoDB
 mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
@@ -69,52 +72,79 @@ def get_config():
 def ask_plan():
     user_input = request.json['message']
     user_location = request.json['userLocation']
-    print(request)
-    prompt = f"""
-    You are a helpful assistant. Your task is to understand the user's query and suggest attractions in {sentosa_name} based on their needs. The visitor is currently at {user_location}.
-
-    Important Guidelines:
-    1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
     
-    2) **Operation Key**:
-    - The "operation" key can only have one of the following values:
-        - "location": Use this when your response includes any place, location, attraction, or when providing directions.
-        - "message": Use this when your response is a general reply that does not include any locations or attractions.
+    # Fetch stored memory (previous conversation history)
+    conversation_history = memory.load_memory_variables({})
 
-    3) **Response Key**:
-    - If "operation" is "message", the value of "response" should be a single string containing your text reply.
-    - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
+    # Prompt template with memory integration
+    prompt_template = PromptTemplate(
+        input_variables=["history", "user_location", "sentosa_places_list"],
+        template="""
+        You are a helpful assistant. Your task is to understand the user's query and suggest attractions in Sentosa Island based on their needs. The visitor is currently at {user_location}.
 
-    4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
+        Conversation history:
+        {history}
 
-    5) **Finding Nearby POIs**: 
-    - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
+        Important Guidelines:
+        1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
 
-    6) **Handling Specific POI Queries**: 
-    - If the user asks to locate the POI, use operation "location".
-    - If the user asks for more information a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place, including important links and details if there are notes using operation "message". 
+        2) **Operation Key**:
+        - The "operation" key can only have one of the following values:
+            - "location": Use this when your response includes any place, location, attraction, or when providing directions.
+            - "message": Use this when your response is a general reply that does not include any locations or attractions.
 
-    7) **User Location Requests**: 
-    - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
+        3) **Response Key**:
+        - If "operation" is "message", the value of "response" should be a single string containing your text reply.
+        - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
 
-    8) **Limiting Results**: 
-    - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 3 places unless the user asks for more.
+        4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
 
-    9) Use the get_user_profile function to determine the user specific considerations. Cater the recommendations towards this user's group dynamics, dietary preferences and racial profile.
-    """
+        5) **Finding Nearby POIs**: 
+        - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
+
+        6) **Handling Specific POI Queries**: 
+        - If the user asks to locate the POI, use operation "location".
+        - If the user asks for more information a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place, including important links and details if there are notes using operation "message". 
+
+        7) **User Location Requests**: 
+        - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
+
+        8) **Limiting Results**: 
+        - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 3 places unless the user asks for more.
+
+        9) Use the get_user_profile function to determine the user specific considerations. Cater the recommendations towards this user's group dynamics, dietary preferences and racial profile.
+        """
+    )
+
+    # Create the prompt by filling in values including memory (conversation history)
+    prompt = prompt_template.format(
+        history=conversation_history.get("history", ""),  # Inject conversation history
+        user_location=user_location,
+        sentosa_places_list=sentosa_places_list
+    )
+
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": user_input}
     ]
-
 
     # Handle function calls and get the final response
     state = {
         "called_functions": set(),
         "function_results": {}
     }
+    
+    # Process the messages
     message = remove_code_blocks(handle_function_calls(messages, state))
+    
+    # Update memory with new user input and assistant response
+    memory.save_context(
+        {"user_input": user_input},  # New user input
+        {"message": message}  # Assistant response
+    )
+    
     print(f"===ask_plan==> {message}")
+
     # Initialize operation
     operation = 'message'
 
