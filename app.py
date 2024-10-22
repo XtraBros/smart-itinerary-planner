@@ -14,6 +14,7 @@ from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
+from langchain.schema import HumanMessage, AIMessage
 import certifi
 import re
 import gridfs
@@ -75,7 +76,13 @@ def ask_plan():
     
     # Fetch stored memory (previous conversation history)
     conversation_history = memory.load_memory_variables({})
-
+    # Truncate the history to the last 3 messages
+    last_three_messages = conversation_history.get("history", [])[-3:]  # Get the last 3 messages
+    print(last_three_messages)
+    # Format the conversation history for the prompt (as a string)
+    formatted_history = "\n".join(
+        [f"user: {msg.content}" if isinstance(msg, HumanMessage) else f"assistant: {msg.content}" for msg in last_three_messages]
+    )
     # Prompt template with memory integration
     prompt_template = PromptTemplate(
         input_variables=["history", "user_location", "sentosa_places_list"],
@@ -118,7 +125,7 @@ def ask_plan():
 
     # Create the prompt by filling in values including memory (conversation history)
     prompt = prompt_template.format(
-        history=conversation_history.get("history", ""),  # Inject conversation history
+        history=formatted_history,  # Inject conversation history
         user_location=user_location,
         sentosa_places_list=sentosa_places_list
     )
