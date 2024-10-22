@@ -619,10 +619,19 @@ fetch('/config')
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
-            geolocateControl.on('trackuserlocationstart', () => {
+            geolocateControl.on('trackuserlocationstart', ({target}) => {
+                if (!userMarker) {
+                    target.options.geolocation.getCurrentPosition((position) => {
+                        setUserLocationMark([position.coords.longitude, position.coords.latitude]);
+                        userLocation = {
+                            lng: position.coords.longitude,
+                            lat: position.coords.latitude,
+                            userHeading: position.coords.heading,
+                        };
+                    })
+                }
                 userTouch = false
                 if(!userLocation) return
-                setUserLocationMark([userLocation.lng, userLocation.lat]);
                 map.easeTo({
                     center: [userLocation.lng, userLocation.lat],
                     bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
