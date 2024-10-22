@@ -51,7 +51,8 @@ function getUserCurrentPosition(callBack, error) {
             callBack(userLocation)
         }
         // get POIs
-        getPoisByLocation(userLocation)
+        getPoisByLocation(userLocation);
+        checkNearbyEvent(userLocation);
         console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
     }, (e) => {
         if (error) {
@@ -139,6 +140,7 @@ async function getPoisByLocation(location) {
 }
 
 async function checkNearbyEvent(location) {
+    console.log("Checking nearby events:")
     try {
         const response = await fetch('/find_nearby_pois', {
             method: 'POST',
@@ -735,7 +737,7 @@ function isUserOffRoute(userLocation, route, tolerance = 0.03) {
         map.getSource('route').setData(notStartLine);
     }
     const isInPolygon = turf.booleanPointInPolygon(userPoint, bufferedRoute);
-    console.log(`user distance: ${distance}(m)`, isInPolygon)
+    // console.log(`user distance: ${distance}(m)`, isInPolygon)
     return { distance, isInPolygon, nearestPointOnLine }
 }
 
@@ -1001,7 +1003,7 @@ function trackUserLocation(route) {
 
     // Event listener for when the user's location changes
     geolocateControl.on('geolocate', (position) => {
-        console.log('Updating user location:')
+        // console.log('Updating user location:')
         debounce(() => {
             updateLocation(position);
         }, 100)
