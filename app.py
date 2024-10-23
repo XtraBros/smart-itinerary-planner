@@ -12,7 +12,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import PromptTemplate
 from langchain.schema import HumanMessage, AIMessage
 import certifi
@@ -30,7 +30,7 @@ with open(CONFIG_FILE, 'r') as file:
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
 # Initialize memory for conversation
-memory = ConversationBufferMemory(memory_key="history", return_messages=True)
+memory = ConversationBufferWindowMemory(k=3, memory_key="history")
 ######################### MONGO #########################
 # Connect to MongoDB
 mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
@@ -76,13 +76,9 @@ def ask_plan():
     
     # Fetch stored memory (previous conversation history)
     conversation_history = memory.load_memory_variables({})
-    # Truncate the history to the last 3 messages
-    last_three_messages = conversation_history.get("history", [])[-3:]  # Get the last 3 messages
-    print(last_three_messages)
+    print(f"==conv== {conversation_history}")
     # Format the conversation history for the prompt (as a string)
-    formatted_history = "\n".join(
-        [f"user: {msg.content}" if isinstance(msg, HumanMessage) else f"assistant: {msg.content}" for msg in last_three_messages]
-    )
+    formatted_history = formatted_history = conversation_history.get('history', '')
     # Prompt template with memory integration
     prompt_template = PromptTemplate(
         input_variables=["history", "user_location", "sentosa_places_list"],
