@@ -51,7 +51,7 @@ function getUserCurrentPosition(callBack, error) {
         }
         // get POIs
         getPoisByLocation(userLocation);
-        checkNearbyEvent(userLocation);
+        //checkNearbyEvent(userLocation);
         console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
     }, (e) => {
         if (error) {
@@ -139,7 +139,7 @@ async function getPoisByLocation(location) {
 }
 
 async function checkNearbyEvent(location) {
-    console.log("Checking nearby events:")
+    console.log("Checking nearby events.")
     try {
         const response = await fetch('/find_nearby_pois', {
             method: 'POST',
@@ -164,56 +164,45 @@ async function checkNearbyEvent(location) {
             placeNames.push(placeName);
             coordinates.push(placeInfoResponse[placeName].location);
         });
+        let nextResponse = await fetch('/check_events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ places: placeNames, coordinates: coordinates })
+        });
 
-        const lastEventCheckTime = localStorage.getItem('lastEventCheckTime');
-        const currentTime = new Date().getTime();
+        if (nextResponse.status === 204) {
+            console.log('No events found for the provided places.');
+            return;
+        }
 
-        if (!lastEventCheckTime || (currentTime - lastEventCheckTime > 5 * 60 * 1000)) {
-            // Time difference is more than 5 minutes or this is the first time running
+        if (!nextResponse.ok) {
+            throw new Error('Network response was not ok ' + nextResponse.statusText);
+        }
 
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: placeNames, coordinates: coordinates })
+        let nextData = await nextResponse.json();
+        if (!chatMessages) {
+            var chatMessages = document.getElementById("chatbot-messages");
+        }
+        if (nextData.response) {
+            appendMessage({
+                text: nextData.response,
+                chatMessages,
+                type: 'message',
+                placeNames: nextData.found_places,
+                longAndlat: nextData.coordinates,
+                fromUser: '1',
             });
 
-            if (nextResponse.status === 204) {
-                console.log('No events found for the provided places.');
-                return;
-            }
+            attachEventListenersToHyperlinks();
+        }
+        // if chat box not open, show pop up
+        const popupModal = document.getElementById('popupModal');
+        if (window.getComputedStyle(popupModal).display == 'none') {
+            idaeBox.classList.add('fadeshowin');
+        }
 
-            if (!nextResponse.ok) {
-                throw new Error('Network response was not ok ' + nextResponse.statusText);
-            }
-
-            let nextData = await nextResponse.json();
-            if (!chatMessages) {
-                var chatMessages = document.getElementById("chatbot-messages");
-            }
-            if (nextData.response) {
-                appendMessage({
-                    text: nextData.response,
-                    chatMessages,
-                    type: 'message',
-                    placeNames: nextData.found_places,
-                    longAndlat: nextData.coordinates,
-                    fromUser: '1',
-                });
-
-                attachEventListenersToHyperlinks();
-            }
-            // if chat box not open, show pop up
-            const popupModal = document.getElementById('popupModal');
-            if (window.getComputedStyle(popupModal).display == 'none') {
-                idaeBox.classList.add('fadeshowin');
-            }
-            // Update the last event check timestamp
-            localStorage.setItem('lastEventCheckTime', currentTime);
-        } else {
-            console.log('Skipping event check. Less than 5 minutes since the last check.');
-        };
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;
@@ -971,7 +960,6 @@ function trackUserLocation(route) {
         };
         debounce(() => {
             getPoisByLocation(currentPosition);
-            checkNearbyEvent(currentPosition);
         }, 5000)
         // Update the user's location in your app
         updateUserLocation(currentPosition);
@@ -1006,6 +994,9 @@ function trackUserLocation(route) {
         debounce(() => {
             updateLocation(position);
         }, 100)
+        debounce(() => {
+            checkNearbyEvent(position);
+        }, 10000)
         debounce(() => {
             updateNavigationInstructions(position);
         }, 3000)
