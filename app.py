@@ -18,6 +18,7 @@ from langchain.schema import HumanMessage, AIMessage
 import certifi
 import re
 import gridfs
+import math
 
 
 app = Flask(__name__)
@@ -609,6 +610,44 @@ def get_poi_by_name(name):
     else:
         return None
 
+def get_distance_from_poi(placename, user_location):
+    def haversine(coord1, coord2):
+        # Coordinates in decimal degrees (e.g. (lng, lat))
+        lon1, lat1 = coord1
+        lon2, lat2 = coord2
+        
+        # Radius of Earth in meters
+        R = 6371000  
+        
+        # Convert decimal degrees to radians
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        
+        delta_phi = math.radians(lat2 - lat1)
+        delta_lambda = math.radians(lon2 - lon1)
+        
+        # Haversine formula
+        a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+        # Distance in meters
+        distance = R * c
+        
+        return distance
+    # Fetch the place's coordinates from MongoDB by name
+    poi = poi_db.find_one({"name": placename}, {"_id": 0})
+    
+    if poi and 'longitude' in poi and 'latitude' in poi:
+        # Extract the coordinates from the MongoDB result
+        poi_coord = (poi['longitude'], poi['latitude'])
+        
+        # Calculate the distance using the Haversine formula
+        distance = haversine(poi_coord, user_location)
+        print(f"== Distance from POI == {distance}")
+        return distance
+    else:
+        return None
+
 def find_nearby_pois(user_location, radius_in_meters=100):
     user_lon = user_location['longitude']
     user_lat = user_location['latitude']
@@ -686,7 +725,8 @@ function_mapping = {
     "find_nearby_pois": find_nearby_pois,
     "get_poi_by_name": get_poi_by_name,
     "find_nearest_poi": find_nearest_poi,
-    "get_user_profile": get_user_profile
+    "get_user_profile": get_user_profile,
+    "get_distance_from_poi": get_distance_from_poi
     # "get_poi_list":get_poi_list
 }
 '''
@@ -809,6 +849,29 @@ function_schemas = [
         "name": "get_user_profile",
         "description": "Fetches the user profile from the database. Includes racial profile, group dynamics and other relevant considerations required to make a recommendation.",
         "parameters": {}
+    },
+    {
+        "name": "get_distance_from_poi",
+        "description": "Calculates the distance of a POI from the user using the Haversine formula.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "placename": {
+                "type": "string",
+                "description": "The name of the POI for which the distance should be calculated."
+            },
+            "user_location": {
+                "type": "array",
+                "description": "The [longitude, latitude] coordinates of the user's location.",
+                "items": {
+                "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+            }
+            },
+            "required": ["placename", "user_location"]
+        }
     }
 ]
 
