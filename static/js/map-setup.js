@@ -17,7 +17,6 @@ let startMarker;
 let nedMarker;
 let steps;
 let routeIndex = 0;
-let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
 let thumbnailURI;
@@ -879,7 +878,7 @@ function calculateDistance(point1, point2) {
 // Function to update navigation instructions based on user's current location
 let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
 function updateNavigationInstructions(userLocation) {
-    const thresholdDistance = 5;
+    const thresholdDistance = 20;
     // Calculate the distance between the user's current location and the next checkpoint
     const checkpoint = {
         lng: steps[currentStepIndex].maneuver.location[0],
