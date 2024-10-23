@@ -26,10 +26,10 @@ networkx==3.3
 numpy==1.26.4
 openai==1.20.0
 osmnx==1.9.2
-packaging==23.2
+packaging==24.0
 pandas==2.2.2
-pydantic==2.7.0
-pydantic_core==2.18.1
+pydantic==2.7.4
+pydantic_core==2.18.4
 pyproj==3.6.1
 python-dateutil==2.9.0.post0
 pytz==2024.1
@@ -52,4 +52,4 @@ sentence-transformers==3.0.1
 pymongo==4.7.3
 geopy==2.4.1
 certifi==2024.2.2
-langchain==0.1.20
+langchain==0.3.4
