@@ -612,7 +612,7 @@ fetch('/config')
                     lng: e.coords.longitude
                 };
                 checkNearbyEvent(userLocation);
-            }, 20000)); // 20 seconds debounce
+            }, 5000)); // 5 seconds debounce
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
