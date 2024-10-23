@@ -32,6 +32,8 @@ client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
 # Initialize memory for conversation
 memory = ConversationBufferWindowMemory(k=3, memory_key="history")
+# Promo message blacklist:
+promo_blacklist = set()
 ######################### MONGO #########################
 # Connect to MongoDB
 mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
@@ -355,7 +357,7 @@ def check_events():
     coordinates = data.get("coordinates", [])
     if not places:
         return jsonify({"error": "No POIs provided"}), 400
-
+    places =  [place for place in places if place not in promo_blacklist]
     # Query the database for entries with the given names
     entries = list(events_db.find({"location": {"$in": places}}))
     print(f"===check_events results==> {entries}")
@@ -368,6 +370,8 @@ def check_events():
                 index = places.index(location)
                 found_places.append(location)
                 found_coordinates.append(coordinates[index])
+                promo_blacklist.add(location)
+
         # Craft response message if entries detected.
         response = client.chat.completions.create(
             model=model_name,

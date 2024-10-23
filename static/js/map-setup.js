@@ -606,6 +606,13 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
+            geolocateControl.on('geolocate', debounce(function(e) {
+                const userLocation = {
+                    lat: e.coords.latitude,
+                    lng: e.coords.longitude
+                };
+                checkNearbyEvent(userLocation);
+            }, 20000)); // 20 seconds debounce
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
@@ -994,9 +1001,6 @@ function trackUserLocation(route) {
         debounce(() => {
             updateLocation(position);
         }, 100)
-        debounce(() => {
-            checkNearbyEvent(position);
-        }, 10000)
         debounce(() => {
             updateNavigationInstructions(position);
         }, 3000)
