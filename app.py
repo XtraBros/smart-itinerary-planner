@@ -101,7 +101,7 @@ def ask_plan():
         - If "operation" is "message", the value of "response" should be a single string containing your text reply.
         - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
 
-        4) **Use Exact POI Names**: Always use the exact names of the places as provided by the {sentosa_places_list} function.
+        4) **Use Exact POI Names**: Always use the exact names of the places as provided in {sentosa_places_list}. If the location does not exist in this list, ask the user to verify the place you assume they are trying to get to.
 
         5) **Finding Nearby POIs**: 
         - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
@@ -112,6 +112,8 @@ def ask_plan():
 
         7) **User Location Requests**: 
         - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
+        - If asked how to go somewhere, return operation "location" and response should contain the name of the place.
+        - If asked the distance to a palce, return operation "message" and answer how far the destinatino is.
 
         8) **Limiting Results**: 
         - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 3 places unless the user asks for more.
@@ -176,13 +178,13 @@ def get_text():
     # Get the 'route' data from the request JSON
     route = request.json['route']
     coordinates = request.json['coordinates']
-    print(f"route:{route}")
+    print(f"=== get_text ===> {route}")
     user_input = request.json['message']
-    prompt = f"""You are a tour guide at {sentosa_name}. 
+    prompt = f"""You are a tour guide at {sentosa_name}. The attractions/destinations you need you cover in your response are {route}.
                 Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
                 Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
-                Structure your response as a numbered list if there are multiple attractions/POIs, and structure it in HTML. Ensure all destinations are covered in your response.
-                If given only one attraction, the user is trying to go from their current location to the specified attraction. A route will be given to them, so let them know the directions have been displayed on their map.
+                Structure your response as a numbered list if there are multiple attractions/POIs. Ensure all destinations are covered in your response.
+                For wayfinding to POIs, the location will be displayed on the user's map, so just inform them so. 
                 Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html and escape sequences like \n in your response.
 
                 Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
@@ -197,7 +199,7 @@ def get_text():
             model=model_name,
             messages=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": f'Attractions: {str(route)}. User query: {user_input}'}
+                {"role": "user", "content": user_input}
             ],
             temperature=0,
         )
@@ -576,16 +578,32 @@ def generate_final_gpt_response(messages, state):
     to generate a final response based on both.
     """
     # Construct a message to pass the function results back to GPT
-    original_query = messages[0]["content"]  # Assuming the first message is the original user query
-
+    original_query = messages[1]["content"]
+    print(f"== original query == {original_query}")
     # Prepare the function results summary
     function_results_summary = ""
     for function_name, result in state["function_results"].items():
         function_results_summary += f"Result from {function_name}: {json.dumps(result)}\n"
-
+    print(f"== Function calling results in final resp == {function_results_summary}")
     # Add a message to provide context to GPT
     final_messages = [
-        {"role": "system", "content": "Generate a response based on the user's query and the following function call results."},
+        {"role": "system", "content": f'''Generate a response to answer the user's query using the following function call results.
+         Important Guidelines:
+        1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
+
+        2) **Operation Key**:
+        - The "operation" key can only have one of the following values:
+            - "location": Use this when your response includes any place, location, attraction, or when providing directions.
+            - "message": Use this when your response is a general reply that does not include any locations or attractions.
+
+        3) **Response Key**:
+        - If "operation" is "message", the value of "response" should be a single string containing your text reply.
+        - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
+
+        4) **Use Exact POI Names**: Always use the exact names of the places as provided in {sentosa_places_list}.
+        
+        5) Your response should mainly address the user.
+         '''},
         {"role": "user", "content": original_query},
         {"role": "system", "content": f"Function call results:\n{function_results_summary}"}
     ]
@@ -595,7 +613,7 @@ def generate_final_gpt_response(messages, state):
         model=model_name,
         messages=final_messages
     )
-
+    print(f"==final resp== {final_response.choices[0].message.content}")
     # Return the final response from GPT
     return final_response.choices[0].message.content
 
@@ -881,7 +899,7 @@ function_schemas = [
     },
     {
         "name": "get_distance_from_poi",
-        "description": "Calculates the distance of a POI from the user using the Haversine formula.",
+        "description": "Calculates the distance of a POI from the user using the Haversine formula. Use the exact name of attractions as given in the system prompt.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -959,10 +977,13 @@ def handle_function_calls(messages, state):
                     "content": json.dumps({"error": "Function not implemented"})
                 })
                 return handle_function_calls(messages, state)
+        else:
+            print("===content is None, generating final response===")
+            return generate_final_gpt_response(messages, state)
     else:
         # If no further function call and message content is None
-        if message.content == None:
-            # Generate a response from GPT using the original user query and function call results
+        if message.content is None:
+            print("===content is None, generating final response===")
             return generate_final_gpt_response(messages, state)
         else:
             # If message.content exists, return the message content
