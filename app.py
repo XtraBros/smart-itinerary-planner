@@ -570,6 +570,35 @@ def insertHyperlinks(message, replacements):
     # Reconstruct the message by joining the mapped chunks
     return "".join(chunks)
 
+def generate_final_gpt_response(messages, state):
+    """
+    This function sends the original query along with the function results back to GPT
+    to generate a final response based on both.
+    """
+    # Construct a message to pass the function results back to GPT
+    original_query = messages[0]["content"]  # Assuming the first message is the original user query
+
+    # Prepare the function results summary
+    function_results_summary = ""
+    for function_name, result in state["function_results"].items():
+        function_results_summary += f"Result from {function_name}: {json.dumps(result)}\n"
+
+    # Add a message to provide context to GPT
+    final_messages = [
+        {"role": "system", "content": "Generate a response based on the user's query and the following function call results."},
+        {"role": "user", "content": original_query},
+        {"role": "system", "content": f"Function call results:\n{function_results_summary}"}
+    ]
+
+    # Call GPT to generate a final response
+    final_response = client.chat.completions.create(
+        model=model_name,
+        messages=final_messages
+    )
+
+    # Return the final response from GPT
+    return final_response.choices[0].message.content
+
 
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
@@ -931,8 +960,13 @@ def handle_function_calls(messages, state):
                 })
                 return handle_function_calls(messages, state)
     else:
-        # If no further function call, return the message content
-        return message.content
+        # If no further function call and message content is None
+        if message.content == None:
+            # Generate a response from GPT using the original user query and function call results
+            return generate_final_gpt_response(messages, state)
+        else:
+            # If message.content exists, return the message content
+            return message.content
 
 
 ###########################################################################################################
