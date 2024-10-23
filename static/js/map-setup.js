@@ -844,8 +844,8 @@ function displayInstruction(instructionTextContent, distanceToCheckpoint, remain
     // Get the current time
     const currentTime = new Date();
 
-    // Calculate the ETA by adding the remaining duration (in seconds) to the current time
-    const etaTime = new Date(currentTime.getTime() + remainingDuration * 1000);
+    // Calculate the ETA by adding the remaining duration (in minutes) to the current time
+    const etaTime = new Date(currentTime.getTime() + remainingDuration * 60 * 1000);
 
     // Format the ETA to show only the hours and minutes
     const etaHours = etaTime.getHours().toString().padStart(2, '0');
