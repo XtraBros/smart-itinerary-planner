@@ -139,7 +139,7 @@ async function getPoisByLocation(location) {
 }
 
 async function checkNearbyEvent(location) {
-    console.log("Checking nearby events.")
+    // console.log("Checking nearby events.")
     try {
         const response = await fetch('/find_nearby_pois', {
             method: 'POST',
@@ -881,7 +881,7 @@ function updateNavigationInstructions(userLocation) {
         lat: steps[currentStepIndex].maneuver.location[1]
     };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
-    console.log("Currently tracking checkpoint: " + JSON.stringify(checkpoint));
+    console.log("User: " + JSON.stringify(userLocation) + "Checkpoint: " + JSON.stringify(checkpoint) + "Distance to checkpoint: " + JSON.stringify(distanceToCheckpoint));
 
     let increment = false;
 
@@ -1001,10 +1001,15 @@ function trackUserLocation(route) {
         debounce(() => {
             updateLocation(position);
         }, 100)
-        debounce(() => {
-            updateNavigationInstructions(position);
-        }, 3000)
     });
+    geolocateControl.on('geolocate', debounce(function(position) {
+        console.log("Update turn-by-turn instructions");
+        const userPos = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude,
+        };
+        updateNavigationInstructions(userPos);
+    }, 1000));
 }
 
 function updateWalkedRoute(line) {
