@@ -53,7 +53,6 @@ function getUserCurrentPosition(callBack, error) {
         }
         // get POIs
         getPoisByLocation(userLocation);
-        //checkNearbyEvent(userLocation);
         console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
     }, (e) => {
         if (error) {
@@ -623,16 +622,14 @@ fetch('/config')
                 geolocateControl.trigger();
             }, 100)
             geolocateControl.on('trackuserlocationstart', ({target}) => {
-                if (!userMarker) {
-                    target.options.geolocation.getCurrentPosition((position) => {
-                        setUserLocationMark([position.coords.longitude, position.coords.latitude]);
-                        userLocation = {
-                            lng: position.coords.longitude,
-                            lat: position.coords.latitude,
-                            userHeading: position.coords.heading,
-                        };
-                    })
-                }
+                target.options.geolocation.getCurrentPosition((position) => {
+                    setUserLocationMark([position.coords.longitude, position.coords.latitude]);
+                    userLocation = {
+                        lng: position.coords.longitude,
+                        lat: position.coords.latitude,
+                        userHeading: position.coords.heading,
+                    };
+                })
                 userTouch = false
                 if(!userLocation) return
                 map.easeTo({
