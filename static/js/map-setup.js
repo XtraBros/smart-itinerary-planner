@@ -233,7 +233,13 @@ const chatbotArea = document.getElementById('chatbot-area');
 const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 const dingwenndId = document.getElementById('dingwennd');
-
+const handleGeolocation = debounce(function(position) {
+    const userPos = {
+        lng: position.coords.longitude,
+        lat: position.coords.latitude,
+    };
+    updateNavigationInstructions(userPos);
+}, 1000);
 function setMapList({index, placeName, thumbnailUrl}) {
     return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
         <div class="listimg">
@@ -405,13 +411,6 @@ function stopNavFunc() {
     simulationRunning = false;
     simulationPaused = false;
     initProperty()
-    const handleGeolocation = debounce(function(position) {
-        const userPos = {
-            lng: position.coords.longitude,
-            lat: position.coords.latitude,
-        };
-        updateNavigationInstructions(userPos);
-    }, 1000);
     geolocateControl.off('geolocate', handleGeolocation);
 }
 
@@ -1047,13 +1046,6 @@ function trackUserLocation(route) {
             updateLocation(position);
         }, 100)
     });
-    const handleGeolocation = debounce(function(position) {
-        const userPos = {
-            lng: position.coords.longitude,
-            lat: position.coords.latitude,
-        };
-        updateNavigationInstructions(userPos);
-    }, 1000);
     geolocateControl.on('geolocate', handleGeolocation);
 }
 
