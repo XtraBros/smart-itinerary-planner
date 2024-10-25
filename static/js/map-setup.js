@@ -16,6 +16,7 @@ let isFirstOpen = false;
 let startMarker;
 let nedMarker;
 let steps;
+let instructions;
 let routeIndex = 0;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
@@ -1370,8 +1371,8 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                     if (result.route.coordinates && result.route.coordinates.length) {
                         cneterPot = result.route.coordinates[Math.floor(result.route.coordinates.length * 0.5)]
                     }
-                    var instructions = extractRouteInstructions(result.legs, placeNames);
-                    resolve(instructions);
+                    // var instructions = extractRouteInstructions(result.legs, placeNames);
+                    // resolve(instructions);
                 } else if (result.newUrl) {
                     // Handle URL for later use case
                     resolve(result.newUrl);
