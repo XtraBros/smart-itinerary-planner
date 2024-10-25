@@ -904,53 +904,58 @@ function calculateDistance(point1, point2) {
 }
 
 // Function to update navigation instructions based on user's current location
-let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
 function updateNavigationInstructions(userLocation) {
-    const thresholdDistance = 20;
-    // Calculate the distance between the user's current location and the next checkpoint
-    const checkpoint = {
+    const thresholdDistance = 20; // Distance threshold for reaching a checkpoint
+
+    // Get current and next checkpoint locations
+    const currentCheckpoint = {
         lng: steps[currentStepIndex].maneuver.location[0],
         lat: steps[currentStepIndex].maneuver.location[1]
     };
-    const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
-    // console.log("User: " + JSON.stringify(userLocation) + "Checkpoint: " + JSON.stringify(checkpoint) + "Distance to checkpoint: " + JSON.stringify(distanceToCheckpoint));
+
+    const nextCheckpoint = currentStepIndex + 1 < steps.length
+        ? {
+            lng: steps[currentStepIndex + 1].maneuver.location[0],
+            lat: steps[currentStepIndex + 1].maneuver.location[1]
+        }
+        : null; // No next checkpoint if this is the final step
+
+    const distanceToCurrentCheckpoint = calculateDistance(userLocation, currentCheckpoint);
 
     let increment = false;
 
-    // Check if the user is at the start of the navigation and ahead of the first checkpoint
-    if (currentStepIndex === 0 && distanceToCheckpoint > previousDistanceToCheckpoint) {
-        // Skip to the next checkpoint if the user is ahead of the first one
-        currentStepIndex++;
-        console.log("User started ahead of the first checkpoint, skipping to step index: " + currentStepIndex);
+    // Check if the user has reached or passed the current checkpoint
+    if (distanceToCurrentCheckpoint < thresholdDistance) {
+        // If close enough to current checkpoint, increment step
         increment = true;
-    } else if (distanceToCheckpoint < thresholdDistance) {
-        // If the user is close enough to the checkpoint, move to the next step
-        currentStepIndex++;
-        console.log("Threshold met, incrementing step index to: " + currentStepIndex);
-        increment = true;
+    } else if (nextCheckpoint) {
+        // Calculate distance to next checkpoint
+        const distanceToNextCheckpoint = calculateDistance(userLocation, nextCheckpoint);
+
+        // If user is closer to the next checkpoint than the current one, increment step
+        if (distanceToNextCheckpoint < distanceToCurrentCheckpoint) {
+            increment = true;
+        }
     }
 
-    previousDistanceToCheckpoint = distanceToCheckpoint; // Update the previous distance
+    // If increment is true, move to the next step
+    if (increment) {
+        currentStepIndex++;
+        console.log("Moving to next checkpoint, step index: " + currentStepIndex);
+    }
 
-    // Load the next instruction if the step index was incremented
-    if (currentStepIndex < instructions.length && increment) {
-        const nextInstructionObject = instructions[currentStepIndex].instruction;
-        const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
-        console.log("Remaining distance to destination: " + remainingDist);
+    // Display current instruction if still within bounds
+    if (currentStepIndex < instructions.length) {
+        const nextInstruction = instructions[currentStepIndex].instruction;
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(currentStepIndex));
         const modifierType = instructions[currentStepIndex].modifier;
-        displayInstruction(nextInstructionObject, distanceToCheckpoint, remainingDist, modifierType);
-        increment = false;
+        displayInstruction(nextInstruction, distanceToCurrentCheckpoint, remainingDist, modifierType);
     } else {
-        const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
-        document.getElementById("distanceText").textContent = `${distanceToCheckpoint.toFixed(1)}`;
-        // Update remaining distance in kilometers
-        const remainingDistanceKm = (remainingDist / 1000).toFixed(2);
-        document.querySelector('#journeyDistance h3').textContent = remainingDistanceKm;
-
-        // Calculate and update the remaining duration
-        const remainingDuration = calculateRemainingDuration(remainingDist, 1.4);
-        document.querySelector('#journeyDuration h3').textContent = remainingDuration;
-
+        // End of route handling, display remaining distance and duration
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(currentStepIndex));
+        document.getElementById("distanceText").textContent = `${distanceToCurrentCheckpoint.toFixed(1)}`;
+        document.querySelector('#journeyDistance h3').textContent = (remainingDist / 1000).toFixed(2);
+        document.querySelector('#journeyDuration h3').textContent = calculateRemainingDuration(remainingDist, 1.4);
     }
 }
 
