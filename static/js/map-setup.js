@@ -405,6 +405,14 @@ function stopNavFunc() {
     simulationRunning = false;
     simulationPaused = false;
     initProperty()
+    const handleGeolocation = debounce(function(position) {
+        const userPos = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude,
+        };
+        updateNavigationInstructions(userPos);
+    }, 1000);
+    geolocateControl.off('geolocate', handleGeolocation);
 }
 
 function exitNavFunc() {
@@ -1039,14 +1047,14 @@ function trackUserLocation(route) {
             updateLocation(position);
         }, 100)
     });
-    geolocateControl.on('geolocate', debounce(function(position) {
-        // console.log("Update turn-by-turn instructions");
+    const handleGeolocation = debounce(function(position) {
         const userPos = {
             lng: position.coords.longitude,
             lat: position.coords.latitude,
         };
         updateNavigationInstructions(userPos);
-    }, 1000));
+    }, 1000);
+    geolocateControl.on('geolocate', handleGeolocation);
 }
 
 function updateWalkedRoute(line) {
