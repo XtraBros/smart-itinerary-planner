@@ -369,7 +369,6 @@ def check_events():
                 index = places.index(location)
                 found_places.append(location)
                 found_coordinates.append(coordinates[index])
-                promo_blacklist.add(location)
 
         # Craft response message if entries detected.
         response = client.chat.completions.create(
