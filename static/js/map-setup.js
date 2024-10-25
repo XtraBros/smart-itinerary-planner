@@ -5,6 +5,7 @@ var directions;
 var geolocateControl;
 var walkedRoute = [];
 let route = {};
+const blacklist = new Set();
 let api_response = {};
 let navigationEnabled = false;
 let simulationRunning = false; // Flag to indicate if the simulation is running
@@ -165,14 +166,18 @@ async function checkNearbyEvent(location) {
             placeNames.push(placeName);
             coordinates.push(placeInfoResponse[placeName].location);
         });
+
         let nextResponse = await fetch('/check_events', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ places: placeNames, coordinates: coordinates })
+            body: JSON.stringify({ places: placeNames, coordinates: coordinates, blacklist: blacklist })
         });
-
+        placeNames.forEach(placeName => {
+            blacklist.add(placeName);
+        });
+        
         if (nextResponse.status === 204) {
             console.log('No events found for the provided places.');
             return;
