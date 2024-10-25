@@ -147,7 +147,7 @@ async function checkNearbyEvent(location) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 40 })
+            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 50 })
         });
 
         if (!response.ok) {
@@ -176,7 +176,7 @@ async function checkNearbyEvent(location) {
         placeNames.forEach(placeName => {
             blacklist.add(placeName);
         });
-        
+        console.log(blacklist);
         if (nextResponse.status === 204) {
             console.log('No events found for the provided places.');
             return;
@@ -611,13 +611,16 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
-            geolocateControl.on('geolocate', debounce(function(e) {
-                const userLocation = {
-                    lat: e.coords.latitude,
-                    lng: e.coords.longitude
-                };
-                checkNearbyEvent(userLocation);
-            }, 5000)); // 5 seconds debounce
+            setInterval(() => {
+                // Fetch updated user location
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const loc = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    checkNearbyEvent(loc);
+                });
+            }, 3000); // 3 seconds interval
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
@@ -1007,7 +1010,7 @@ function trackUserLocation(route) {
         }, 100)
     });
     geolocateControl.on('geolocate', debounce(function(position) {
-        console.log("Update turn-by-turn instructions");
+        // console.log("Update turn-by-turn instructions");
         const userPos = {
             lng: position.coords.longitude,
             lat: position.coords.latitude,
