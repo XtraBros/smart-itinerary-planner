@@ -182,6 +182,12 @@ h3 {
 .guideText .messageStype a {
   color: #00ade9;
 }
+.guideText .messageStype p {
+  margin-bottom: 0.5em;
+}
+.messageStyle p:last-child {
+  margin-bottom: 0;
+}
 .guideText .messageStype:before {
   position: absolute;
   top: 6px;

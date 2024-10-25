@@ -881,7 +881,7 @@ function updateNavigationInstructions(userLocation) {
         lat: steps[currentStepIndex].maneuver.location[1]
     };
     const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
-    console.log("User: " + JSON.stringify(userLocation) + "Checkpoint: " + JSON.stringify(checkpoint) + "Distance to checkpoint: " + JSON.stringify(distanceToCheckpoint));
+    // console.log("User: " + JSON.stringify(userLocation) + "Checkpoint: " + JSON.stringify(checkpoint) + "Distance to checkpoint: " + JSON.stringify(distanceToCheckpoint));
 
     let increment = false;
 

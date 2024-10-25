@@ -568,13 +568,22 @@ def create_hyperlinks(place_list, coordinates):
 def insertHyperlinks(message, replacements):
     # Split the message into chunks by the `~` delimiter
     chunks = message.split("~")
-
-    # Map over the chunks to replace matches using a lambda function
-    # The lambda function checks if the chunk is in replacements and replaces it, otherwise it returns the chunk unchanged
+    # Replace chunks with hyperlinks where applicable
     chunks = map(lambda chunk: replacements.get(chunk.strip(), chunk), chunks)
-
     # Reconstruct the message by joining the mapped chunks
-    return "".join(chunks)
+    final_message = "".join(chunks)
+    # Step 1: Process numbered and bulleted lists
+    final_message = format_paragraphs(final_message)
+    return final_message
+
+def format_paragraphs(text):
+    # Split text into paragraphs by double line breaks
+    paragraphs = text.split('\n\n')
+    # Wrap each paragraph in <p> tags and join them
+    formatted_text = ''.join([f'<p>{p.strip()}</p>' for p in paragraphs])
+    # Replace single line breaks with <br> for line breaks within a paragraph
+    formatted_text = formatted_text.replace('\n', '<br>')
+    return formatted_text
 
 def generate_final_gpt_response(messages, state):
     """
