@@ -780,6 +780,7 @@ function recalculateRoute(currentLocation, destination) {
         .catch(error => console.error('Error in recalculating route:', error));
 }
 function setUserLocationMark(coord) {
+    console.log("Setting User Marker.")
     if (userMarker) {
         userMarker.remove()
         userMarker = null
