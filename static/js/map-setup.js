@@ -162,52 +162,55 @@ async function checkNearbyEvent(location) {
         const coordinates = [];
 
         Object.keys(placeInfoResponse).forEach(placeName => {
-            placeNames.push(placeName);
-            coordinates.push(placeInfoResponse[placeName].location);
+            if (!blacklist.has(placeName)) { // Check if placeName is not in the blacklist
+                placeNames.push(placeName);
+                coordinates.push(placeInfoResponse[placeName].location);
+            }
         });
+        if (placeNames.length > 0) {
 
-        let nextResponse = await fetch('/check_events', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ places: placeNames, coordinates: coordinates, blacklist: blacklist })
-        });
-        placeNames.forEach(placeName => {
-            blacklist.add(placeName);
-        });
-        console.log(blacklist);
-        if (nextResponse.status === 204) {
-            console.log('No events found for the provided places.');
-            return;
-        }
-
-        if (!nextResponse.ok) {
-            throw new Error('Network response was not ok ' + nextResponse.statusText);
-        }
-
-        let nextData = await nextResponse.json();
-        if (!chatMessages) {
-            var chatMessages = document.getElementById("chatbot-messages");
-        }
-        if (nextData.response) {
-            appendMessage({
-                text: nextData.response,
-                chatMessages,
-                type: 'message',
-                placeNames: nextData.found_places,
-                longAndlat: nextData.coordinates,
-                fromUser: '1',
+            let nextResponse = await fetch('/check_events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ places: placeNames, coordinates: coordinates, blacklist: blacklist })
             });
+            placeNames.forEach(placeName => {
+                blacklist.add(placeName);
+            });
+            console.log("== blacklist == " + Array.from(blacklist));
+            if (nextResponse.status === 204) {
+                console.log('No events found for the provided places.');
+                return;
+            }
 
-            attachEventListenersToHyperlinks();
-        }
-        // if chat box not open, show pop up
-        const popupModal = document.getElementById('popupModal');
-        if (window.getComputedStyle(popupModal).display == 'none') {
-            idaeBox.classList.add('fadeshowin');
-        }
+            if (!nextResponse.ok) {
+                throw new Error('Network response was not ok ' + nextResponse.statusText);
+            }
 
+            let nextData = await nextResponse.json();
+            if (!chatMessages) {
+                var chatMessages = document.getElementById("chatbot-messages");
+            }
+            if (nextData.response) {
+                appendMessage({
+                    text: nextData.response,
+                    chatMessages,
+                    type: 'message',
+                    placeNames: nextData.found_places,
+                    longAndlat: nextData.coordinates,
+                    fromUser: '1',
+                });
+
+                attachEventListenersToHyperlinks();
+            }
+            // if chat box not open, show pop up
+            const popupModal = document.getElementById('popupModal');
+            if (window.getComputedStyle(popupModal).display == 'none') {
+                idaeBox.classList.add('fadeshowin');
+            }
+        }
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;
@@ -611,16 +614,38 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
-            setInterval(() => {
-                // Fetch updated user location
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const loc = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    checkNearbyEvent(loc);
-                });
-            }, 3000); // 3 seconds interval
+            function startCheckingNearbyEvents() {
+                function checkAndRepeat() {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const loc = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+            
+                        // Call checkNearbyEvent and wait for it to complete
+                        Promise.resolve(checkNearbyEvent(loc))
+                            .then(() => {
+                                // Schedule the next check after 5 seconds once checkNearbyEvent completes
+                                setTimeout(checkAndRepeat, 5000);
+                            })
+                            .catch(error => {
+                                console.error("Error in checkNearbyEvent:", error);
+                                // Retry after 5 seconds in case of an error
+                                setTimeout(checkAndRepeat, 5000);
+                            });
+                    }, function(error) {
+                        console.error("Error fetching location:", error);
+                        // Retry after 5 seconds if geolocation fails
+                        setTimeout(checkAndRepeat, 5000);
+                    });
+                }
+            
+                // Start the first check
+                checkAndRepeat();
+            }
+            
+            // Start the nearby event checking process
+            startCheckingNearbyEvents();
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
