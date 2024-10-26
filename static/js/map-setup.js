@@ -238,7 +238,9 @@ const handleGeolocation = debounce(function(position) {
         lng: position.coords.longitude,
         lat: position.coords.latitude,
     };
-    updateNavigationInstructions(userPos);
+    if(isUserRunning){
+        updateNavigationInstructions(userPos);
+    }
 }, 1000);
 function setMapList({index, placeName, thumbnailUrl}) {
     return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
