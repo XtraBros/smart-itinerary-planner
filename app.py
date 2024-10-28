@@ -423,6 +423,12 @@ def fetch_by_category():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/reset_memory")
+def reset_memory():
+    # Clear memory
+    memory.clear()  # Replace with actual memory clearing code
+    return jsonify({"status": "Memory reset"})
 
 # Not needed in sentosa variant right now.
 # @app.route('/get_centroids', methods=['POST'])

@@ -295,6 +295,8 @@ function handleOrientationChange(event) {
 }
 
 window.onload = function () {
+    console.log("Resetting chat memory")
+    fetch("/reset_memory"); // Calls endpoint to reset memory
     window.mapMarkers = {};
     const tishiDom = document.getElementById('tishi')
     isFirstOpen = localStorage.getItem('isFirstOpen')
