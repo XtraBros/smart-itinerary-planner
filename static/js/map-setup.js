@@ -147,7 +147,7 @@ async function checkNearbyEvent(location) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 50 })
+            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 30 })
         });
 
         if (!response.ok) {
