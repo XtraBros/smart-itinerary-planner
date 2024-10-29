@@ -77,9 +77,10 @@ def ask_plan():
     
     # Fetch stored memory (previous conversation history)
     conversation_history = memory.load_memory_variables({})
-    print(f"==conv== {conversation_history}")
     # Format the conversation history for the prompt (as a string)
-    formatted_history = formatted_history = conversation_history.get('history', '')
+    formatted_history = process_formatted_history(conversation_history.get('history', ''))
+    print(f"==conv== {formatted_history}")
+
     # Prompt template with memory integration
     prompt_template = PromptTemplate(
         input_variables=["history", "user_location", "sentosa_places_list"],
@@ -101,7 +102,7 @@ def ask_plan():
         - If "operation" is "message", the value of "response" should be a single string containing your text reply.
         - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
 
-        4) **Use Exact POI Names**: Always use the exact names of the places as provided in {sentosa_places_list}. If the location does not exist in this list, ask the user to verify the place you assume they are trying to get to.
+        4) **Use Exact POI Names**: Always use the exact names of the places as provided in {sentosa_places_list}. If the location does not exist in this list, suggest the nearest match, and have the user to verify the place you assume they are referring to.
 
         5) **Finding Nearby POIs**: 
         - If the user asks for nearby places, use the `find_nearby_pois` function with a radius of 200 meters. Set "operation" to "location" if POIs were found. Otherwise, set "operation" to "message" and inform the user that there are no nearby POIs.
@@ -112,7 +113,7 @@ def ask_plan():
 
         7) **User Location Requests**: 
         - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
-        - If asked how to go somewhere, return operation "location" and response should contain the name of the place.
+        - If asked for directions, return operation "location" and response should contain the name of the place. If no location is specified, use the last mentioned POI in the conversation history. Do not use function calls when providing directions.
         - If asked the distance to a palce, return operation "message" and answer how far the destinatino is.
 
         8) **Limiting Results**: 
@@ -634,7 +635,28 @@ def generate_final_gpt_response(messages, state):
     # Return the final response from GPT
     return final_response.choices[0].message.content
 
-
+def process_formatted_history(history):
+    lines = history.strip().split("\n")
+    processed_history = []
+    
+    for line in lines:
+        # Check if it's an AI response line and attempt to parse it as JSON
+        if line.startswith("AI:"):
+            # Extract JSON part from the line
+            ai_message_json = line[3:].strip()
+            try:
+                # Parse JSON and extract 'response'
+                ai_message = json.loads(ai_message_json)
+                response = ai_message.get("response", "")
+                processed_history.append(f"AI: {response}")
+            except json.JSONDecodeError:
+                # If JSON is invalid, keep line as is
+                processed_history.append(line)
+        else:
+            # For Human lines, keep them as they are
+            processed_history.append(line)
+    
+    return "\n".join(processed_history)
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
 ###########################################################################################################
@@ -1004,6 +1026,7 @@ def handle_function_calls(messages, state):
             return generate_final_gpt_response(messages, state)
         else:
             # If message.content exists, return the message content
+            print(f"=== function call response === {message.content}")
             return message.content
 
 
