@@ -660,6 +660,26 @@ fetch('/config')
             setTimeout(() => {
                 geolocateControl.trigger();
             }, 100)
+            // check navigation and update nav isntructions
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const userPos = {
+                        lng: position.coords.longitude,
+                        lat: position.coords.latitude,
+                    };
+                    if (isUserRunning) {
+                        updateNavigationInstructions(userPos);
+                    }
+                },
+                (error) => {
+                    console.error("Error retrieving geolocation:", error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 1000,       // Use cached position for up to 1 second
+                    timeout: 5000           // Wait up to 5 seconds for a location fix
+                }
+            );
             geolocateControl.on('trackuserlocationstart', ({target}) => {
                 target.options.geolocation.getCurrentPosition((position) => {
                     setUserLocationMark([position.coords.longitude, position.coords.latitude]);
