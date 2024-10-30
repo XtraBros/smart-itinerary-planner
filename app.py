@@ -110,6 +110,7 @@ def ask_plan():
         6) **Handling Specific POI Queries**: 
         - If the user asks to locate the POI, use operation "location".
         - If the user asks for more information a place, use the `get_poi_by_name` function to retrieve accurate information about that place, including important links and details if there are notes using operation "message".  If no location is specified, use the last mentioned POI in the conversation history.
+        - Special case: When the user asks about Sensoryscape, use operation 'location' for the 8 "Sensoryscape:..." attractions first. If more information is required afterwards, introduce "Sentosa Sensoryscape" with the information from the function "get_poi_by_name", with operation "message".
 
         7) **User Location Requests**: 
         - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
