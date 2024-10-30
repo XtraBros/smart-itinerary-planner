@@ -109,12 +109,12 @@ def ask_plan():
 
         6) **Handling Specific POI Queries**: 
         - If the user asks to locate the POI, use operation "location".
-        - If the user asks for more information a specific place, use the `get_poi_by_name` function to retrieve accurate information about that place, including important links and details if there are notes using operation "message". 
+        - If the user asks for more information a place, use the `get_poi_by_name` function to retrieve accurate information about that place, including important links and details if there are notes using operation "message".  If no location is specified, use the last mentioned POI in the conversation history.
 
         7) **User Location Requests**: 
         - If the user asks for their current location, use the `find_nearest_poi` function to locate them based on the nearest point of interest.
         - If asked for directions, return operation "location" and response should contain the name of the place. If no location is specified, use the last mentioned POI in the conversation history. Do not use function calls when providing directions.
-        - If asked the distance to a palce, return operation "message" and answer how far the destinatino is.
+        - If asked the distance to a palce, return operation "message" and answer how far the destination is.
 
         8) **Limiting Results**: 
         - Avoid suggesting toilets and amenities unless the user specifically requests them. Additionally, limit your list of attractions to 3 places unless the user asks for more.
@@ -181,15 +181,27 @@ def get_text():
     coordinates = request.json['coordinates']
     print(f"=== get_text ===> {route}")
     user_input = request.json['message']
-    prompt = f"""You are a tour guide at {sentosa_name}. The attractions/destinations you need you cover in your response are {route}.
-                Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
-                Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' and use conversational language that makes the visitor feel welcome.
-                Structure your response as a numbered list if there are multiple attractions/POIs. Ensure all destinations are covered in your response.
-                For wayfinding to POIs, the location will be displayed on the user's map, so just inform them so. 
-                Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html and escape sequences like \n in your response.
+    conversation_history = memory.load_memory_variables({})
+    # Format the conversation history for the prompt (as a string)
+    formatted_history = process_formatted_history(conversation_history.get('history', ''))
+    prompt_template = PromptTemplate(
+        input_variables=["history", "route"],
+        template = """You are a tour guide at Sentosa. The attractions/destinations you need you cover in your response are {route}.
+                    Your task is to guide a visitor, introducing them to the attractions they will visit in the sequence given in the following list.
+                    Keep your response succinct, engaging, and varied. Avoid repetitive phrases like 'Sure,' or "Welcome to ..." and use conversational language that makes the visitor feel welcome.
+                    Structure your response as a numbered list if there are multiple attractions/POIs. Ensure all destinations are covered in your response.
+                    For wayfinding to POIs, the location will be displayed on the user's map, so just inform them so. 
+                    Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html and escape sequences like \n in your response.
 
-                Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
-            """
+                    Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
+                    Conversation history:
+                    {history}
+                """
+    )
+    prompt = prompt_template.format(
+        history=formatted_history,  # Inject conversation history
+        route=route
+    )
                 
     if route[0]:
         if isinstance(route[0], list):
@@ -370,26 +382,22 @@ def check_events():
                 index = places.index(location)
                 found_places.append(location)
                 found_coordinates.append(coordinates[index])
-
-        # Craft response message if entries detected.
         response = client.chat.completions.create(
             model=model_name,
             messages=[
                 {"role": "system", "content": f"""You are an excited event promoter.
-                 Given a list of places, and data regarding the events/promotions happening at these places, craft a promotional message to a tourist/visitor to {sentosa_name}, promoting these POIs and events. 
-                 This message is a follow-up response after having introduced some attractions to them. Your main task is to inform them of the promotion.
+                 Given this list of places: {found_places}, and data regarding the events/promotions happening at these places: {entries}, craft a promotional message to a tourist/visitor to {sentosa_name}.
+                 Your main task is to introduce the attraction, enticing visitors to visit the attraction with a promotional message. These attractions are determiend to be near the visitor.
                  The message is addressed to a generic audience, and should be as succint as possible. Leave out any salutations at the end.
-                 If there are multiple promotions, structure you response as a numbered list in HTML.
                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
-                {"role": "user", "content": f'Places of interest involved: {found_places}. Events data: {entries}.'}
             ],
             temperature=0,
         )
         print(f"===check_events GPT response==> {response}")
-        # Create hyperlinks with the route names
         hyperlinks = create_hyperlinks(places, coordinates)
         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
-        return jsonify({'response': response_text, "places": found_places, "coordinates":found_coordinates})
+        memory.save_context({"user_input": ""}, {"response": response.choices[0].message.content.strip()})
+        return jsonify({'response': response_text, "places": found_places, "coordinates": found_coordinates})
     else:
         # Return no content if no entries are found
         return jsonify({}), 204
