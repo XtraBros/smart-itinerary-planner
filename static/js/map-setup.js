@@ -937,6 +937,7 @@ function calculateDistance(point1, point2) {
 // Function to update navigation instructions based on user's current location
 function updateNavigationInstructions(userLocation) {
     const thresholdDistance = 20; // Distance threshold for reaching a checkpoint
+    const arrivalThreshold = 5; // Distance threshold for final destination arrival
 
     // Get current and next checkpoint locations
     const currentCheckpoint = {
@@ -974,7 +975,17 @@ function updateNavigationInstructions(userLocation) {
         currentStepIndex++;
         console.log("Moving to next checkpoint, step index: " + currentStepIndex);
     }
-
+    const finalDestination = {
+        lng: steps[steps.length - 1].maneuver.location[0],
+        lat: steps[steps.length - 1].maneuver.location[1]
+    };
+    const distanceToFinalDestination = calculateDistance(userLocation, finalDestination);
+    if (distanceToFinalDestination <= arrivalThreshold) {
+        // Display arrival message and stop further instructions
+        console.log("User has arrived at the destination.");
+        document.getElementById("distanceText").textContent = "You have arrived at your destination!";
+        return;
+    }
     // Display current instruction if still within bounds
     if (currentStepIndex < instructions.length) {
         const nextInstruction = instructions[currentStepIndex].instruction;
