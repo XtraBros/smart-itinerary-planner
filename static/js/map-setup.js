@@ -914,7 +914,7 @@ function displayInstruction(instructionTextContent, distanceToCheckpoint, remain
     document.querySelector('#journeyETA h3').textContent = formattedETA;
     // Update the text content with the extracted instruction
     instructionText.textContent = instructionTextContent;
-    distanceText.textContent = `${distanceToCheckpoint.toFixed(1)}`;
+    distanceText.textContent = `${distanceToCheckpoint.toFixed(1)} metres`;
     // Show the pop-up
     instructionPopup.classList.add('fadeshowin')
 }
@@ -995,7 +995,7 @@ function updateNavigationInstructions(userLocation) {
     } else {
         // End of route handling, display remaining distance and duration
         const remainingDist = calculateRemainingDistance(route.coordinates.slice(currentStepIndex));
-        document.getElementById("distanceText").textContent = `${distanceToCurrentCheckpoint.toFixed(1)}`;
+        document.getElementById("distanceText").textContent = `${distanceToCurrentCheckpoint.toFixed(1)} metres`;
         document.querySelector('#journeyDistance h3').textContent = (remainingDist / 1000).toFixed(2);
         document.querySelector('#journeyDuration h3').textContent = calculateRemainingDuration(remainingDist, 1.4);
     }
