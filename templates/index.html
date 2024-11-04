@@ -25,27 +25,27 @@
     <!-- <button class="domeShowBoot" onclick="domeShowBootFuc()"></button> -->
     <div class="newHeader">
         <ul class="list">
-            <li class="item" onclick="displayByCategory('Attraction', this)">
+            <li class="item" onclick="Setup.displayByCategory('Attraction', this)">
                 <p><img src="static/icons/attraction.svg" alt="" srcset=""></p>
                 <p>Attraction</p>
             </li>
-            <li class="item" onclick="displayByCategory('Dining', this)">
+            <li class="item" onclick="Setup.displayByCategory('Dining', this)">
                 <p><img src="static/icons/dining.svg" alt="" srcset=""></p>
                 <p>Dining</p>
             </li>
-            <li class="item" onclick="displayByCategory('Show', this)">
+            <li class="item" onclick="Setup.displayByCategory('Show', this)">
                 <p><img src="static/icons/show.svg" alt="" srcset=""></p>
                 <p>Show</p>
             </li>
-            <li class="item" onclick="displayByCategory('Toilet', this)">
+            <li class="item" onclick="Setup.displayByCategory('Toilet', this)">
                 <p><img src="static/icons/toilet.svg" alt="" srcset=""></p>
                 <p>Toilet</p>
             </li>
-            <li class="item" onclick="displayByCategory('Hotel', this)">
+            <li class="item" onclick="Setup.displayByCategory('Hotel', this)">
                 <p><img src="static/icons/hotel.svg" alt="" srcset=""></p>
                 <p>Hotel</p>
             </li>
-            <li class="item" onclick="displayByCategory('Retail', this)">
+            <li class="item" onclick="Setup.displayByCategory('Retail', this)">
                 <p><img src="static/icons/retail.svg" alt="" srcset=""></p>
                 <p>Retail</p>
             </li>
@@ -93,7 +93,7 @@
         <div id="map"></div>
         <div id="zoom-controls">
             <div style="text-align: right; padding-right: 15px;">
-                <button id="dingwennd" onclick="switchoverHandled()">
+                <button id="dingwennd" onclick="Setup.switchoverHandled()">
                     <img src="static/icons/posinit.svg" width="26" alt="" srcset="">
                 </button>
             </div>
@@ -127,10 +127,10 @@
         </div>
         <div id="poiList"></div>
         <div class="mapandlistbut">
-            <button id="tabMap" class="activeButton" onclick="handerMap(event, 'map')">
+            <button id="tabMap" class="activeButton" onclick="Setup.handerMap(event, 'map')">
                 Map
             </button>
-            <button id="tabList" onclick="handerMap(event, 'list')">
+            <button id="tabList" onclick="Setup.handerMap(event, 'list')">
                 List
             </button>
         </div>
@@ -146,10 +146,10 @@
                         <div id="chatbot-messages">
                             <div id="nav-steps" class="nav-steps"></div>
                             <div class="reserveInfor">
-                                <button onclick="systemQuestionFunc(event)">How is the weather at Sentosa today?</button>
-                                <button onclick="systemQuestionFunc(event)">How do I get to Universal Studios Singapore?</button>
-                                <button onclick="systemQuestionFunc(event)">Where is W Singapore hotel?</button>
-                                <button onclick="systemQuestionFunc(event)">What popular attractions are near me?</button>
+                                <button onclick="Chat.systemQuestionFunc(event)">How is the weather at Sentosa today?</button>
+                                <button onclick="Chat.systemQuestionFunc(event)">How do I get to Universal Studios Singapore?</button>
+                                <button onclick="Chat.systemQuestionFunc(event)">Where is W Singapore hotel?</button>
+                                <button onclick="Chat.systemQuestionFunc(event)">What popular attractions are near me?</button>
                             </div>
                         </div>
                         <div id="voice">
@@ -164,7 +164,7 @@
                     </div>
                 </div>
                 <div id="input-container">
-                    <input type="text" id="chatbot-input" enterkeyhint="send" placeholder="Let’s chat" onkeydown="submitChat(event)">
+                    <input type="text" id="chatbot-input" enterkeyhint="send" placeholder="Let’s chat" onkeydown="Chat.submitChat(event)">
                     <button id="voice-btn" onclick="startVoiceInput()">
                         <i id="record" class="fas fa-microphone"></i>
                     </button>
@@ -223,7 +223,7 @@
             <div>You have arrive your destination</div>
         </div>
         <div>
-            <button onclick="exitNavFunc()" class="exitClass">Exit</button>
+            <button onclick="Nav.exitNavFunc()" class="exitClass">Exit</button>
         </div>
      </div>
 
@@ -240,11 +240,15 @@
             </div>
         </div>
         <div class="funcBot">
-            <button class="cancelBottm" onclick="cancelNav()">Cancel</button>
-            <button class="startBottm" onclick="startUserNav()">Start</button>
+            <button class="cancelBottm" onclick="Nav.cancelNav()">Cancel</button>
+            <button class="startBottm" onclick="Nav.startUserNav()">Start</button>
         </div>
      </div>
-    <script src="{{ url_for('static', filename='js/map-setup.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" type="module"></script>
+    <script src="{{ url_for('static', filename='js/nav-mod.js') }}" type="module"></script>
+    <script src="{{ url_for('static', filename='js/chat-mod.js') }}" type="module"></script>
+    <script src="{{ url_for('static', filename='js/promo-mod.js') }}" type="module"></script>
+    <script src="{{ url_for('static', filename='js/map-setup.js') }}" type="module"></script>
     <script src="{{ url_for('static', filename='js/language.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
     <script src="{{url_for('static',filename='js/touch.js')}}"></script>

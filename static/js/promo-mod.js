@@ -1,3 +1,7 @@
+import { blacklist } from "./main.js";
+import { fetchPlacesData, attachEventListenersToHyperlinks } from "./map-setup.js";
+import { appendMessage } from "./chat-mod.js";
+
 export async function checkNearbyEvent(location) {
     // console.log("Checking nearby events.")
     try {
@@ -75,3 +79,21 @@ export async function checkNearbyEvent(location) {
         return null;
     }
 }
+
+// // Prompt message after inactivity
+// function resetTimer() {
+//     // Clear any existing timer
+//     if (suggestionTimer) {
+//         console.log("Resetting suggstion timer.")
+//         clearTimeout(suggestionTimer);
+//     }
+//     console.log("Starting a timer for suggestions.")
+//     // Set a new timer that runs after 5 minutes
+//     suggestionTimer = setTimeout(() => {
+//         console.log("5 minutes since last message, prompting suggestions.")
+//         // getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
+//         // getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
+//         clearTimeout(suggestionTimer);  // Stop the timer after suggestion is made
+//         suggestionTimer = null;  // Set timer to null, so it can be started again
+//     }, suggestionTimeout);
+// }
