@@ -7,10 +7,6 @@ window.Chat = Chat
 window.Promo = Promo
 window.Nav = Nav
 
-export const blacklist = new Set();
-export let api_response = {};
-export let switchoverState = 'POSINIT'; // POSINIT or FOCUS
-export let simulatePoint;
 export const sharedState = {
     userLocation: null,
     userMarker: null,
@@ -22,16 +18,17 @@ export const sharedState = {
     instructions: null,
     currentStepIndex: 0, // Start at the first step of the route
     suggestionData: null,
-    walkStepsNavs: null
+    walkStepsNavs: null,
+    userTouch: false,
+    route: {},
+    walkedRoute: null,
+    geolocateControl: null,
+    directions: null,
+    isUserRunning: false,
+    switchoverState: 'POSINIT'// POSINIT or FOCUS
 };
 export let isFirstOpen = false;
 export let thumbnailURI;
-export let isUserRunning = false;
-export let userTouch = false;
-export var directions;
-export var geolocateControl;
-export var walkedRoute = [];
-export let route = {};
 
 const pauseAndpaly = document.getElementById('pauseAndpaly');
 const foodBox = document.getElementById('foodBox');
@@ -145,7 +142,7 @@ fetch('/config')
             minZoom: 10,
         });
 
-        directions = new MapboxDirections({
+        sharedState.directions = new MapboxDirections({
             accessToken: mapboxgl.accessToken,
             unit: 'metric',
             profile: 'mapbox/walking'
@@ -197,7 +194,7 @@ fetch('/config')
                 }
             });
             // geolocation tracking
-            geolocateControl = new mapboxgl.GeolocateControl({
+            sharedState.geolocateControl = new mapboxgl.GeolocateControl({
                 positionOptions: {
                     enableHighAccuracy: true,
                     timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
@@ -206,9 +203,9 @@ fetch('/config')
                 trackUserLocation: true,
                 showUserHeading: true, // If you want to show user's heading direction
             });
-            sharedState.map.addControl(geolocateControl);
+            sharedState.map.addControl(sharedState.geolocateControl);
             // force mapbox to stop changing map view when geolocating
-            geolocateControl._updateCamera = () => { }
+            sharedState.geolocateControl._updateCamera = () => { }
             sharedState.map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -249,7 +246,7 @@ fetch('/config')
             // Start the nearby event checking process
             startCheckingNearbyEvents();
             setTimeout(() => {
-                geolocateControl.trigger();
+                sharedState.geolocateControl.trigger();
             }, 100)
             // check navigation and update nav isntructions
             navigator.geolocation.watchPosition(
@@ -258,7 +255,7 @@ fetch('/config')
                         lng: position.coords.longitude,
                         lat: position.coords.latitude,
                     };
-                    if (isUserRunning) {
+                    if (sharedState.isUserRunning) {
                         Nav.updateNavigationInstructions(userPos);
                     }
                 },
@@ -271,7 +268,7 @@ fetch('/config')
                     timeout: 5000           // Wait up to 5 seconds for a location fix
                 }
             );
-            geolocateControl.on('trackuserlocationstart', ({target}) => {
+            sharedState.geolocateControl.on('trackuserlocationstart', ({target}) => {
                 target.options.geolocation.getCurrentPosition((position) => {
                     Setup.setUserLocationMark([position.coords.longitude, position.coords.latitude]);
                     sharedState.userLocation = {
@@ -280,26 +277,26 @@ fetch('/config')
                         userHeading: position.coords.heading,
                     };
                 })
-                userTouch = false
+                sharedState.userTouch = false
                 if(!sharedState.userLocation) return
                 sharedState.map.easeTo({
                     center: [sharedState.userLocation.lng, sharedState.userLocation.lat],
                     bearing: sharedState.userLocation.userHeading,  // Set the map's bearing to the user's heading
-                    zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
+                    zoom: sharedState.isUserRunning ? 20 : 13,     // Keep the current zoom level
                     duration: 500         // Animation duration (optional)
                 });
             }); 
             const compassButton = document.querySelector('.mapboxgl-ctrl-compass')
             if (compassButton) {
                 compassButton.addEventListener('click', function(e) {
-                    userTouch = true
+                    sharedState.userTouch  = true
                     e.preventDefault();
                 });
             }
         });
         sharedState.map.on('dragstart', () => {
-            userTouch = true
-            switchoverState = 'POSINIT'
+            sharedState.userTouch  = true
+            sharedState.switchoverState = 'POSINIT'
             const img = dingwenndId.getElementsByTagName('img')[0]
             img.setAttribute('src', `static/icons/posinit.svg`);
         });

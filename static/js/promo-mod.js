@@ -1,4 +1,4 @@
-import { blacklist } from "./main.js";
+const blacklist = new Set();
 import { fetchPlacesData, attachEventListenersToHyperlinks } from "./map-setup.js";
 import { appendMessage } from "./chat-mod.js";
 

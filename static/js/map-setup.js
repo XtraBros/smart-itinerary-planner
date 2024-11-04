@@ -7,14 +7,17 @@ const startNav = document.getElementById('startNav');
 const totMinus = document.getElementById('totMinus');
 const totDist = document.getElementById('totDist');
 const navcompleted = document.getElementById('navcompleted');
+const dingwenndId = document.getElementById('dingwennd');
+let simulationTimeout;         // Variable to store the timeout ID
+let simulatePoint;
 
 import { thumbnailURI, sharedState} from "./main.js";
-import { optimizeRoute } from "./nav-mod.js";
+import { optimizeRoute, isUserOffRoute } from "./nav-mod.js";
 
 export function initProperty() {
-    routeIndex = 0;
-    currentStepIndex = 0;
-    walkedRoute = []
+    sharedState.routeIndex = 0;
+    sharedState.currentStepIndex = 0;
+    sharedState.walkedRoute = []
     simulatePoint = null
     clearTimeout(simulationTimeout);
 }
@@ -161,7 +164,7 @@ export function handleOrientationChange(event) {
     // if (mapUserLocation) {
     //         document.getElementsByClassName('newHeader')[0].innerText = `${mapUserLocation.style.transform}`
     // }
-    if (sharedState.map && event.alpha !== null && switchoverState === 'FOCUS') {
+    if (sharedState.map && event.alpha !== null && sharedState.switchoverState === 'FOCUS') {
         const userHeading = (360 - event.alpha) % 360 ;
         if (sharedState.firstClick) {
             if (!firstTime) {
@@ -177,7 +180,7 @@ export function handleOrientationChange(event) {
     }
     if (sharedState.userMarker && mapUserLocation) {
         const markerElement = sharedState.userMarker.getElement().getElementsByClassName('user-location-marker')[0]
-        if (switchoverState === 'POSINIT') {
+        if (sharedState.switchoverState === 'POSINIT') {
             markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
         } else {
             markerElement.style.transform = `rotateZ(0deg)`
@@ -275,17 +278,17 @@ export function handerMap(e, type) {
     e.preventDefault();
 }
 export function switchoverHandled() {
-    userTouch = false
-    switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
+    sharedState.userTouch = false
+    sharedState.switchoverState = sharedState.switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
     const img = dingwenndId.getElementsByTagName('img')[0]
-    img.setAttribute('src', `static/icons/${switchoverState === 'FOCUS' ? 'nios' : 'posinit'}.svg`);
-    if (isUserRunning) {
-        if (switchoverState === 'FOCUS') {
+    img.setAttribute('src', `static/icons/${sharedState.switchoverState === 'FOCUS' ? 'nios' : 'posinit'}.svg`);
+    if (sharedState.isUserRunning) {
+        if (sharedState.switchoverState === 'FOCUS') {
             sharedState.map.setCenter([sharedState.userLocation.lng, sharedState.userLocation.lat]);
         }
         return
     }
-    if (switchoverState === 'FOCUS') {
+    if (sharedState.switchoverState === 'FOCUS') {
         sharedState.map.setZoom(17);
         sharedState.map.setPitch(60, {duration: 10});
         sharedState.map.setCenter([sharedState.userLocation.lng, sharedState.userLocation.lat]);
@@ -307,93 +310,6 @@ export function getRotateZ(transform) {
         return parseFloat(match[1]); // 返回角度值
     } else {
         return 0; // 如果没有 rotateZ，则返回 0
-    }
-}
-
-export function setMapRoute(resRoute) {
-    if (!sharedState.map.getLayer('route')) {
-        sharedState.map.loadImage(
-            'static/icons/nav.png',
-            (error, image) => {
-                if (error) throw error;
-                if (!sharedState.map.hasImage('arrow')) {
-                    sharedState.map.addImage('arrow', image);
-                }
-                // Add route to map
-                if (!sharedState.map.getSource('route')) {
-                    sharedState.map.addSource('route', {
-                        'type': 'geojson',
-                        'data': {
-                            'type': 'Feature',
-                            'properties': {},
-                            'geometry': resRoute
-                        }
-                    });
-                }
-                sharedState.map.addLayer({
-                    id: 'route',
-                    type: 'line',
-                    source: 'route',
-                    layout: {
-                        'icon-size': 0.8,
-                        'icon-allow-overlap': false,
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-pattern': 'arrow',
-                        'line-width': 10
-                    }
-                });
-            }
-        );
-
-        // Update route data on map
-        directions.on('route', function (e) {
-            const route = e.route[0].geometry;
-            sharedState.map.getSource('route').setData(route);
-        });
-    }
-
-    if (!sharedState.map.getSource('walked-route')) {
-        sharedState.map.addSource('walked-route', {
-            "type": "geojson",
-            "data": {
-                "type": "Feature",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": []
-                }
-            }
-        });
-    }
-
-    if (!sharedState.map.getLayer('walked-route')) {
-        // sharedState.map.addLayer({
-        //     "id": "walked-route",
-        //     "type": "symbol",
-        //     "source": "walked-route",
-        //     'layout': {
-        //         'symbol-placement': 'line',
-        //         'symbol-spacing': 2,
-        //         'icon-image': 'walkedArrow',
-        //         'icon-size': 0.5,
-        //         'icon-allow-overlap': true,
-        //     },
-        // });
-        sharedState.map.addLayer({
-            id: 'walked-route',
-            type: 'line',
-            source: 'walked-route',
-            layout: {
-                'icon-size': 0.8,
-                'icon-allow-overlap': false,
-                'line-cap': 'round'
-            },
-            paint: {
-                'line-pattern': 'walkedArrow',
-                'line-width': 10
-            }
-        });
     }
 }
 
@@ -477,14 +393,14 @@ export function paintLine(resRoute, isZoom = true) {
 }
 
 export function setDottedLine() {
-    if (sharedState.endPlaceProt && walkStepsNavs && walkStepsNavs.waypoints.length) {
-        const userfirstDistance = walkStepsNavs.waypoints[0].distance;
-        const { distance, isInPolygon} = isUserOffRoute(sharedState.userLocation, route);
+    if (sharedState.endPlaceProt && sharedState.walkStepsNavs && sharedState.walkStepsNavs.waypoints.length) {
+        const userfirstDistance = sharedState.walkStepsNavs.waypoints[0].distance;
+        const { distance, isInPolygon} = isUserOffRoute(sharedState.userLocation, sharedState.route);
         if (userfirstDistance > 5 && distance > 5 && !isInPolygon) {
             const geometry = {
                 coordinates: [
                     [sharedState.userLocation.lng, sharedState.userLocation.lat],
-                    walkStepsNavs.waypoints[0].location
+                    sharedState.walkStepsNavs.waypoints[0].location
                 ],
                 type: "LineString",
             }
@@ -549,20 +465,20 @@ export function displayRoute(placeNames, rawCoordinates, fromUser) {
         // Process fetched directions data or centroids
         getMapboxWalkRoute(coordinates)
             .then(result => {
-                let cneterPot = [sharedState.userLocation.lng, sharedState.userLocation.lat]
+                let centerPot = [sharedState.userLocation.lng, sharedState.userLocation.lat]
                 if (result.legs && result.route) {
-                    geolocateControl.on('geolocate', (position) => {
+                    sharedState.geolocateControl.on('geolocate', (position) => {
                         const cuerrorUserLoc = {
                             lng: position.coords.longitude,
                             lat: position.coords.latitude,
                             userHeading: position.coords.heading,
                         };
                         sharedState.userLocation = cuerrorUserLoc
-                        const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, route);
+                        const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, sharedState.route);
                         if (sharedState.userMarker) {
                             const CunrrPoint = distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates
                             sharedState.userMarker.setLngLat(CunrrPoint)
-                            if (!userTouch && !sharedState.firstClick) {
+                            if (!sharedState.userTouch && !sharedState.firstClick) {
                                 sharedState.map.setCenter(CunrrPoint);
                             }
                         }
@@ -572,13 +488,10 @@ export function displayRoute(placeNames, rawCoordinates, fromUser) {
                             recalculateRoute(cuerrorUserLoc, sharedState.endPlaceProt);  // Call reroute function
                         }
                     });
-                    // console.log('------result->>>>>>>>>', result)
                     // Extract route instructions
                     if (result.route.coordinates && result.route.coordinates.length) {
-                        cneterPot = result.route.coordinates[Math.floor(result.route.coordinates.length * 0.5)]
+                        centerPot = result.route.coordinates[Math.floor(result.route.coordinates.length * 0.5)]
                     }
-                    // var instructions = extractRouteInstructions(result.legs, placeNames);
-                    // resolve(instructions);
                 } else if (result.newUrl) {
                     // Handle URL for later use case
                     resolve(result.newUrl);
@@ -586,7 +499,7 @@ export function displayRoute(placeNames, rawCoordinates, fromUser) {
                     throw new Error('Invalid data received');
                 }
                 sharedState.map.flyTo({
-                    center: cneterPot,
+                    center: centerPot,
                     essential: true, // This ensures the animation happens even with prefers-reduced-motion
                     zoom: 14 // Increase the zoom level as needed
                 });
@@ -611,7 +524,6 @@ export function getMapboxWalkRoute(coordinates) {
             if (data.routes && data.routes.length > 0) {
                 initProperty();
                 const legs = data.routes[0].legs;
-                api_response = data.routes[0]
                 // console.log('------data->>>>>>>>>', data)
                 const totalDistance = legs[0].distance.toFixed(2);
                 const totalDuration = legs[0].duration;
@@ -619,10 +531,11 @@ export function getMapboxWalkRoute(coordinates) {
                     totMinus.innerText = `${Math.ceil(totalDuration / 60)}min`
                     totDist.innerText = totalDistance > 1000 ? `${(totalDistance / 1000).toFixed(2)}km` : `${totalDistance}m`
                 }
-                route = data.routes[0].geometry;
-                steps = data.routes[0].legs[0].steps;
-                walkStepsNavs = data
-                return { legs, route };
+                sharedState.route = data.routes[0].geometry;
+                const result = data.routes[0].geometry;
+                sharedState.steps = data.routes[0].legs[0].steps;
+                sharedState.walkStepsNavs = data
+                return { legs: legs, route: result };
             } else {
                 console.error('No route found: ', data);
                 throw new Error('No route found');

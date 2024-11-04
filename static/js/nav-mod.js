@@ -1,6 +1,8 @@
 import { sharedState } from "./main.js";
+import { setDottedLine } from "./map-setup.js";
 
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
+const dingwenndId = document.getElementById('dingwennd');
 
 export function updateNavigationInstructions(userLocation) {
     const thresholdDistance = 20; // Distance threshold for reaching a checkpoint
@@ -8,14 +10,14 @@ export function updateNavigationInstructions(userLocation) {
 
     // Get current and next checkpoint locations
     const currentCheckpoint = {
-        lng: sharedState.steps[currentStepIndex].maneuver.location[0],
-        lat: sharedState.steps[currentStepIndex].maneuver.location[1]
+        lng: sharedState.steps[sharedState.currentStepIndex].maneuver.location[0],
+        lat: sharedState.steps[sharedState.currentStepIndex].maneuver.location[1]
     };
 
-    const nextCheckpoint = currentStepIndex + 1 < sharedState.steps.length
+    const nextCheckpoint = sharedState.currentStepIndex + 1 < sharedState.steps.length
         ? {
-            lng: sharedState.steps[currentStepIndex + 1].maneuver.location[0],
-            lat: sharedState.steps[currentStepIndex + 1].maneuver.location[1]
+            lng: sharedState.steps[sharedState.currentStepIndex + 1].maneuver.location[0],
+            lat: sharedState.steps[sharedState.currentStepIndex + 1].maneuver.location[1]
         }
         : null; // No next checkpoint if this is the final step
 
@@ -39,8 +41,8 @@ export function updateNavigationInstructions(userLocation) {
 
     // If increment is true, move to the next step
     if (increment) {
-        currentStepIndex++;
-        console.log("Moving to next checkpoint, step index: " + currentStepIndex);
+        sharedState.currentStepIndex++;
+        console.log("Moving to next checkpoint, step index: " + sharedState.currentStepIndex);
     }
     const finalDestination = {
         lng: sharedState.steps[sharedState.steps.length - 1].maneuver.location[0],
@@ -54,14 +56,14 @@ export function updateNavigationInstructions(userLocation) {
         return;
     }
     // Display current instruction if still within bounds
-    if (currentStepIndex < instructions.length) {
-        const nextInstruction = instructions[currentStepIndex].instruction;
-        const remainingDist = calculateRemainingDistance(route.coordinates.slice(currentStepIndex));
-        const modifierType = instructions[currentStepIndex].modifier;
+    if (sharedState.currentStepIndex < instructions.length) {
+        const nextInstruction = instructions[sharedState.currentStepIndex].instruction;
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(sharedState.currentStepIndex));
+        const modifierType = instructions[sharedState.currentStepIndex].modifier;
         displayInstruction(nextInstruction, distanceToCurrentCheckpoint, remainingDist, modifierType);
     } else {
         // End of route handling, display remaining distance and duration
-        const remainingDist = calculateRemainingDistance(route.coordinates.slice(currentStepIndex));
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(sharedState.currentStepIndex));
         document.getElementById("distanceText").textContent = `${distanceToCurrentCheckpoint.toFixed(1)} metres`;
         document.querySelector('#journeyDistance h3').textContent = (remainingDist / 1000).toFixed(2);
         document.querySelector('#journeyDuration h3').textContent = calculateRemainingDuration(remainingDist, 1.4);
@@ -81,7 +83,7 @@ export function trackUserLocation(route) {
     imgs.setAttribute('src', `static/icons/pause.svg`);
 
     // Set the user's initial location marker at the starting point
-    walkedRoute.unshift(route.coordinates[0]);
+    sharedState.walkedRoute.unshift(route.coordinates[0]);
     // Function to handle location updates from the GeolocateControl
     function updateLocation(position) {
         if (!simulationRunning) return;
@@ -90,8 +92,8 @@ export function trackUserLocation(route) {
             lat: position.coords.latitude
         };
         const nextPosition = {
-            lng: route.coordinates[routeIndex + 1][0],
-            lat: route.coordinates[routeIndex + 1][1]
+            lng: route.coordinates[sharedState.routeIndex + 1][0],
+            lat: route.coordinates[sharedState.routeIndex + 1][1]
         };
         debounce(() => {
             getPoisByLocation(currentPosition);
@@ -110,9 +112,9 @@ export function trackUserLocation(route) {
 
         // If the remaining distance is less than the threshold, move to the next point
         if (remainingDistance <= targetDistance) {
-            routeIndex++;
+            sharedState.routeIndex++;
 
-            if (routeIndex >= route.coordinates.length - 1) {
+            if (sharedState.routeIndex >= route.coordinates.length - 1) {
                 // Route completed
                 closedNavfun();
                 navcompleted.classList.add('fadeshowin');
@@ -124,13 +126,12 @@ export function trackUserLocation(route) {
     }
 
     // Event listener for when the user's location changes
-    geolocateControl.on('geolocate', (position) => {
+    sharedState.geolocateControl.on('geolocate', (position) => {
         // console.log('Updating user location:')
         debounce(() => {
             updateLocation(position);
         }, 100)
     });
-    geolocateControl.on('geolocate', handleGeolocation);
 }
 export function updateWalkedRoute(line) {
     // Add the current position to the walked route
@@ -141,13 +142,13 @@ export function updateWalkedRoute(line) {
         "type": "Feature",
         "geometry": {
             "type": "LineString",
-            "coordinates": walkedRoute
+            "coordinates": sharedState.walkedRoute
         }
     });
 }
 export function updateRemainingRoute(currentPosition) {
     // Update the remaining route after trimming
-    const remainingRoute = route.coordinates.slice(routeIndex + 1);
+    const remainingRoute = route.coordinates.slice(sharedState.routeIndex + 1);
     remainingRoute.unshift(currentPosition);
     sharedState.map.getSource('route').setData({
         "type": "Feature",
@@ -415,18 +416,18 @@ export function displayInstruction(instructionTextContent, distanceToCheckpoint,
 }
 // Navigation Mode 
 export function enableNavigationMode(data) {
-    instructions = getInstructions(data);
+    sharedState.instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
     const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
     geolocate.style.top = '210px'
-    isUserRunning = true
+    sharedState.isUserRunning = true
     const instructionPopup = document.getElementById('navigation');
-    if (routeIndex == 0) {
-        const firstInstruction = instructions[0];
+    if (sharedState.routeIndex == 0) {
+        const firstInstruction = sharedState.instructions[0];
         // Extract the relevant information for the first instruction
         const instructionTextContent = firstInstruction.instruction; // Text instruction
         const distanceToCheckpoint = firstInstruction.distance; // Distance to the next checkpoint
-        const remainingDistance = calculateRemainingDistance(route.coordinates); // Assuming you have a function to calculate total remaining distance
+        const remainingDistance = calculateRemainingDistance(sharedState.route.coordinates); // Assuming you have a function to calculate total remaining distance
         const modifier = firstInstruction.modifier; // Modifier for direction icons (left, right, etc.)
         // Display the first instruction
         displayInstruction(instructionTextContent, distanceToCheckpoint, remainingDistance, modifier);
@@ -440,12 +441,12 @@ export function enableNavigationMode(data) {
     sharedState.map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
         zoom: 20,  // Adjust the zoom level for better street view navigation
-        center: [userLocation.lng, userLocation.lat], // Center map on user's location
+        center: [sharedState.userLocation.lng, sharedState.userLocation.lat], // Center map on user's location
         duration: 600 // Animation duration in milliseconds
     });
-    switchoverState = 'FOCUS'
+    sharedState.switchoverState = 'FOCUS'
     // Wait for easeTo animation to complete, then start tracking
-    sharedState.map.once('moveend', () => trackUserLocation(route));
+    sharedState.map.once('moveend', () => trackUserLocation(sharedState.route));
 }
 // Function to check if user is off-route
 export function isUserOffRoute(userLocation, route, tolerance = 0.03) {
@@ -502,9 +503,9 @@ export function recalculateRoute(currentLocation, destination) {
                 });
             }
             // restart tracking:
-            trackUserLocation(route);
-            if (!isUserRunning) {
-                paintLine(route, false)
+            trackUserLocation(sharedState.route);
+            if (!sharedState.isUserRunning) {
+                paintLine(sharedState.route, false)
             } else {
                 setDottedLine()
             }
@@ -540,7 +541,7 @@ export function calculateRemainingDistance(routeCoordinates) {
 export function stopNavFunc() {
     sharedState.endPlaceProt = null
     sharedState.map.setZoom(14);
-    switchoverState = 'POSINIT'
+    sharedState.switchoverState = 'POSINIT'
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
@@ -549,7 +550,6 @@ export function stopNavFunc() {
     simulationRunning = false;
     simulationPaused = false;
     initProperty()
-    geolocateControl.off('geolocate', handleGeolocation);
 }
 export function exitNavFunc() {
     sharedState.endPlaceProt = null
@@ -580,7 +580,7 @@ export async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     if (waypoints.length && places.length) {
         await displayRoute(places, waypoints, isfromUser);
     }
-    paintLine(route)
+    paintLine(sharedState.route)
 }
 export function closedNavfun() {
     const navigationElem = document.getElementById('navigation');
@@ -609,13 +609,99 @@ export function closedNavfun() {
     }
     const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
     geolocate.style.top = '80px'
-    isUserRunning = false
+    sharedState.isUserRunning = false
     sharedState.endPlaceProt = null
+}
+export function setMapRoute(resRoute) {
+    if (!sharedState.map.getLayer('route')) {
+        sharedState.map.loadImage(
+            'static/icons/nav.png',
+            (error, image) => {
+                if (error) throw error;
+                if (!sharedState.map.hasImage('arrow')) {
+                    sharedState.map.addImage('arrow', image);
+                }
+                // Add route to map
+                if (!sharedState.map.getSource('route')) {
+                    sharedState.map.addSource('route', {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'properties': {},
+                            'geometry': resRoute
+                        }
+                    });
+                }
+                sharedState.map.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: 'route',
+                    layout: {
+                        'icon-size': 0.8,
+                        'icon-allow-overlap': false,
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-pattern': 'arrow',
+                        'line-width': 10
+                    }
+                });
+            }
+        );
+
+        // Update route data on map
+        sharedState.directions.on('route', function (e) {
+            const route = e.route[0].geometry;
+            sharedState.map.getSource('route').setData(route);
+        });
+    }
+
+    if (!sharedState.map.getSource('walked-route')) {
+        sharedState.map.addSource('walked-route', {
+            "type": "geojson",
+            "data": {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": []
+                }
+            }
+        });
+    }
+
+    if (!sharedState.map.getLayer('walked-route')) {
+        // sharedState.map.addLayer({
+        //     "id": "walked-route",
+        //     "type": "symbol",
+        //     "source": "walked-route",
+        //     'layout': {
+        //         'symbol-placement': 'line',
+        //         'symbol-spacing': 2,
+        //         'icon-image': 'walkedArrow',
+        //         'icon-size': 0.5,
+        //         'icon-allow-overlap': true,
+        //     },
+        // });
+        sharedState.map.addLayer({
+            id: 'walked-route',
+            type: 'line',
+            source: 'walked-route',
+            layout: {
+                'icon-size': 0.8,
+                'icon-allow-overlap': false,
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-pattern': 'walkedArrow',
+                'line-width': 10
+            }
+        });
+    }
 }
 export function startUserNav() {
     sharedState.firstClick = true
-    userTouch = false
-    console.log('-----steps-->>>', steps)
+    sharedState.userTouch = false
+    console.log('-----steps-->>>', sharedState.steps)
     const img = dingwenndId.getElementsByTagName('img')[0]
     img.setAttribute('src', `static/icons/nios.svg`);
     if (sharedState.map.getLayer('prewroute')) {
@@ -625,9 +711,9 @@ export function startUserNav() {
         sharedState.map.removeLayer('lineBorder');
     }
     setDottedLine()
-    setMapRoute(route)
+    setMapRoute(sharedState.route)
     startNav.classList.remove('fadeshowin');
-    enableNavigationMode(steps);
+    enableNavigationMode(sharedState.steps);
 }
 export function cancelNav() {
     sharedState.endPlaceProt = null
