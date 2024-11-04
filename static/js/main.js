@@ -48,7 +48,7 @@ window.onload = function () {
     const stopNav = document.getElementById('closedBut')
 
     stopNav.onclick = function () {
-        stopNavFunc();
+        Nav.stopNavFunc();
     }
 
     pauseAndpaly.onclick = function () {
