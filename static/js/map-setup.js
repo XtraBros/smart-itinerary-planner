@@ -264,14 +264,18 @@ function setMapList({index, placeName, thumbnailUrl}) {
 
 let firstTime = null;
 
+function normalizeAngle(angle) {
+    return (angle % 360 + 360) % 360;
+}
+
 function handleOrientationChange(event) {
     // console.log("User facing direction changed.")
     const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
     // if (mapUserLocation) {
-    //         document.getElementsByClassName('newHeader')[0].innerText = `${mapUserLocation.style.transform}`
+    //         document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(mapUserLocation.style.transform)} > ${normalizeAngle(userHeading)}: -${userHeading}`
     // }
     if (map && event.alpha !== null && switchoverState === 'FOCUS') {
-        const userHeading = (360 - event.alpha) % 360 ;
+        const userHeading = (360 - event.alpha) % 360;
         if (firstCilck) {
             if (!firstTime) {
                 firstTime = setTimeout(() => {
@@ -281,7 +285,7 @@ function handleOrientationChange(event) {
                 }, 600)
             }
         } else {
-            map.rotateTo(userHeading, { animate: false });
+            map.rotateTo(normalizeAngle(userHeading) + 35, { animate: false });
         }
     }
     if (userMarker && mapUserLocation) {
