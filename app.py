@@ -98,19 +98,19 @@ def ask_plan():
         - If "operation" is "message", set "response" as a text string.
         - If "operation" is "location", set "response" as a list of exact place names.
 
-        4) **Exact POI Names**: Use only names from {sentosa_places_list}. If a place is not on this list, suggest the nearest match and ask the user to confirm.
+        4) **Exact POI Names**: Use only names from {sentosa_places_list}. If a place is not on this list, use the nearest match.
 
         5) **Nearby Places**: 
         - For nearby locations, use `find_nearby_pois` with a 200-meter radius. Set "operation" to "location" if POIs are found; otherwise, use "message" to inform the user of no nearby POIs.
 
         6) **Specific POI Info**: 
-        - For details about a specific POI, use `get_poi_by_name`. Do not let the user wait while u fetch the information.
-        - For Sensoryscape queries, list the 8 "Sensoryscape:..." attractions first (operation "location"); if more info is needed, introduce "Sentosa Sensoryscape" using "get_poi_by_name" with "operation" as "message".
+        - For details about a specific POI, use `get_poi_by_name` to get the data and reply with operation "message".
+        - For Sensoryscape queries, list the 8 "Sensoryscape:..." attractions first (operation "location"); if more info is needed, introduce "Sentosa Sensoryscape" using "get_poi_by_name" with operation "message".
 
         7) **Location Requests**: 
-        - For current location, use `find_nearest_poi`.
-        - For directions to a POI, use "operation: location" and include the POI name. If no POI is specified, refer to the last mentioned POI in conversation history without confirmation. Avoid function calls for directions.
-        - For distance queries, respond with "operation: message" and provide the distance.
+        - For current location, use `find_nearest_poi` with operation "location."
+        - For directions to a POI, use operation "location" and include the POI name. If no POI is specified, refer to the last mentioned POI in conversation history without confirmation. Avoid function calls for directions.
+        - For distance queries, use `get_distance_from_poi` and respond with operation "message". For weather queries, use `fetch_weather_data` with operation "message".
 
         8) **Result Limits**: 
         - Only suggest amenities if requested, and limit to 3 attractions unless the user specifies otherwise.
