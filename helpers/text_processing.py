@@ -1,0 +1,76 @@
+import re
+# Function to handle duplicated GPT output
+def remove_dupes(response_text):
+    # Use a regular expression to find all occurrences of dictionaries
+    matches = re.findall(r'\{.*?\}', response_text)
+
+    if matches:
+        # Return only the first dictionary
+        return matches[0]
+    else:
+        # If no dictionary is found, return the original response
+        return response_text
+
+# handle code chunks and ``` tags 
+
+def remove_code_blocks(content):
+    # Step 1: Remove language identifiers in code blocks (e.g., ```json, ```html), but keep the content inside
+    cleaned_content = re.sub(r'```[a-zA-Z]+\n', '', content)
+    
+    # Step 2: Remove closing code block tags (```)
+    cleaned_content = re.sub(r'```', '', cleaned_content)
+    
+    # Step 3: Remove escape sequences like \n (newline), \t (tab), etc.
+    cleaned_content = cleaned_content.replace('\n', ' ').replace('\t', ' ')
+    
+    # Step 4: Remove multiple spaces caused by newline/tab replacements
+    cleaned_content = re.sub(r'\s+', ' ', cleaned_content)
+    
+    return cleaned_content.strip()
+
+
+def url_to_hyperlink(text):
+    if isinstance(text,list):
+        return text
+    # Convert markdown-style links [text](url) to HTML
+    markdown_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
+    text = re.sub(markdown_pattern, r'<a href="\2">\1</a>', text)
+    
+    # Convert plain URLs (that are not already part of a link)
+    url_pattern = r'(?<!href=")(https?://[^\s]+)'
+    text = re.sub(url_pattern, r'<a href="\1">\1</a>', text)
+    
+    return text
+
+# Function to create hyperlinks for places
+def create_hyperlinks(place_list, coordinates):
+    hyperlinks = {}
+    for index, name in enumerate(place_list):
+        formatted_id = name.replace('"', '').replace(' ', '-').lower()
+        # Create a dictionary for coordinates with 'lng' and 'lat' keys
+        coord_dict = {"lng": coordinates[index][0], "lat": coordinates[index][1]}
+        # Create the hyperlink HTML
+        hyperlink = f'<a href="#" class="location-link" data-coordinates="{coord_dict}" data-marker-id="{formatted_id}">{name}</a>'
+        hyperlinks[name] = hyperlink
+    return hyperlinks
+
+
+def insertHyperlinks(message, replacements):
+    # Split the message into chunks by the `~` delimiter
+    chunks = message.split("~")
+    # Replace chunks with hyperlinks where applicable
+    chunks = map(lambda chunk: replacements.get(chunk.strip(), chunk), chunks)
+    # Reconstruct the message by joining the mapped chunks
+    final_message = "".join(chunks)
+    # Step 1: Process numbered and bulleted lists
+    final_message = format_paragraphs(final_message)
+    return final_message
+
+def format_paragraphs(text):
+    # Split text into paragraphs by double line breaks
+    paragraphs = text.split('\n\n')
+    # Wrap each paragraph in <p> tags and join them
+    formatted_text = ''.join([f'<p>{p.strip()}</p>' for p in paragraphs])
+    # Replace single line breaks with <br> for line breaks within a paragraph
+    formatted_text = formatted_text.replace('\n', '<br>')
+    return formatted_text

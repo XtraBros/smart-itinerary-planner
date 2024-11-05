@@ -3,14 +3,9 @@
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 import pandas as pd
-import ast
 import json
-import numpy as np
-from thefuzz import fuzz, process
 from pymongo import MongoClient
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 import requests
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import PromptTemplate
@@ -19,7 +14,8 @@ import certifi
 import re
 import gridfs
 import math
-
+from helpers.route_solver import solve_route
+from helpers.text_processing import *
 
 app = Flask(__name__)
 
@@ -266,7 +262,7 @@ def optimize_route():
         print(place_names)
 
         # Assuming place_names is a list of names to optimize
-        ordered_place_indexes = solve_route(place_names)
+        ordered_place_indexes = solve_route(place_names, dist_mat, name_to_index)
         print(ordered_place_indexes)
 
         # Return the optimized route indexes as a JSON response
@@ -446,156 +442,6 @@ def reset_memory():
 #         return jsonify({'error': 'No names provided'}), 400
 #     coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
 #     return jsonify({'centroids': coords_str})
-
-###########################################################################################################
-# route optimisation function:
-# input: list of place names from CSV.
-# output: permutation of indexes based on input e.g. [0,2,3,5,1,4]
-def solve_route(place_names):
-    # fetch distance matrix
-    distance_matrix = pd.DataFrame(list(dist_mat.find({}, {"_id": 0})))
-    # remove first column which contains names of locations.
-    distance_matrix = distance_matrix.drop(columns=distance_matrix.columns[0])
-    # get index of place from csv file
-    indices = [name_to_index[name] for name in place_names]
-    # Fetch distance matrix subset
-    subset_matrix = distance_matrix.iloc[indices, indices]
-    # Run TSP pacakge
-    permutation = solve_tsp(subset_matrix)
-    return permutation
-
-def solve_tsp(distance_matrix):
-    # Handle inf values and NA values:
-    distance_matrix = distance_matrix.replace([float('inf'), -float('inf')], 1e9)  # Replace inf with a large value
-    distance_matrix = distance_matrix.fillna(0)  # Replace NaNs with 0 or an appropriate value
-    # Create the routing index manager
-    scaled_distance_matrix = (distance_matrix * 1000).round().astype(int)
-    manager = pywrapcp.RoutingIndexManager(len(distance_matrix), 1, 0)
-
-    # Create the routing model
-    routing = pywrapcp.RoutingModel(manager)
-
-    def distance_callback(from_index, to_index):
-        """Returns the distance between the two nodes."""
-        # Convert from routing variable Index to distance matrix NodeIndex.
-        from_node = manager.IndexToNode(from_index)
-        to_node = manager.IndexToNode(to_index)
-        return scaled_distance_matrix.iloc[from_node, to_node]
-
-    transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-
-    # Define cost of each arc
-    routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
-
-    # Setting first solution heuristic
-    search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-    search_parameters.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.SAVINGS)
-    def print_solution(manager, routing, solution):
-        """Prints solution on console."""
-        print(f"Objective: {solution.ObjectiveValue()/1000} m")
-        index = routing.Start(0)
-        plan_output = "Route for vehicle 0:\n"
-        route_distance = 0
-        while not routing.IsEnd(index):
-            plan_output += f" {manager.IndexToNode(index)} ->"
-            previous_index = index
-            index = solution.Value(routing.NextVar(index))
-            route_distance += routing.GetArcCostForVehicle(previous_index, index, 0)
-        plan_output += f" {manager.IndexToNode(index)}\n"
-        plan_output += f"Route distance: {route_distance/1000}m\n"
-        print(plan_output)
-    # Solve the problem
-    solution = routing.SolveWithParameters(search_parameters)
-    print_solution(manager,routing,solution)
-
-    # Get the solution and extract the optimal sequence
-    if solution:
-        index = routing.Start(0)
-        optimal_sequence = []
-        while not routing.IsEnd(index):
-            optimal_sequence.append(manager.IndexToNode(index))
-            index = solution.Value(routing.NextVar(index))
-        optimal_sequence.append(manager.IndexToNode(index))  # Add the start point to complete the loop
-        # sentosa use open routing, use set to remove duplicates.
-        return list(set(optimal_sequence))
-    else:
-        return None
-# Function to handle duplicated GPT output
-def remove_dupes(response_text):
-    # Use a regular expression to find all occurrences of dictionaries
-    matches = re.findall(r'\{.*?\}', response_text)
-
-    if matches:
-        # Return only the first dictionary
-        return matches[0]
-    else:
-        # If no dictionary is found, return the original response
-        return response_text
-
-# handle code chunks and ``` tags 
-
-def remove_code_blocks(content):
-    # Step 1: Remove language identifiers in code blocks (e.g., ```json, ```html), but keep the content inside
-    cleaned_content = re.sub(r'```[a-zA-Z]+\n', '', content)
-    
-    # Step 2: Remove closing code block tags (```)
-    cleaned_content = re.sub(r'```', '', cleaned_content)
-    
-    # Step 3: Remove escape sequences like \n (newline), \t (tab), etc.
-    cleaned_content = cleaned_content.replace('\n', ' ').replace('\t', ' ')
-    
-    # Step 4: Remove multiple spaces caused by newline/tab replacements
-    cleaned_content = re.sub(r'\s+', ' ', cleaned_content)
-    
-    return cleaned_content.strip()
-
-
-def url_to_hyperlink(text):
-    if isinstance(text,list):
-        return text
-    # Convert markdown-style links [text](url) to HTML
-    markdown_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
-    text = re.sub(markdown_pattern, r'<a href="\2">\1</a>', text)
-    
-    # Convert plain URLs (that are not already part of a link)
-    url_pattern = r'(?<!href=")(https?://[^\s]+)'
-    text = re.sub(url_pattern, r'<a href="\1">\1</a>', text)
-    
-    return text
-
-# Function to create hyperlinks for places
-def create_hyperlinks(place_list, coordinates):
-    hyperlinks = {}
-    for index, name in enumerate(place_list):
-        formatted_id = name.replace('"', '').replace(' ', '-').lower()
-        # Create a dictionary for coordinates with 'lng' and 'lat' keys
-        coord_dict = {"lng": coordinates[index][0], "lat": coordinates[index][1]}
-        # Create the hyperlink HTML
-        hyperlink = f'<a href="#" class="location-link" data-coordinates="{coord_dict}" data-marker-id="{formatted_id}">{name}</a>'
-        hyperlinks[name] = hyperlink
-    return hyperlinks
-
-
-def insertHyperlinks(message, replacements):
-    # Split the message into chunks by the `~` delimiter
-    chunks = message.split("~")
-    # Replace chunks with hyperlinks where applicable
-    chunks = map(lambda chunk: replacements.get(chunk.strip(), chunk), chunks)
-    # Reconstruct the message by joining the mapped chunks
-    final_message = "".join(chunks)
-    # Step 1: Process numbered and bulleted lists
-    final_message = format_paragraphs(final_message)
-    return final_message
-
-def format_paragraphs(text):
-    # Split text into paragraphs by double line breaks
-    paragraphs = text.split('\n\n')
-    # Wrap each paragraph in <p> tags and join them
-    formatted_text = ''.join([f'<p>{p.strip()}</p>' for p in paragraphs])
-    # Replace single line breaks with <br> for line breaks within a paragraph
-    formatted_text = formatted_text.replace('\n', '<br>')
-    return formatted_text
 
 def generate_final_gpt_response(messages, state):
     """
