@@ -51,13 +51,13 @@ window.onload = function () {
         Nav.stopNavFunc();
     }
 
-    pauseAndpaly.onclick = function () {
-        if (simulationRunning) {
-            pauseSimulation();
-        } else {
-            //simulateUserLocation(route);
-        }
-    }
+    // pauseAndpaly.onclick = function () {
+    //     if (simulationRunning) {
+    //         pauseSimulation();
+    //     } else {
+    //         //simulateUserLocation(route);
+    //     }
+    // }
 
     btn.onclick = function () {
         popupModal.style.display = "block";

@@ -1,5 +1,5 @@
 import { sharedState } from "./main.js";
-import { setDottedLine } from "./map-setup.js";
+import { setDottedLine, debounce, initProperty } from "./map-setup.js";
 
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 const dingwenndId = document.getElementById('dingwennd');
@@ -56,10 +56,10 @@ export function updateNavigationInstructions(userLocation) {
         return;
     }
     // Display current instruction if still within bounds
-    if (sharedState.currentStepIndex < instructions.length) {
-        const nextInstruction = instructions[sharedState.currentStepIndex].instruction;
+    if (sharedState.currentStepIndex < sharedState.instructions.length) {
+        const nextInstruction = sharedState.instructions[sharedState.currentStepIndex].instruction;
         const remainingDist = calculateRemainingDistance(route.coordinates.slice(sharedState.currentStepIndex));
-        const modifierType = instructions[sharedState.currentStepIndex].modifier;
+        const modifierType = sharedState.instructions[sharedState.currentStepIndex].modifier;
         displayInstruction(nextInstruction, distanceToCurrentCheckpoint, remainingDist, modifierType);
     } else {
         // End of route handling, display remaining distance and duration
@@ -86,7 +86,7 @@ export function trackUserLocation(route) {
     sharedState.walkedRoute.unshift(route.coordinates[0]);
     // Function to handle location updates from the GeolocateControl
     function updateLocation(position) {
-        if (!simulationRunning) return;
+        // if (!simulationRunning) return;
         const currentPosition = {
             lng: position.coords.longitude,
             lat: position.coords.latitude
@@ -520,9 +520,9 @@ export function disableNavigationMode() {
         zoom: 15, // Adjust zoom level if needed
         duration: 1000
     });
-    if (simulationRunning) {
-        pauseSimulation();
-    }
+    // if (simulationRunning) {
+    //     pauseSimulation();
+    // }
 }
 export function calculateRemainingDistance(routeCoordinates) {
     let totalRemainingDistance = 0;
@@ -547,8 +547,8 @@ export function stopNavFunc() {
     listButton.style.display = 'block';
     pauseAndpaly.style.display = 'none';
     disableNavigationMode();
-    simulationRunning = false;
-    simulationPaused = false;
+    // simulationRunning = false;
+    // simulationPaused = false;
     initProperty()
 }
 export function exitNavFunc() {
@@ -563,8 +563,8 @@ export function exitNavFunc() {
 export async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     const popupModal = document.getElementById('popupModal');
     popupModal.style.display = 'none';
-    console.log('-------->>>>>>', simulationRunning, simulationPaused)
-    if (simulationRunning || simulationPaused) return;
+    // console.log('-------->>>>>>', simulationRunning, simulationPaused)
+    // if (simulationRunning || simulationPaused) return;
     disminiNav();
     let places = []
     let waypoints = []

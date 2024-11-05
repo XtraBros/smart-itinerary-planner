@@ -12,7 +12,7 @@ let simulationTimeout;         // Variable to store the timeout ID
 let simulatePoint;
 
 import { thumbnailURI, sharedState} from "./main.js";
-import { optimizeRoute, isUserOffRoute } from "./nav-mod.js";
+import { optimizeRoute, isUserOffRoute, disableNavigationMode, closedNavfun } from "./nav-mod.js";
 
 export function initProperty() {
     sharedState.routeIndex = 0;
