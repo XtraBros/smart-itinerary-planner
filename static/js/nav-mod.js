@@ -1,5 +1,5 @@
 import { sharedState } from "./main.js";
-import { setDottedLine, debounce, initProperty } from "./map-setup.js";
+import { setDottedLine, debounce, initProperty, disminiNav, displayRoute } from "./map-setup.js";
 
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 const dingwenndId = document.getElementById('dingwennd');
