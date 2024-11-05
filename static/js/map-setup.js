@@ -162,10 +162,10 @@ export function handleOrientationChange(event) {
     // console.log("User facing direction changed.")
     const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
     // if (mapUserLocation) {
-    //         document.getElementsByClassName('newHeader')[0].innerText = `${mapUserLocation.style.transform}`
+    //         document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(mapUserLocation.style.transform)} > ${normalizeAngle(userHeading)}: -${userHeading}`
     // }
     if (sharedState.map && event.alpha !== null && sharedState.switchoverState === 'FOCUS') {
-        const userHeading = (360 - event.alpha) % 360 ;
+        const userHeading = (360 - event.alpha) % 360;
         if (sharedState.firstClick) {
             if (!firstTime) {
                 firstTime = setTimeout(() => {
@@ -175,7 +175,7 @@ export function handleOrientationChange(event) {
                 }, 600)
             }
         } else {
-            sharedState.map.rotateTo(userHeading, { animate: false });
+            sharedState.map.rotateTo(normalizeAngle(userHeading) + 35, { animate: false });
         }
     }
     if (sharedState.userMarker && mapUserLocation) {
@@ -592,7 +592,9 @@ export async function get_coordinates_without_route(data) {
     const orderOfVisit = await getCoordinatesWithPlace(data);
     return orderOfVisit;
 }
-
+function normalizeAngle(angle) {
+    return (angle % 360 + 360) % 360;
+}
 export function addMarkers(placeNames, waypoints) {
     if (window.mapMarkers) {
         for (const [key, value] of Object.entries(window.mapMarkers)) {
