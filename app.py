@@ -6,6 +6,7 @@ import pandas as pd
 import json
 from pymongo import MongoClient
 from sentence_transformers import SentenceTransformer
+# from thefuzz import process
 import requests
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import PromptTemplate
@@ -296,15 +297,15 @@ def place_info():
 
     return jsonify(place_info)
 
-@app.route('/weather_icon', methods=['POST'])
-def weather_icon():
-    forecast = request.json
-    lib = ["Fair", "Fair (Day)", "Fair (Night)", "Fair and Warm", "Partly Cloudy",
-           "Partly Cloudy (Day)", "Partly Cloudy (Night)", "Cloudy", "Hazy", "Slightly Hazy",
-           "Windy", "Mist", "Fog", "Light Rain", "Moderate Rain", "Heavy Rain", "Passing Showers",
-           "Light Showers", "Showers", "Heavy Showers", "Thundery Showers", "Heavy Thundery Showers",
-           "Heavy Thundery Showers with Gusty Winds"]
-    return jsonify(process.extractOne(forecast,lib)[0])
+# @app.route('/weather_icon', methods=['POST'])
+# def weather_icon():
+#     forecast = request.json
+#     lib = ["Fair", "Fair (Day)", "Fair (Night)", "Fair and Warm", "Partly Cloudy",
+#            "Partly Cloudy (Day)", "Partly Cloudy (Night)", "Cloudy", "Hazy", "Slightly Hazy",
+#            "Windy", "Mist", "Fog", "Light Rain", "Moderate Rain", "Heavy Rain", "Passing Showers",
+#            "Light Showers", "Showers", "Heavy Showers", "Thundery Showers", "Heavy Thundery Showers",
+#            "Heavy Thundery Showers with Gusty Winds"]
+#     return jsonify(process.extractOne(forecast,lib)[0])
 
 @app.route('/find_nearby_pois', methods=['POST'])
 def find_nearby():
@@ -442,74 +443,6 @@ def reset_memory():
 #         return jsonify({'error': 'No names provided'}), 400
 #     coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
 #     return jsonify({'centroids': coords_str})
-
-def generate_final_gpt_response(messages, state):
-    """
-    This function sends the original query along with the function results back to GPT
-    to generate a final response based on both.
-    """
-    # Construct a message to pass the function results back to GPT
-    original_query = messages[1]["content"]
-    print(f"== original query == {original_query}")
-    # Prepare the function results summary
-    function_results_summary = ""
-    for function_name, result in state["function_results"].items():
-        function_results_summary += f"Result from {function_name}: {json.dumps(result)}\n"
-    print(f"== Function calling results in final resp == {function_results_summary}")
-    # Add a message to provide context to GPT
-    final_messages = [
-        {"role": "system", "content": f'''Generate a response to answer the user's query using the following function call results.
-         Important Guidelines:
-        1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
-
-        2) **Operation Key**:
-        - The "operation" key can only have one of the following values:
-            - "location": Use this when your response includes any place, location, attraction, or when providing directions.
-            - "message": Use this when your response is a general reply that does not include any locations or attractions.
-
-        3) **Response Key**:
-        - If "operation" is "message", the value of "response" should be a single string containing your text reply.
-        - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
-
-        4) **Use Exact POI Names**: Always use the exact names of the places as provided in {sentosa_places_list}.
-        
-        5) Your response should mainly address the user.
-         '''},
-        {"role": "user", "content": original_query},
-        {"role": "system", "content": f"Function call results:\n{function_results_summary}"}
-    ]
-
-    # Call GPT to generate a final response
-    final_response = client.chat.completions.create(
-        model=model_name,
-        messages=final_messages
-    )
-    print(f"==final resp== {final_response.choices[0].message.content}")
-    # Return the final response from GPT
-    return final_response.choices[0].message.content
-
-def process_formatted_history(history):
-    lines = history.strip().split("\n")
-    processed_history = []
-    
-    for line in lines:
-        # Check if it's an AI response line and attempt to parse it as JSON
-        if line.startswith("AI:"):
-            # Extract JSON part from the line
-            ai_message_json = line[3:].strip()
-            try:
-                # Parse JSON and extract 'response'
-                ai_message = json.loads(ai_message_json)
-                response = ai_message.get("response", "")
-                processed_history.append(f"AI: {response}")
-            except json.JSONDecodeError:
-                # If JSON is invalid, keep line as is
-                processed_history.append(line)
-        else:
-            # For Human lines, keep them as they are
-            processed_history.append(line)
-    
-    return "\n".join(processed_history)
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
 ###########################################################################################################
@@ -881,6 +814,52 @@ def handle_function_calls(messages, state):
             # If message.content exists, return the message content
             print(f"=== function call response === {message.content}")
             return message.content
+
+
+def generate_final_gpt_response(messages, state):
+    """
+    This function sends the original query along with the function results back to GPT
+    to generate a final response based on both.
+    """
+    # Construct a message to pass the function results back to GPT
+    original_query = messages[1]["content"]
+    print(f"== original query == {original_query}")
+    # Prepare the function results summary
+    function_results_summary = ""
+    for function_name, result in state["function_results"].items():
+        function_results_summary += f"Result from {function_name}: {json.dumps(result)}\n"
+    print(f"== Function calling results in final resp == {function_results_summary}")
+    # Add a message to provide context to GPT
+    final_messages = [
+        {"role": "system", "content": f'''Generate a response to answer the user's query using the following function call results.
+         Important Guidelines:
+        1) **Response Structure**: Your response **MUST** be a SINGLE Python dictionary with exactly two keys: "operation" and "response". No additional text or keys are allowed. The dictionary should be the only content in your response.
+
+        2) **Operation Key**:
+        - The "operation" key can only have one of the following values:
+            - "location": Use this when your response includes any place, location, attraction, or when providing directions.
+            - "message": Use this when your response is a general reply that does not include any locations or attractions.
+
+        3) **Response Key**:
+        - If "operation" is "message", the value of "response" should be a single string containing your text reply.
+        - If "operation" is "location", the value of "response" should be a list of the exact names of the places of interest.
+
+        4) **Use Exact POI Names**: Always use the exact names of the places as provided in {sentosa_places_list}.
+        
+        5) Your response should mainly address the user.
+         '''},
+        {"role": "user", "content": original_query},
+        {"role": "system", "content": f"Function call results:\n{function_results_summary}"}
+    ]
+
+    # Call GPT to generate a final response
+    final_response = client.chat.completions.create(
+        model=model_name,
+        messages=final_messages
+    )
+    print(f"==final resp== {final_response.choices[0].message.content}")
+    # Return the final response from GPT
+    return final_response.choices[0].message.content
 
 
 ###########################################################################################################

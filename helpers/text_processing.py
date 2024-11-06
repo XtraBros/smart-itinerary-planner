@@ -74,3 +74,26 @@ def format_paragraphs(text):
     # Replace single line breaks with <br> for line breaks within a paragraph
     formatted_text = formatted_text.replace('\n', '<br>')
     return formatted_text
+
+def process_formatted_history(history):
+    lines = history.strip().split("\n")
+    processed_history = []
+    
+    for line in lines:
+        # Check if it's an AI response line and attempt to parse it as JSON
+        if line.startswith("AI:"):
+            # Extract JSON part from the line
+            ai_message_json = line[3:].strip()
+            try:
+                # Parse JSON and extract 'response'
+                ai_message = json.loads(ai_message_json)
+                response = ai_message.get("response", "")
+                processed_history.append(f"AI: {response}")
+            except json.JSONDecodeError:
+                # If JSON is invalid, keep line as is
+                processed_history.append(line)
+        else:
+            # For Human lines, keep them as they are
+            processed_history.append(line)
+    
+    return "\n".join(processed_history)
