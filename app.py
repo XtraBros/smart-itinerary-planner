@@ -861,7 +861,6 @@ def generate_final_gpt_response(messages, state):
     # Return the final response from GPT
     return final_response.choices[0].message.content
 
-
 ###########################################################################################################
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=3106)

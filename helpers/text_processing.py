@@ -1,4 +1,5 @@
 import re
+import json
 # Function to handle duplicated GPT output
 def remove_dupes(response_text):
     # Use a regular expression to find all occurrences of dictionaries
