@@ -270,7 +270,7 @@ function normalizeAngle(angle) {
 
 function handleOrientationChange(event) {
     // console.log("User facing direction changed.")
-    const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]        
+    const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]
     // if (mapUserLocation) {
     //         document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(mapUserLocation.style.transform)} > ${normalizeAngle(userHeading)}: -${userHeading}`
     // }
@@ -285,7 +285,7 @@ function handleOrientationChange(event) {
                 }, 600)
             }
         } else {
-            map.rotateTo(normalizeAngle(userHeading) + 35, { animate: false });
+            map.rotateTo(360 - event.alpha, { animate: false });
         }
     }
     if (userMarker && mapUserLocation) {
