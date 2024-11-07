@@ -1,6 +1,7 @@
 // Fetch the access token from the Flask endpoint and initialize the map
 var waypoints = [];
 var map;
+let hiddenMap;
 var directions;
 var geolocateControl;
 var walkedRoute = [];
@@ -271,11 +272,9 @@ function normalizeAngle(angle) {
 function handleOrientationChange(event) {
     // console.log("User facing direction changed.")
     const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]
-    // if (mapUserLocation) {
-    //         document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(mapUserLocation.style.transform)} > ${normalizeAngle(userHeading)}: -${userHeading}`
-    // }
+    const holdMapUser = document.getElementsByClassName('mapboxgl-user-location')[1]
     if (map && event.alpha !== null && switchoverState === 'FOCUS') {
-        const userHeading = (360 - event.alpha) % 360;
+        // const userHeading = event.alpha;
         if (firstCilck) {
             if (!firstTime) {
                 firstTime = setTimeout(() => {
@@ -285,16 +284,21 @@ function handleOrientationChange(event) {
                 }, 600)
             }
         } else {
-            map.rotateTo(360 - event.alpha, { animate: false });
+            if (holdMapUser && mapUserLocation) {
+                const angle = normalizeAngle(getRotateZ(holdMapUser.style.transform));
+                // document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(holdMapUser.style.transform)} : ${angle}`
+                map.rotateTo(angle, { animate: false });
+            }
         }
     }
     if (userMarker && mapUserLocation) {
         const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
-        if (switchoverState === 'POSINIT') {
-            markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
-        } else {
-            markerElement.style.transform = `rotateZ(0deg)`
-        }
+        markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
+        // if (switchoverState === 'POSINIT') {
+        //     markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
+        // } else {
+        //     markerElement.style.transform = `rotateZ(0deg)`
+        // }
     }
 }
 
@@ -548,14 +552,20 @@ fetch('/config')
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.THUMBNAIL_URI;
         const center = [103.827973, 1.250277]
-        map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v12',
-            //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
-            //center: [103.8285654153839, 1.24791502223719],
+        const comfig = {
+            style: 'mapbox://styles/mapbox/streets-v12', // 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             center,
             zoom: 13,
             minZoom: 10,
+        }
+        hiddenMap = new mapboxgl.Map({
+            container: 'hiddenMap',
+            ...comfig,
+        });
+
+        map = new mapboxgl.Map({
+            container: 'map',
+            ...comfig,
         });
 
         directions = new MapboxDirections({
@@ -570,6 +580,15 @@ fetch('/config')
         //     [104.1, 1.5]   // 东北角 (大致在东北海域)
         // ];
         // map.setMaxBounds(bounds);
+        const geolocationCogif = {
+            positionOptions: {
+                enableHighAccuracy: true,
+                timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
+                maximumAge: 0                  // Prevents caching of location
+            },
+            trackUserLocation: true,
+            showUserHeading: true, // If you want to show user's heading direction
+        }
         map.on('load', function () {
             // Define and set bounds for the map
             // 3D Layer for navigation view.    
@@ -610,15 +629,7 @@ fetch('/config')
                 }
             });
             // geolocation tracking
-            geolocateControl = new mapboxgl.GeolocateControl({
-                positionOptions: {
-                    enableHighAccuracy: true,
-                    timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
-                    maximumAge: 0                  // Prevents caching of location
-                },
-                trackUserLocation: true,
-                showUserHeading: true, // If you want to show user's heading direction
-            });
+            geolocateControl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
             map.addControl(geolocateControl);
             // force mapbox to stop changing map view when geolocating
             geolocateControl._updateCamera = () => { }
@@ -709,6 +720,13 @@ fetch('/config')
                     e.preventDefault();
                 });
             }
+        });
+        hiddenMap.on('load', function () {
+            const geoloHidl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
+            hiddenMap.addControl(geoloHidl);
+            setTimeout(() => {
+                geoloHidl.trigger();
+            }, 500)
         });
         map.on('dragstart', () => {
             userTouch = true
