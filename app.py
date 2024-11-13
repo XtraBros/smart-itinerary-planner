@@ -106,6 +106,7 @@ def ask_plan():
         6) **Specific POI Info**: 
         - For details about a specific POI, use `get_poi_by_name` to get the data and reply with operation "message".
         - For Sensoryscape queries, list the 8 "Sensoryscape:..." attractions first (operation "location"); if more info is needed, introduce "Sentosa Sensoryscape" using "get_poi_by_name" with operation "message".
+        - For cable cars, refer to "Singapore Cable Car Sky Network".
 
         7) **Location Requests**: 
         - For current location, use `find_nearest_poi` with operation "location."
