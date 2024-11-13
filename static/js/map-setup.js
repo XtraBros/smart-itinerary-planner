@@ -991,7 +991,7 @@ function calculateDistance(point1, point2) {
 // Function to update navigation instructions based on user's current location
 function updateNavigationInstructions(userLocation) {
     const thresholdDistance = 20; // Distance threshold for reaching a checkpoint
-    const arrivalThreshold = 5; // Distance threshold for final destination arrival
+    const arrivalThreshold = 10; // Distance threshold for final destination arrival
 
     // Get current and next checkpoint locations
     const currentCheckpoint = {
