@@ -551,18 +551,17 @@ def remove_code_blocks(content):
     
     return cleaned_content.strip()
 
-
 def url_to_hyperlink(text):
-    if isinstance(text,list):
+    if isinstance(text, list):
         return text
+    
     # Convert markdown-style links [text](url) to HTML
     markdown_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
     text = re.sub(markdown_pattern, r'<a href="\2">\1</a>', text)
     
-    # Convert plain URLs (that are not already part of a link)
-    url_pattern = r'(?<!href=")(https?://[^\s]+)'
+    # Convert plain URLs (that are not already part of a link), excluding trailing periods
+    url_pattern = r'(?<!href=")(https?://[^\s.]+(?:\.[^\s/]+)+(/[^.\s]*)?)\.?(?=\s|$)'
     text = re.sub(url_pattern, r'<a href="\1">\1</a>', text)
-    
     return text
 
 # Function to create hyperlinks for places
