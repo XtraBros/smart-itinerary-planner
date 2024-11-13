@@ -302,7 +302,38 @@ function handleOrientationChange(event) {
     }
 }
 
+function revealPosition(position) {
+    userLocation = {
+        lng: position.coords.longitude,
+        lat: position.coords.latitude,
+        userHeading: position.coords.heading,
+    };
+}
+
+function errorCallBock(error) {
+    alert('Error requesting location permission');
+}
+
+function handlePermission() {
+    navigator.permissions.query({ name: "geolocation" }).then((result) => {
+        if (result.state === "granted") {
+            // 有用户权限
+          getUserCurrentPosition();
+        } else if (result.state === "prompt") {
+            // 请求用户权限
+            navigator.geolocation.getCurrentPosition(revealPosition, errorCallBock);
+        } else if (result.state === "denied") {
+            // 拒位置权限
+            alert('Location permission denied.');
+        }
+        result.addEventListener("change", () => {
+            alert(result.state);
+        });
+    });
+}
+
 window.onload = function () {
+    handlePermission();
     console.log("Resetting chat memory")
     fetch("/reset_memory"); // Calls endpoint to reset memory
     window.mapMarkers = {};
@@ -510,6 +541,7 @@ function handerMap(e, type) {
     e.preventDefault();
 }
 function switchoverHandled() {
+    handlePermission();
     userTouch = false
     switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
     const img = dingwenndId.getElementsByTagName('img')[0]

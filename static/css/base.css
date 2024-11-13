@@ -795,7 +795,7 @@ a.mapboxgl-ctrl-logo {
 .cancelBottm {
   background-color: white; border: 1px solid #FF8A00; color: #FF8A00;
 }
-/* .mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { opacity: 0.001 !important; } */
+.mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { opacity: 0.001 !important; }
 #dingwennd { width: 46px; height: 46px; border-radius: 26px; background-color: white !important; text-align: center; line-height: 62px; }
 .minumts { color: #2C2C2C; font-weight: 600; font-size: 18px; padding: 3px 0px; }
 /* 移出动画 */
@@ -890,4 +890,7 @@ a.mapboxgl-ctrl-logo {
   background-size: contain;
   width: 70px;
    height: 70px;
+}
+.mapboxgl-ctrl-top-right .mapboxgl-ctrl-group:last-child {
+  opacity: 0;
 }
