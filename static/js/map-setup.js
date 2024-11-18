@@ -528,17 +528,20 @@ function navDitle(e, name) {
 }
 
 function handerMap(e, type) {
+    e.preventDefault();
+    window.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
+    const mapDiv = document.getElementById("container")
     if (type === 'list') {
         tabMap.classList.remove('activeButton');
-        mapEl.style.display = 'none'
-        poiList.style.display = 'block'
+        mapDiv.style.zIndex = 1
+        poiList.style.zIndex = 5
     } else {
         tabList.classList.remove('activeButton');
-        mapEl.style.display = 'block'
-        poiList.style.display = 'none'
+        mapDiv.style.zIndex = 5
+        poiList.style.zIndex = 1
+        map.resize();
     }
     e.target.classList.add('activeButton')
-    e.preventDefault();
 }
 function switchoverHandled() {
     handlePermission();
