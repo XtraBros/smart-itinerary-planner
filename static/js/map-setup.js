@@ -234,6 +234,8 @@ const chatbotArea = document.getElementById('chatbot-area');
 const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
 const dingwenndId = document.getElementById('dingwennd');
+const mapDiv = document.getElementById("container")
+
 const handleGeolocation = debounce(function(position) {
     const userPos = {
         lng: position.coords.longitude,
@@ -516,8 +518,8 @@ function systemQuestionFunc(e) {
 }
 
 function showMapTab() {
-    mapEl.style.display = 'block';
-    poiList.style.display = 'none';
+    mapDiv.style.zIndex = 5
+    poiList.style.zIndex = 1
     tabList.classList.remove('activeButton');
     tabMap.classList.add('activeButton');
 }
@@ -530,7 +532,6 @@ function navDitle(e, name) {
 function handerMap(e, type) {
     e.preventDefault();
     window.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
-    const mapDiv = document.getElementById("container")
     if (type === 'list') {
         tabMap.classList.remove('activeButton');
         mapDiv.style.zIndex = 1
@@ -901,7 +902,7 @@ function setUserLocationMark(coord) {
     const el = document.createElement('div');
     el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     userMarker = new mapboxgl.Marker({
-        // rotationAlignment: 'map',
+        rotationAlignment: 'map',
         element: el
     })
         .setLngLat(coord)
@@ -1544,6 +1545,7 @@ function getMapboxWlakRoute(coordinates) {
                 route = data.routes[0].geometry;
                 steps = data.routes[0].legs[0].steps;
                 walkStepsNavs = data
+                paintLine(route);
                 return { legs, route };
             } else {
                 console.error('No route found: ', data);
@@ -1737,7 +1739,7 @@ async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     if (waypoints.length && places.length) {
         await displayRoute(places, waypoints, isfromUser);
     }
-    paintLine(route)
+    // paintLine(route)
 }
 
 function closedNavfun() {
@@ -2127,7 +2129,6 @@ function addMarkertoMap({ placeName, category, index, template, description, par
     popupContent.querySelector('button').onclick = async function () {
         disminiNav();
         await displayRoute([placeName], [location], true);
-        paintLine(route);
     };
 
     // Create a popup and marker for the map
