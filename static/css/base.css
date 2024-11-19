@@ -12,12 +12,23 @@ h3 {
   font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif,'Apple Color Emoji', 'Microsoft YaHei';
 }
 #container {
-  width: 100%;
-  height: calc(100vh);
+  width: 100%; height: calc(100vh); position: absolute; left: 0px; top: 0px; bottom: 0px; right: 0px; z-index: 5;
+}
+html {
+  scroll-behavior: smooth;
 }
 #map {
-  height: calc(100vh);
+  height: 100%;
   width: 100%;
+ flex: 1;
+}
+#hiddenMap {
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  left: 0px; top: 0px;
+  display: none ;
+  z-index: 0;
 }
 #zoom-controls {
   position: fixed;
@@ -182,6 +193,12 @@ h3 {
 .guideText .messageStype a {
   color: #00ade9;
 }
+.guideText .messageStype p {
+  margin-bottom: 0.5em;
+}
+.messageStyle p:last-child {
+  margin-bottom: 0;
+}
 .guideText .messageStype:before {
   position: absolute;
   top: 6px;
@@ -232,6 +249,9 @@ h3 {
 }
 .newHeader::-webkit-scrollbar {
   display: none;
+}
+.newHeader .active p{
+  color: #333; font-weight: bold;
 }
 .list {
   width: 120%;
@@ -318,7 +338,8 @@ h3 {
   position: relative;
 }
 #poiList {
-  display: none; padding: 70px 15px 0px 15px;
+  z-index: 0; padding: 70px 15px 0px 15px; position: absolute; left: 0px; top: 0px; width: 100%; height: 100%;
+  box-sizing: border-box; overflow: hidden; overflow-y: scroll; background-color: white;
 }
 .itemSlide {
   margin-bottom: 10px; padding: 12px 12px 14px 12px;
@@ -777,7 +798,8 @@ a.mapboxgl-ctrl-logo {
 .cancelBottm {
   background-color: white; border: 1px solid #FF8A00; color: #FF8A00;
 }
-.mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { display: none; }
+.mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { opacity: 0.001 !important; }
+#dingwennd { width: 46px; height: 46px; border-radius: 26px; background-color: white !important; text-align: center; line-height: 62px; }
 .minumts { color: #2C2C2C; font-weight: 600; font-size: 18px; padding: 3px 0px; }
 /* 移出动画 */
 @keyframes fadeshowout {
@@ -864,4 +886,14 @@ a.mapboxgl-ctrl-logo {
   100% {
     transform: scale(1);
   }
+}
+.user-location-marker {
+  transform-origin: center;
+  background-image: url('../icons/cuser.svg');
+  background-size: contain;
+  width: 70px;
+   height: 70px;
+}
+.mapboxgl-ctrl-top-right .mapboxgl-ctrl-group:last-child {
+  opacity: 0;
 }

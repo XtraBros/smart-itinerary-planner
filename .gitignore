@@ -171,6 +171,10 @@ cython_debug/
 # Zac's misc files
 notes.md
 graph/distance_matrix_gen.ipynb
+graph/upload_sentosa.py
+static/thumbnails
+keys
+configs
 dashboard/upload_sentosa.py
 static/thumbnails
 keys

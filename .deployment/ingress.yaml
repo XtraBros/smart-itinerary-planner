@@ -1,0 +1,56 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sentosa
+  namespace: sentosa
+  labels:
+    name: sentosa
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig":
+      { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-southeast-1:770091703903:certificate/30458fb8-329d-4127-b937-4498c8374129
+    alb.ingress.kubernetes.io/group.name: sglb
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: instance
+spec:
+  rules:
+    - host: sentosa.lab.softgrid.cc
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: external-service
+                port:
+                  name: http
+
+---
+
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-service
+subsets:
+  - addresses:
+      - ip: 172.31.47.72
+    ports:
+      - name: http
+        port: 3106
+        protocol: TCP
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-service
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 3106
+      protocol: TCP
+      nodePort: 30106
