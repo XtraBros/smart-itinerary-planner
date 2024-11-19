@@ -1,37 +1,29 @@
 // Fetch the access token from the Flask endpoint and initialize the map
 var waypoints = [];
 var map;
-let hiddenMap;
 var directions;
-var geolocateControl;
 var walkedRoute = [];
 let route = {};
-const blacklist = new Set();
 let api_response = {};
 let navigationEnabled = false;
 let simulationRunning = false; // Flag to indicate if the simulation is running
 let simulationPaused = false;  // Flag to indicate if the simulation is paused
 let simulationTimeout;         // Variable to store the timeout ID
-let userMarker = null;
+let userMarker;
 let userLocation;
 let isFirstOpen = false;
 let startMarker;
 let nedMarker;
 let steps;
-let instructions;
 let routeIndex = 0;
+let increment = true;
 let currentStepIndex = 0; // Start at the first step of the route
 let suggestionData;
 let thumbnailURI;
 let endPlaceProt; // end port
 let simulatePoint;
-let isUserRunning = false;
-let walkStepsNavs;
-let suggestionTimer = null;  // To store the timer instance
-const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
-let switchoverState = 'POSINIT'; // POSINIT or FOCUS
-let userTouch = false;
-let firstCilck = false;
+const chatMessages = document.getElementById("chatbot-messages");
+
 function initProperty() {
     routeIndex = 0;
     currentStepIndex = 0;
@@ -45,15 +37,13 @@ function getUserCurrentPosition(callBack, error) {
     navigator.geolocation.getCurrentPosition((position) => {
         userLocation = {
             lng: position.coords.longitude,
-            lat: position.coords.latitude,
-            userHeading: position.coords.heading,
+            lat: position.coords.latitude
         };
-        setUserLocationMark([position.coords.longitude, position.coords.latitude]);
         if (callBack) {
             callBack(userLocation)
         }
         // get POIs
-        getPoisByLocation(userLocation);
+        getPoisByLocation(userLocation)
         console.log(`User location updated to: ${userLocation.lat}, ${userLocation.lng}`);
     }, (e) => {
         if (error) {
@@ -79,138 +69,96 @@ async function getPoisByLocation(location) {
 
         const poisData = await response.json();
         const placeInfoResponse = await fetchPlacesData(poisData);
-        if (poisData && !poisData.length) return
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
-        fetchTemplate('static/html/info-card.html').then(template => {
-            const parser = new DOMParser();
-            let contenxt = '';
-            let listCont = '';
-            poisData.forEach((placeName, index) => {
-                // Construct the Google Cloud thumbnail URL
-                var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-                // Check if placeName contains "station" or "toilet" and update accordingly
-                if (placeName.toLowerCase().includes("toilet")) {
-                    formattedPlaceName = "toilet";
-                } else if (placeName.toLowerCase().includes("station")) {
-                    formattedPlaceName = "station";
-                }
-                // Skip adding markers for toilets and stations
-                if (formattedPlaceName === "toilet" || formattedPlaceName === "station") {
-                    return;  // Continue to the next POI without adding a marker
-                }
-                const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
-    
-                contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
-                                <div class="slideItme">
-                                    <div class="swperimg">
-                                        <img src="${thumbnailUrl}" alt="${placeName}" srcset="">
-                                    </div>
-                                    <div class="visitors">
-                                        <h4>${placeName}</h4>
-                                        <p class="vistDesc"><span class="islander">Islander earns 50 points</span></p>
-                                        <p class="address">
-                                            <span>
-                                                <img src="static/icons/addess.svg" alt="" srcset="">
-                                                500m
-                                            </span>
-                                            <span>
-                                                <img src="static/icons/time.svg" alt="" srcset="">
-                                                5mins
-                                            </span>
-                                        </p>
-                                    </div>
+
+        let contenxt = '';
+        let listCont = '';
+        poisData.forEach((placeName, index) => {
+            // Construct the Google Cloud thumbnail URL
+            const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+            const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
+
+            contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
+                            <div class="slideItme">
+                                <div class="swperimg">
+                                    <img src="${thumbnailUrl}" alt="${placeName}" srcset="">
                                 </div>
-                            </div>`;
-    
-                listCont += setMapList({index, thumbnailUrl, placeName});
-                // orderOfVisit[0].map((item, i) => {
-                //     if (item === placeName) {
-                //         addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
-                //         return orderOfVisit[1][i]
-                //     }
-                // })
-            });
-            swiperconent.innerHTML = contenxt;
-            poiList.innerHTML = listCont;
+                                <div class="visitors">
+                                    <h4>${placeName}</h4>
+                                    <p class="vistDesc"><span class="islander">Islander earns 50 points</span></p>
+                                    <p class="address">
+                                        <span>
+                                            <img src="static/icons/addess.svg" alt="" srcset="">
+                                            500m
+                                        </span>
+                                        <span>
+                                            <img src="static/icons/time.svg" alt="" srcset="">
+                                            5mins
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>`;
+
+            listCont += `<div class="itemSlide" key='${index}' data-name='${placeName}'>
+                            <div class="listimg">
+                                <img src="${thumbnailUrl}" alt="${placeName}" width="100%" srcset="">
+                            </div>
+                            <div class="titleBox">
+                                <div class="title">${placeName}</div>
+                                <div class="rightimg">
+                                    <button onclick="navDitle(event, '${placeName}')">
+                                        <img src="static/icons/navimg.svg" alt="" srcset="">
+                                    </button>
+                                    <span>Wait 5 mins</span>
+                                </div>
+                            </div>
+                            <div class="disqu vistDesc">
+                                <span class="islander">Islander earns 50 points</span>
+                            </div>
+                        </div>`;
         });
-    } catch (error) {
-        console.error('Get Pois by Location', error);
-        return null;
-    }
-}
-
-async function checkNearbyEvent(location) {
-    // console.log("Checking nearby events.")
-    try {
-        const response = await fetch('/find_nearby_pois', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ user_location: { longitude: location.lng, latitude: location.lat }, radius_in_meters: 30 })
-        });
-
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-
-        const poisData = await response.json();
-        const placeInfoResponse = await fetchPlacesData(poisData);
-        if (poisData && !poisData.length) return
+        swiperconent.innerHTML = contenxt;
+        poiList.innerHTML = listCont;
         // prompt suggestion if not recent:
         const placeNames = [];
         const coordinates = [];
 
         Object.keys(placeInfoResponse).forEach(placeName => {
-            if (!blacklist.has(placeName)) { // Check if placeName is not in the blacklist
-                placeNames.push(placeName);
-                coordinates.push(placeInfoResponse[placeName].location);
-            }
+            placeNames.push(placeName);
+            coordinates.push(placeInfoResponse[placeName].location);
         });
-        if (placeNames.length > 0) {
+        let nextResponse = await fetch('/check_events', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ places: placeNames, coordinates: coordinates })
+        });
 
-            let nextResponse = await fetch('/check_events', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ places: placeNames, coordinates: coordinates, blacklist: blacklist })
+        if (nextResponse.status === 204) {
+            console.log('No events found for the provided places.');
+            return;
+        }
+
+        if (!nextResponse.ok) {
+            throw new Error('Network response was not ok ' + nextResponse.statusText);
+        }
+
+        let nextData = await nextResponse.json();
+
+        if (nextData.response) {
+            appendMessage({
+                text: nextData.response,
+                chatMessages,
+                type: 'message',
+                placeNames: nextData.found_places,
+                longAndlat: nextData.coordinates,
+                fromUser: '1',
             });
-            placeNames.forEach(placeName => {
-                blacklist.add(placeName);
-            });
-            console.log("== blacklist == " + Array.from(blacklist));
-            if (nextResponse.status === 204) {
-                console.log('No events found for the provided places.');
-                return;
-            }
 
-            if (!nextResponse.ok) {
-                throw new Error('Network response was not ok ' + nextResponse.statusText);
-            }
-
-            let nextData = await nextResponse.json();
-            if (!chatMessages) {
-                var chatMessages = document.getElementById("chatbot-messages");
-            }
-            if (nextData.response) {
-                appendMessage({
-                    text: nextData.response,
-                    chatMessages,
-                    type: 'message',
-                    placeNames: nextData.found_places,
-                    longAndlat: nextData.coordinates,
-                    fromUser: '1',
-                });
-
-                attachEventListenersToHyperlinks();
-            }
-            // if chat box not open, show pop up
-            const popupModal = document.getElementById('popupModal');
-            if (window.getComputedStyle(popupModal).display == 'none') {
-                idaeBox.classList.add('fadeshowin');
-            }
+            attachEventListenersToHyperlinks();
         }
     } catch (error) {
         console.error('Get Pois by Location', error);
@@ -233,111 +181,8 @@ const totDist = document.getElementById('totDist');
 const chatbotArea = document.getElementById('chatbot-area');
 const navcompleted = document.getElementById('navcompleted');
 const listButton = document.getElementsByClassName('mapandlistbut')[0]
-const dingwenndId = document.getElementById('dingwennd');
-const mapDiv = document.getElementById("container")
-
-const handleGeolocation = debounce(function(position) {
-    const userPos = {
-        lng: position.coords.longitude,
-        lat: position.coords.latitude,
-    };
-    if(isUserRunning){
-        updateNavigationInstructions(userPos);
-    }
-}, 1000);
-function setMapList({index, placeName, thumbnailUrl}) {
-    return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
-        <div class="listimg">
-            <img src="${thumbnailUrl}" alt="${placeName}" width="100%" srcset="">
-        </div>
-        <div class="titleBox">
-            <div class="title">${placeName}</div>
-            <div class="rightimg">
-                <button onclick="navDitle(event, '${placeName}')">
-                    <img src="static/icons/navimg.svg" alt="" srcset="">
-                </button>
-                <span>Wait 5 mins</span>
-            </div>
-        </div>
-        <div class="disqu vistDesc">
-            <span class="islander">Islander earns 50 points</span>
-        </div>
-    </div>`;
-}
-
-let firstTime = null;
-
-function normalizeAngle(angle) {
-    return (angle % 360 + 360) % 360;
-}
-
-function handleOrientationChange(event) {
-    // console.log("User facing direction changed.")
-    const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0]
-    const holdMapUser = document.getElementsByClassName('mapboxgl-user-location')[1]
-    if (map && event.alpha !== null && switchoverState === 'FOCUS') {
-        // const userHeading = event.alpha;
-        if (firstCilck) {
-            if (!firstTime) {
-                firstTime = setTimeout(() => {
-                    clearTimeout(firstTime);
-                    firstTime = null
-                    firstCilck = false
-                }, 600)
-            }
-        } else {
-            if (holdMapUser && mapUserLocation) {
-                const angle = normalizeAngle(getRotateZ(holdMapUser.style.transform));
-                // document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(holdMapUser.style.transform)} : ${angle}`
-                map.rotateTo(angle, { animate: false });
-            }
-        }
-    }
-    if (userMarker && mapUserLocation) {
-        const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
-        markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
-        // if (switchoverState === 'POSINIT') {
-        //     markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
-        // } else {
-        //     markerElement.style.transform = `rotateZ(0deg)`
-        // }
-    }
-}
-
-function revealPosition(position) {
-    userLocation = {
-        lng: position.coords.longitude,
-        lat: position.coords.latitude,
-        userHeading: position.coords.heading,
-    };
-}
-
-function errorCallBock(error) {
-    alert('Error requesting location permission');
-}
-
-function handlePermission() {
-    navigator.permissions.query({ name: "geolocation" }).then((result) => {
-        if (result.state === "granted") {
-            // 有用户权限
-          getUserCurrentPosition();
-        } else if (result.state === "prompt") {
-            // 请求用户权限
-            navigator.geolocation.getCurrentPosition(revealPosition, errorCallBock);
-        } else if (result.state === "denied") {
-            // 拒位置权限
-            alert('Location permission denied.');
-        }
-        result.addEventListener("change", () => {
-            alert(result.state);
-        });
-    });
-}
 
 window.onload = function () {
-    handlePermission();
-    console.log("Resetting chat memory")
-    fetch("/reset_memory"); // Calls endpoint to reset memory
     window.mapMarkers = {};
     const tishiDom = document.getElementById('tishi')
     isFirstOpen = localStorage.getItem('isFirstOpen')
@@ -378,22 +223,13 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        // iOS 13+ 需要请求权限
-        DeviceOrientationEvent.requestPermission()
-            .then(response => {
-                if (response === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientationChange);
-                } else {
-                    alert('未授予设备方向传感器权限');
-                }
-            })
-            .catch(console.error);
-    } else {
-        window.addEventListener('deviceorientation', debounce(function (event) {
-            handleOrientationChange(event)
-        }, 10));
-    }
+    // window.addEventListener('deviceorientation', function (event) {
+    //     const alpha = event.alpha;
+    //     if (userMarker) {
+    //         const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+    //         markerElement.style.transform = `rotate(${alpha}deg)`
+    //     }
+    // });
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -417,37 +253,9 @@ window.onload = function () {
         const place = swiperconent.querySelector(`div[key='${swiper.activeIndex}']`).getAttribute('data-name');
         getPlaceCoordWithName(place);
     });
-    window.addEventListener('beforeunload', function (event) {
-        // confimration to leave page
-        event.preventDefault();
-    });
-}
-
-function detectDevice() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    const isIOS = /iPad|iPhone|iPod/.test(userAgent) || 
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (isIOS) {
-        return 'iOS';
-    }
-    if (/android/i.test(userAgent)) {
-        return 'Android';
-    }
-    return 'Unknown';
-}
-
-function debounce(fn, delay) {
-    let timer;
-    return function (...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-    };
 }
 
 function stopNavFunc() {
-    endPlaceProt = null
-    map.setZoom(14);
-    switchoverState = 'POSINIT'
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
@@ -456,11 +264,9 @@ function stopNavFunc() {
     simulationRunning = false;
     simulationPaused = false;
     initProperty()
-    geolocateControl.off('geolocate', handleGeolocation);
 }
 
 function exitNavFunc() {
-    endPlaceProt = null
     closedNavfun();
     poiSwiper.classList.remove('fadeshowin');
     listButton.style.display = 'block';
@@ -471,7 +277,7 @@ function exitNavFunc() {
 
 function domeShowBootFuc() {
     foodBox.classList.add('fadeshowin');
-    // getSuggestion(1);
+    getSuggestion(1);
 }
 
 async function getPlaceCoordWithName(place, isNotMarker) {
@@ -518,8 +324,8 @@ function systemQuestionFunc(e) {
 }
 
 function showMapTab() {
-    mapDiv.style.zIndex = 5
-    poiList.style.zIndex = 1
+    mapEl.style.display = 'block';
+    poiList.style.display = 'none';
     tabList.classList.remove('activeButton');
     tabMap.classList.add('activeButton');
 }
@@ -530,56 +336,26 @@ function navDitle(e, name) {
 }
 
 function handerMap(e, type) {
-    e.preventDefault();
-    window.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
     if (type === 'list') {
         tabMap.classList.remove('activeButton');
-        mapDiv.style.zIndex = 1
-        poiList.style.zIndex = 5
+        mapEl.style.display = 'none'
+        poiList.style.display = 'block'
     } else {
         tabList.classList.remove('activeButton');
-        mapDiv.style.zIndex = 5
-        poiList.style.zIndex = 1
-        map.resize();
+        mapEl.style.display = 'block'
+        poiList.style.display = 'none'
     }
+    e.preventDefault();
     e.target.classList.add('activeButton')
 }
-function switchoverHandled() {
-    handlePermission();
-    userTouch = false
-    switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
-    const img = dingwenndId.getElementsByTagName('img')[0]
-    img.setAttribute('src', `static/icons/${switchoverState === 'FOCUS' ? 'nios' : 'posinit'}.svg`);
-    if (isUserRunning) {
-        if (switchoverState === 'FOCUS') {
-            map.setCenter([userLocation.lng, userLocation.lat]);
-        }
-        return
-    }
-    if (switchoverState === 'FOCUS') {
-        map.setZoom(17);
-        map.setPitch(60, {duration: 10});
-        map.setCenter([userLocation.lng, userLocation.lat]);
-    } else {
-        outFoucsMode()
-    }
-}
 
-function outFoucsMode() {
-    map.setZoom(14);
-    map.setPitch(0, {duration: 10});
-    map.resetNorth({duration: 10});
-}
-
-function getRotateZ(transform) {
-    if (!transform) return 0;
-    const match = transform.match(/rotateZ\(([-0-9.]+)deg\)/);
-    if (match) {
-        return parseFloat(match[1]); // 返回角度值
-    } else {
-        return 0; // 如果没有 rotateZ，则返回 0
-    }
-}
+const geolocateControl = new mapboxgl.GeolocateControl({
+    positionOptions: {
+        enableHighAccuracy: true
+    },
+    trackUserLocation: true,
+    showUserHeading: true,
+});
 
 fetch('/config')
     .then(response => response.json())
@@ -588,20 +364,13 @@ fetch('/config')
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.THUMBNAIL_URI;
         const center = [103.827973, 1.250277]
-        const comfig = {
-            style: 'mapbox://styles/mapbox/streets-v12', // 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
-            center,
-            zoom: 13,
-            minZoom: 10,
-        }
-        hiddenMap = new mapboxgl.Map({
-            container: 'hiddenMap',
-            ...comfig,
-        });
-
         map = new mapboxgl.Map({
             container: 'map',
-            ...comfig,
+            style: 'mapbox://styles/mapbox/streets-v12',
+            //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
+            //center: [103.8285654153839, 1.24791502223719],
+            center,
+            zoom: 13
         });
 
         directions = new MapboxDirections({
@@ -611,30 +380,14 @@ fetch('/config')
         });
         // variable to allow resizing function
         window.mapboxMap = map;
-        // const bounds = [
-        //     [103.6, 1.2],  // 西南角 (大致在西南海域)
-        //     [104.1, 1.5]   // 东北角 (大致在东北海域)
-        // ];
-        // map.setMaxBounds(bounds);
-        const geolocationCogif = {
-            positionOptions: {
-                enableHighAccuracy: true,
-                timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
-                maximumAge: 0                  // Prevents caching of location
-            },
-            trackUserLocation: true,
-            showUserHeading: true, // If you want to show user's heading direction
-        }
+        const bounds = [
+            [103.6, 1.2],  // 西南角 (大致在西南海域)
+            [104.1, 1.5]   // 东北角 (大致在东北海域)
+        ];
+        map.setMaxBounds(bounds);
         map.on('load', function () {
             // Define and set bounds for the map
             // 3D Layer for navigation view.    
-            const navControl = new mapboxgl.NavigationControl({
-                showCompass: true,  // Show compass (default is true)
-                showZoom: false,
-                rotateInner: true,
-                showDigit: true
-            });
-            map.addControl(navControl, 'top-right')
             map.addLayer({
                 'id': '3d-buildings',
                 'source': 'composite',
@@ -664,11 +417,6 @@ fetch('/config')
                     'fill-extrusion-vertical-gradient': true // This gives the buildings a gradient similar to the default style
                 }
             });
-            // geolocation tracking
-            geolocateControl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
-            map.addControl(geolocateControl);
-            // force mapbox to stop changing map view when geolocating
-            geolocateControl._updateCamera = () => { }
             map.loadImage('static/icons/walked.png', function (err, image) {
                 if (err) {
                     console.error('Error loading image:', err);
@@ -676,234 +424,90 @@ fetch('/config')
                 }
                 map.addImage('walkedArrow', image);
             });
-            function startCheckingNearbyEvents() {
-                function checkAndRepeat() {
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        const loc = {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude
-                        };
-            
-                        // Call checkNearbyEvent and wait for it to complete
-                        Promise.resolve(checkNearbyEvent(loc))
-                            .then(() => {
-                                // Schedule the next check after 5 seconds once checkNearbyEvent completes
-                                setTimeout(checkAndRepeat, 5000);
-                            })
-                            .catch(error => {
-                                console.error("Error in checkNearbyEvent:", error);
-                                // Retry after 5 seconds in case of an error
-                                setTimeout(checkAndRepeat, 5000);
-                            });
-                    }, function(error) {
-                        console.error("Error fetching location:", error);
-                        // Retry after 5 seconds if geolocation fails
-                        setTimeout(checkAndRepeat, 5000);
-                    });
-                }
-            
-                // Start the first check
-                checkAndRepeat();
-            }
-            
-            // Start the nearby event checking process
-            startCheckingNearbyEvents();
-            setTimeout(() => {
-                geolocateControl.trigger();
-            }, 100)
-            // check navigation and update nav isntructions
-            navigator.geolocation.watchPosition(
-                (position) => {
-                    const userPos = {
-                        lng: position.coords.longitude,
-                        lat: position.coords.latitude,
-                    };
-                    if (isUserRunning) {
-                        updateNavigationInstructions(userPos);
-                    }
-                },
-                (error) => {
-                    console.error("Error retrieving geolocation:", error);
-                },
-                {
-                    enableHighAccuracy: true,
-                    maximumAge: 1000,       // Use cached position for up to 1 second
-                    timeout: 5000           // Wait up to 5 seconds for a location fix
-                }
-            );
-            geolocateControl.on('trackuserlocationstart', ({target}) => {
-                target.options.geolocation.getCurrentPosition((position) => {
-                    setUserLocationMark([position.coords.longitude, position.coords.latitude]);
-                    userLocation = {
-                        lng: position.coords.longitude,
-                        lat: position.coords.latitude,
-                        userHeading: position.coords.heading,
-                    };
-                })
-                userTouch = false
-                if(!userLocation) return
-                map.easeTo({
-                    center: [userLocation.lng, userLocation.lat],
-                    bearing: userLocation.userHeading,  // Set the map's bearing to the user's heading
-                    zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
-                    duration: 500         // Animation duration (optional)
-                });
-            }); 
-            const compassButton = document.querySelector('.mapboxgl-ctrl-compass')
-            if (compassButton) {
-                compassButton.addEventListener('click', function(e) {
-                    userTouch = true
-                    e.preventDefault();
-                });
-            }
-        });
-        hiddenMap.on('load', function () {
-            const geoloHidl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
-            hiddenMap.addControl(geoloHidl);
-            setTimeout(() => {
-                geoloHidl.trigger();
-            }, 500)
-        });
-        map.on('dragstart', () => {
-            userTouch = true
-            switchoverState = 'POSINIT'
-            const img = dingwenndId.getElementsByTagName('img')[0]
-            img.setAttribute('src', `static/icons/posinit.svg`);
-        });
-        map.on('dragend', () => {
-            // if (switchoverState === 'POSINIT' && !isUserRunning) {
-            //     map.setPitch(0, {duration: 500});
-            //     map.setZoom(14);
-            // }
+            // user location control
+            // Add the Geolocate Control to the map
+            map.addControl(geolocateControl);
+            // setTimeout(() => {
+            //     geolocateControl.trigger();
+            // }, 100)
+            // Override the geolocate event to use navigator.geolocation
+            geolocateControl.on('geolocate', (position) => {
+                userLocation = {
+                    lng: position.coords.longitude,
+                    lat: position.coords.latitude
+                };
+                const userLoc = [position.coords.longitude, position.coords.latitude];
+                map.setZoom(13);
+                // map.setCenter(userLoc);
+                setUserLocationMark(userLoc);
+                // if (Object.keys(route).length && endPlaceProt) {
+                //     const coordinates = [userLoc, ...endPlaceProt].map(coord => coord.join(',')).join(';');
+                //     getMapboxWlakRoute(coordinates).then(result => {
+                //         if (result.legs && result.route) {
+                //             initProperty()
+                //             if (map.getLayer('route')) {
+                //                 map.removeLayer('route');
+                //             }
+                //             if (map.getSource('route')) {
+                //                 map.removeSource('route');
+                //             }
+                //             if (map.getLayer('walked-route')) {
+                //                 map.removeLayer('walked-route');
+                //             }
+                //             if (map.getSource('walked-route')) {
+                //                 map.removeSource('walked-route');
+                //             }
+                //             if (simulationRunning || simulationPaused) {
+                //                 simulationRunning = false
+                //                 setMapRoute(result.route)
+                //                 simulateUserLocation(result.route)
+                //             } else {
+                //                 paintLine(result.route)
+                //             }
+                //         }
+                //     })
+                // }
+            });
+            geolocateControl._updateCamera = () => {}
         });
     })
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
 
-// Function to generate the route and return the route object using async/await
-async function getRouteObject(userLocation) {
-    try {
-        // Call genRoute and wait for the result (route object)
-        const result = await genRoute(userLocation);
-        return result.route; // Return the route object directly
-    } catch (error) {
-        console.error('Error fetching route object:', error);
-        throw error; // Rethrow the error for higher-level handling
-    }
-}
 // Navigation Mode 
 function enableNavigationMode(data) {
-    
     instructions = getInstructions(data);
     document.getElementById('popupModal').style.display = "none";
-    const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
-    geolocate.style.top = '210px'
-    isUserRunning = true
     const instructionPopup = document.getElementById('navigation');
-    if (routeIndex == 0) {
-        const firstInstruction = instructions[0];
-        // Extract the relevant information for the first instruction
-        const instructionTextContent = firstInstruction.instruction; // Text instruction
-        const distanceToCheckpoint = firstInstruction.distance; // Distance to the next checkpoint
-        const remainingDistance = calculateRemainingDistance(route.coordinates); // Assuming you have a function to calculate total remaining distance
-        const modifier = firstInstruction.modifier; // Modifier for direction icons (left, right, etc.)
-        // Display the first instruction
-        displayInstruction(instructionTextContent, distanceToCheckpoint, remainingDistance, modifier);
-    }
     // Show the pop-up
     instructionPopup.classList.add('fadeshowin');
     poiSwiper.classList.add('fadeshowin');
     listButton.style.display = 'none';
-    // pauseAndpaly.style.display = 'block';
+    pauseAndpaly.style.display = 'block';
+
     // Animate the map to tilt and zoom for 3D perspective
     map.easeTo({
         pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
         zoom: 20,  // Adjust the zoom level for better street view navigation
         center: [userLocation.lng, userLocation.lat], // Center map on user's location
-        duration: 600 // Animation duration in milliseconds
+        duration: 500 // Animation duration in milliseconds
     });
-    switchoverState = 'FOCUS'
-    // Wait for easeTo animation to complete, then start tracking
-    map.once('moveend', () => simulateUserLocation(route));
-}
-// Function to check if user is off-route
-function isUserOffRoute(userLocation, route, tolerance = 0.03) {
-    const userCoordinates = [userLocation.lng, userLocation.lat];
-    // Extract the coordinates from the route object
-    const routeCoordinates = route.coordinates;
-    // Create a turf lineString from route coordinates
-    const routeLine = turf.lineString(routeCoordinates);
 
-    // Create a buffered area around the route with the specified tolerance
-    const bufferedRoute = turf.buffer(routeLine, tolerance, { units: 'kilometers' });
-
-    // Create a point from the user's location
-    const userPoint = turf.point(userCoordinates);
-
-    // 计算点到线的最小距离
-    const distance = turf.pointToLineDistance(userPoint, routeLine, { units: "miles" }) * 1069;
-    const nearestPointOnLine = turf.nearestPointOnLine(routeLine, userPoint, { units: "meters" });
-    const notStartLine = turf.lineSlice(nearestPointOnLine, turf.point(route.coordinates[route.coordinates.length - 1]), routeLine);
-    const walkedLine = turf.lineSlice(turf.point(route.coordinates[0]), nearestPointOnLine, routeLine);
-    if (map.getSource('walked-route')) {
-        map.getSource('walked-route').setData(walkedLine);
-    }
-    if (map.getSource('route')) {
-        map.getSource('route').setData(notStartLine);
-    }
-    const isInPolygon = turf.booleanPointInPolygon(userPoint, bufferedRoute);
-    // console.log(`user distance: ${distance}(m)`, isInPolygon)
-    return { distance, isInPolygon, nearestPointOnLine }
+    // Wait for easeTo animation to complete, then start simulation
+    map.once('moveend', simulateUserLocation(route));
 }
 
-
-// Handle route recalculation when user goes off-route
-function recalculateRoute(currentLocation, destination) {
-    const directionsRequest = `https://api.mapbox.com/directions/v5/mapbox/walking/${currentLocation.lng},${currentLocation.lat};${destination[0]},${destination[1]}s?geometries=geojson&steps=true&access_token=${mapboxgl.accessToken}`;
-
-    fetch(directionsRequest)
-        .then(response => response.json())
-        .then(data => {
-            const newRoute = data.routes[0].geometry.coordinates;
-            // replace and reset all route memory objects
-            route = data.routes[0].geometry;
-            steps = data.routes[0].legs[0].steps;
-            walkStepsNavs = data;
-            instructions = getInstructions(steps);
-            routeIndex = 0;
-            if (!endPlaceProt) return
-            // Update the map with new route
-            if (map.getSource('route')) {
-                map.getSource('route').setData({
-                    'type': 'Feature',
-                    'geometry': {
-                        'type': 'LineString',
-                        'coordinates': newRoute
-                    }
-                });
-            }
-            // restart tracking:
-            trackUserLocation(route);
-            if (!isUserRunning) {
-                paintLine(route, false)
-            } else {
-                setDottedLine()
-            }
-            console.log("New route calculated and updated on the map.");
-        })
-        .catch(error => console.error('Error in recalculating route:', error));
-}
-function setUserLocationMark(coord) {
-    console.log("Setting User Marker.")
+function setUserLocationMark(coord, angle) {
+    console.log('------->>>>>', userMarker)
     if (userMarker) {
         userMarker.remove()
         userMarker = null
     }
     const el = document.createElement('div');
-    el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
+    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/cuser.svg" style="transform: rotate(${angle || 0}deg)" alt="" srcset=""></p>`);
     userMarker = new mapboxgl.Marker({
-        rotationAlignment: 'map',
+        color: 'red',
         element: el
     })
         .setLngLat(coord)
@@ -939,7 +543,7 @@ function calculateRemainingDistance(routeCoordinates) {
 function displayInstruction(instructionTextContent, distanceToCheckpoint, remainingDistance, modifier) {
     // Extract the instruction text from the object    
     // Get the pop-up elements
-    // console.log("Modifier: " + modifier);
+    console.log("Modifier: " + modifier);
     const instructionPopup = document.getElementById('navigation');
     const instructionIcon = document.getElementById('distanceIcon');
     const instructionText = document.getElementById('instructionText');
@@ -962,8 +566,8 @@ function displayInstruction(instructionTextContent, distanceToCheckpoint, remain
     // Get the current time
     const currentTime = new Date();
 
-    // Calculate the ETA by adding the remaining duration (in minutes) to the current time
-    const etaTime = new Date(currentTime.getTime() + remainingDuration * 60 * 1000);
+    // Calculate the ETA by adding the remaining duration (in seconds) to the current time
+    const etaTime = new Date(currentTime.getTime() + remainingDuration * 1000);
 
     // Format the ETA to show only the hours and minutes
     const etaHours = etaTime.getHours().toString().padStart(2, '0');
@@ -973,7 +577,7 @@ function displayInstruction(instructionTextContent, distanceToCheckpoint, remain
     document.querySelector('#journeyETA h3').textContent = formattedETA;
     // Update the text content with the extracted instruction
     instructionText.textContent = instructionTextContent;
-    distanceText.textContent = `${distanceToCheckpoint.toFixed(1)} metres`;
+    distanceText.textContent = `${distanceToCheckpoint.toFixed(1)}`;
     // Show the pop-up
     instructionPopup.classList.add('fadeshowin')
 }
@@ -994,69 +598,64 @@ function calculateDistance(point1, point2) {
 }
 
 // Function to update navigation instructions based on user's current location
-function updateNavigationInstructions(userLocation) {
-    const thresholdDistance = 20; // Distance threshold for reaching a checkpoint
-    const arrivalThreshold = 10; // Distance threshold for final destination arrival
-
-    // Get current and next checkpoint locations
-    const currentCheckpoint = {
+let previousDistanceToCheckpoint = Infinity; // Initialize with a large number
+function updateNavigationInstructions(userLocation, nextPosition) {
+    const thresholdDistance = 5;
+    // Calculate the distance between the user's current location and the next checkpoint
+    const checkpoint = {
         lng: steps[currentStepIndex].maneuver.location[0],
         lat: steps[currentStepIndex].maneuver.location[1]
     };
+    const distanceToCheckpoint = calculateDistance(userLocation, checkpoint);
+    // console.log("Currently tracking checkpoint: " + JSON.stringify(checkpoint));
 
-    const nextCheckpoint = currentStepIndex + 1 < steps.length
-        ? {
-            lng: steps[currentStepIndex + 1].maneuver.location[0],
-            lat: steps[currentStepIndex + 1].maneuver.location[1]
-        }
-        : null; // No next checkpoint if this is the final step
+    // Calculate the bearing using the next interpolated position instead of the checkpoint
+    const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
 
-    const distanceToCurrentCheckpoint = calculateDistance(userLocation, currentCheckpoint);
+    map.easeTo({
+        pitch: 60, // Tilts the map to 60 degrees for a 3D perspective
+        zoom: 20,  // Adjust the zoom level for better street view navigation
+        center: [userLocation.lng, userLocation.lat], // Center map on user's location
+        duration: 500, // Animation duration in milliseconds
+        bearing: userHeading
+    });
 
     let increment = false;
 
-    // Check if the user has reached or passed the current checkpoint
-    if (distanceToCurrentCheckpoint < thresholdDistance) {
-        // If close enough to current checkpoint, increment step
-        increment = true;
-    } else if (nextCheckpoint) {
-        // Calculate distance to next checkpoint
-        const distanceToNextCheckpoint = calculateDistance(userLocation, nextCheckpoint);
-
-        // If user is closer to the next checkpoint than the current one, increment step
-        if (distanceToNextCheckpoint < distanceToCurrentCheckpoint) {
-            increment = true;
-        }
-    }
-
-    // If increment is true, move to the next step
-    if (increment) {
+    // Check if the user is at the start of the navigation and ahead of the first checkpoint
+    if (currentStepIndex === 0 && distanceToCheckpoint > previousDistanceToCheckpoint) {
+        // Skip to the next checkpoint if the user is ahead of the first one
         currentStepIndex++;
-        console.log("Moving to next checkpoint, step index: " + currentStepIndex);
+        console.log("User started ahead of the first checkpoint, skipping to step index: " + currentStepIndex);
+        increment = true;
+    } else if (distanceToCheckpoint < thresholdDistance) {
+        // If the user is close enough to the checkpoint, move to the next step
+        currentStepIndex++;
+        console.log("Threshold met, incrementing step index to: " + currentStepIndex);
+        increment = true;
     }
-    const finalDestination = {
-        lng: steps[steps.length - 1].maneuver.location[0],
-        lat: steps[steps.length - 1].maneuver.location[1]
-    };
-    const distanceToFinalDestination = calculateDistance(userLocation, finalDestination);
-    if (distanceToFinalDestination <= arrivalThreshold) {
-        // Display arrival message and stop further instructions
-        console.log("User has arrived at the destination.");
-        document.getElementById("distanceText").textContent = "You have arrived at your destination!";
-        return;
-    }
-    // Display current instruction if still within bounds
-    if (currentStepIndex < instructions.length) {
-        const nextInstruction = instructions[currentStepIndex].instruction;
-        const remainingDist = calculateRemainingDistance(route.coordinates.slice(currentStepIndex));
+
+    previousDistanceToCheckpoint = distanceToCheckpoint; // Update the previous distance
+
+    // Load the next instruction if the step index was incremented
+    if (currentStepIndex < instructions.length && increment) {
+        const nextInstructionObject = instructions[currentStepIndex].instruction;
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
+        console.log("Remaining distance to destination: " + remainingDist);
         const modifierType = instructions[currentStepIndex].modifier;
-        displayInstruction(nextInstruction, distanceToCurrentCheckpoint, remainingDist, modifierType);
+        displayInstruction(nextInstructionObject, distanceToCheckpoint, remainingDist, modifierType);
+        increment = false;
     } else {
-        // End of route handling, display remaining distance and duration
-        const remainingDist = calculateRemainingDistance(route.coordinates.slice(currentStepIndex));
-        document.getElementById("distanceText").textContent = `${distanceToCurrentCheckpoint.toFixed(1)} metres`;
-        document.querySelector('#journeyDistance h3').textContent = (remainingDist / 1000).toFixed(2);
-        document.querySelector('#journeyDuration h3').textContent = calculateRemainingDuration(remainingDist, 1.4);
+        const remainingDist = calculateRemainingDistance(route.coordinates.slice(routeIndex));
+        document.getElementById("distanceText").textContent = `${distanceToCheckpoint.toFixed(1)}`;
+        // Update remaining distance in kilometers
+        const remainingDistanceKm = (remainingDist / 1000).toFixed(2);
+        document.querySelector('#journeyDistance h3').textContent = remainingDistanceKm;
+
+        // Calculate and update the remaining duration
+        const remainingDuration = calculateRemainingDuration(remainingDist, 1.4);
+        document.querySelector('#journeyDuration h3').textContent = remainingDuration;
+
     }
 }
 
@@ -1083,134 +682,7 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 
     return ((θ * 180) / Math.PI + 360) % 360;
 }
-
-// Function to use user's current location and update their position along the route
-function trackUserLocation(route) {
-    console.log("Tracking user location");
-    const imgs = pauseAndpaly.getElementsByTagName('img')[0];
-    imgs.setAttribute('src', `static/icons/pause.svg`);
-
-    // Set the user's initial location marker at the starting point
-    walkedRoute.unshift(route.coordinates[0]);
-    // Function to handle location updates from the GeolocateControl
-    function updateLocation(position) {
-        if (!simulationRunning) return;
-        const currentPosition = {
-            lng: position.coords.longitude,
-            lat: position.coords.latitude
-        };
-        const nextPosition = {
-            lng: route.coordinates[routeIndex + 1][0],
-            lat: route.coordinates[routeIndex + 1][1]
-        };
-        debounce(() => {
-            getPoisByLocation(currentPosition);
-        }, 5000)
-        // Update the user's location in your app
-        simulateUserLocation(currentPosition);
-
-        // Update the marker position to the user's current location
-        // userMarker.setLngLat([currentPosition.lng, currentPosition.lat]);
-
-        // Calculate remaining distance to the next position on the route
-        const remainingDistance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
-
-        // updateWalkedRoute([currentPosition.lng, currentPosition.lat]);
-        updateRemainingRoute([currentPosition.lng, currentPosition.lat]);
-
-        // If the remaining distance is less than the threshold, move to the next point
-        if (remainingDistance <= targetDistance) {
-            routeIndex++;
-
-            if (routeIndex >= route.coordinates.length - 1) {
-                // Route completed
-                closedNavfun();
-                navcompleted.classList.add('fadeshowin');
-                pauseAndpaly.style.display = 'none';
-                initProperty();
-                console.log("Route tracking completed");
-            }
-        }
-    }
-
-    // Event listener for when the user's location changes
-    geolocateControl.on('geolocate', (position) => {
-        // console.log('Updating user location:')
-        debounce(() => {
-            updateLocation(position);
-        }, 100)
-    });
-    geolocateControl.on('geolocate', handleGeolocation);
-}
-
-function updateWalkedRoute(line) {
-    // Add the current position to the walked route
-    // walkedRoute.push(currentPosition);
-
-    // Update the map with the walked route
-    map.getSource('walked-route').setData({
-        "type": "Feature",
-        "geometry": {
-            "type": "LineString",
-            "coordinates": walkedRoute
-        }
-    });
-}
-
-function updateRemainingRoute(currentPosition) {
-    // Update the remaining route after trimming
-    const remainingRoute = route.coordinates.slice(routeIndex + 1);
-    remainingRoute.unshift(currentPosition);
-    if (!map.getSource('route')) {
-        map.addSource('route', {
-            'type': 'geojson',
-            'data': {
-                'type': 'Feature',
-                'properties': {},
-                "geometry": {
-                "type": "LineString",
-                "coordinates": remainingRoute
-        }
-            }
-        });
-    } else {
-        map.getSource('route').setData({
-            "type": "Feature",
-            "geometry": {
-                "type": "LineString",
-                "coordinates": remainingRoute
-            }
-        });
-    }
-}
-
-// Function to calculate the distance between two points using the Haversine formula
-function distanceBetweenPoints(p1, p2) {
-    const R = 6371000; // Radius of the Earth in meters
-    const toRad = Math.PI / 180;
-    const dLat = (p2[1] - p1[1]) * toRad;
-    const dLng = (p2[0] - p1[0]) * toRad;
-
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(p1[1] * toRad) * Math.cos(p2[1] * toRad) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-
-// Function to interpolate between two points
-function interpolate(p1, p2, fraction) {
-    return [
-        p1[0] + (p2[0] - p1[0]) * fraction,
-        p1[1] + (p2[1] - p1[1]) * fraction
-    ];
-}
-
-// Function to update user location in your app
-let lastRecalculationTime = 0;  // Track the last time the route was recalculated
-const recalculationDelay = 5000; // Set a delay (e.g., 5000ms = 5 seconds)
-
+// Function to start simulating user location along the route with smooth movement
 function simulateUserLocation(route) {
     console.log("Starting simulation");
     const imgs = pauseAndpaly.getElementsByTagName('img')[0]
@@ -1234,7 +706,6 @@ function simulateUserLocation(route) {
                 lat: route.coordinates[routeIndex + 1][1]
             };
             getPoisByLocation(currentPosition);
-            checkNearbyEvent(currentPosition);
             // Calculate the distance between the current and next position
             const distance = distanceBetweenPoints([currentPosition.lng, currentPosition.lat], [nextPosition.lng, nextPosition.lat]);
 
@@ -1243,7 +714,7 @@ function simulateUserLocation(route) {
                 if (!simulationRunning) return; // If not running, do nothing
 
                 // Update the user's location in your app
-                userLocation = { lng: interpolatedPosition[0], lat: interpolatedPosition[1] };
+                updateUserLocation({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] });
 
                 // Update marker position
                 userMarker.setLngLat(interpolatedPosition);
@@ -1279,14 +750,6 @@ function simulateUserLocation(route) {
                 // Update navigation instructions based on the user's location and the next interpolated position
                 // console.log("User location: " + JSON.stringify(userLocation));
                 updateNavigationInstructions({ lng: interpolatedPosition[0], lat: interpolatedPosition[1] }, nextPosition);
-                const userHeading = calculateBearing(userLocation.lat, userLocation.lng, nextPosition.lat, nextPosition.lng);
-                map.flyTo({
-                    center: [userLocation.lng, userLocation.lat],
-                    essential: true, // Animation is essential,
-                    bearing: userHeading
-                });
-                const markerElement = userMarker.getElement().getElementsByClassName('user-location-marker')[0]
-                markerElement.style.transform = `rotateZ(${userHeading}deg)`
             }
 
             // Start animating along the current segment with initial interpolation
@@ -1304,6 +767,62 @@ function simulateUserLocation(route) {
     simulationRunning = true;
     simulationPaused = false;
     updateLocation();
+}
+
+function updateWalkedRoute(currentPosition) {
+    // Add the current position to the walked route
+    walkedRoute.push(currentPosition);
+
+    // Update the map with the walked route
+    map.getSource('walked-route').setData({
+        "type": "Feature",
+        "geometry": {
+            "type": "LineString",
+            "coordinates": walkedRoute
+        }
+    });
+}
+
+function updateRemainingRoute(currentPosition) {
+    // Update the remaining route after trimming
+    const remainingRoute = route.coordinates.slice(routeIndex + 1);
+    remainingRoute.unshift(currentPosition);
+    map.getSource('route').setData({
+        "type": "Feature",
+        "geometry": {
+            "type": "LineString",
+            "coordinates": remainingRoute
+        }
+    });
+}
+
+// Function to calculate the distance between two points using the Haversine formula
+function distanceBetweenPoints(p1, p2) {
+    const R = 6371000; // Radius of the Earth in meters
+    const toRad = Math.PI / 180;
+    const dLat = (p2[1] - p1[1]) * toRad;
+    const dLng = (p2[0] - p1[0]) * toRad;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(p1[1] * toRad) * Math.cos(p2[1] * toRad) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Function to interpolate between two points
+function interpolate(p1, p2, fraction) {
+    return [
+        p1[0] + (p2[0] - p1[0]) * fraction,
+        p1[1] + (p2[1] - p1[1]) * fraction
+    ];
+}
+
+// Function to update user location in your app
+function updateUserLocation(location) {
+    userLocation = location;
+    console.log("User location updated:", location);
 }
 
 // Function to pause the simulation
@@ -1326,42 +845,71 @@ function stopSimulation() {
     console.log("Simulation stopped");
 }
 
+function updateUserLocation(newLocation) {
+    userLocation = newLocation;
+
+    // Update the map view to center on the new location
+    map.flyTo({
+        center: [userLocation.lng, userLocation.lat],
+        essential: true, // Animation is essential
+        zoom: 18 // Adjust zoom level as needed
+    });
+
+    // Update the marker position
+    if (userMarker) {
+        userMarker.setLngLat([userLocation.lng, userLocation.lat]);
+    }
+}
+
 function setMapRoute(resRoute) {
-    if (!map.getLayer('route')) {
-        map.loadImage(
-            'static/icons/nav.png',
-            (error, image) => {
-                if (error) throw error;
-                if (!map.hasImage('arrow')) {
-                    map.addImage('arrow', image);
-                }
-                // Add route to map
-                if (!map.getSource('route')) {
-                    map.addSource('route', {
-                        'type': 'geojson',
-                        'data': {
-                            'type': 'Feature',
-                            'properties': {},
-                            'geometry': resRoute
-                        }
-                    });
-                }
-                map.addLayer({
-                    id: 'route',
-                    type: 'line',
-                    source: 'route',
-                    layout: {
-                        'icon-size': 0.8,
-                        'icon-allow-overlap': false,
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-pattern': 'arrow',
-                        'line-width': 10
-                    }
-                });
+    if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
+        setUserLocationMark(resRoute.coordinates[0])
+    }
+    // Add route to map
+    if (!map.getSource('route')) {
+        map.addSource('route', {
+            'type': 'geojson',
+            'data': {
+                'type': 'Feature',
+                'properties': {},
+                'geometry': resRoute
             }
-        );
+        });
+    }
+
+    if (!map.getLayer('route')) {
+        // Add arrows to the route using static png asset
+        if (!map.hasImage('arrow')) {
+            const url = 'static/icons/nav.png';
+            map.loadImage(url, function (err, image) {
+                if (err) {
+                    console.error('Error loading image:', err);
+                    reject(err);
+                }
+                map.addImage('arrow', image);
+            });
+        }
+        // Add arrow-line layer
+        map.addLayer({
+            'id': 'route',
+            'type': 'symbol',
+            'source': 'route',
+            'layout': {
+                'symbol-placement': 'line',
+                'symbol-spacing': 2,
+                'icon-image': 'arrow',
+                'icon-size': 0.5,
+                // 'icon-size': [
+                //     'interpolate',
+                //     ['linear'],
+                //     ['zoom'],
+                //     14, 0.4,
+                //     16, 0.6,     // 缩放级别 10 时图标大小为 1
+                //     17, 0.7    // 缩放级别 15 时图标大小为 1.5
+                // ],
+                'icon-allow-overlap': true,
+            },
+        });
 
         // Update route data on map
         directions.on('route', function (e) {
@@ -1384,31 +932,17 @@ function setMapRoute(resRoute) {
     }
 
     if (!map.getLayer('walked-route')) {
-        // map.addLayer({
-        //     "id": "walked-route",
-        //     "type": "symbol",
-        //     "source": "walked-route",
-        //     'layout': {
-        //         'symbol-placement': 'line',
-        //         'symbol-spacing': 2,
-        //         'icon-image': 'walkedArrow',
-        //         'icon-size': 0.5,
-        //         'icon-allow-overlap': true,
-        //     },
-        // });
         map.addLayer({
-            id: 'walked-route',
-            type: 'line',
-            source: 'walked-route',
-            layout: {
-                'icon-size': 0.8,
-                'icon-allow-overlap': false,
-                'line-cap': 'round'
+            "id": "walked-route",
+            "type": "symbol",
+            "source": "walked-route",
+            'layout': {
+                'symbol-placement': 'line',
+                'symbol-spacing': 2,
+                'icon-image': 'walkedArrow',
+                'icon-size': 0.5,
+                'icon-allow-overlap': true,
             },
-            paint: {
-                'line-pattern': 'walkedArrow',
-                'line-width': 10
-            }
         });
     }
 }
@@ -1428,7 +962,7 @@ function userCalculate(start, end) {
     return (bearing + 360) % 360; // 确保角度在0-360之间
 }
 
-function paintLine(resRoute, isZoom = true) {
+function paintLine(resRoute) {
     showMapTab();
     let bers = 0;
     const startPrit = [userLocation.lng, userLocation.lat];
@@ -1436,7 +970,7 @@ function paintLine(resRoute, isZoom = true) {
     if (resRoute && resRoute.coordinates && resRoute.coordinates.length) {
         endProit = resRoute.coordinates[resRoute.coordinates.length - 1]
         bers = userCalculate(resRoute.coordinates[0], endProit);
-        setDottedLine()
+        setUserLocationMark(resRoute.coordinates[0], bers)
     }
     if (!map.getSource('previewRoute')) {
         map.addSource('previewRoute', {
@@ -1483,62 +1017,12 @@ function paintLine(resRoute, isZoom = true) {
             }
         });
     }
-    if (!isZoom) return
     map.fitBounds([startPrit, endProit], {
         // bearing: bers,
-        padding: 50, // 距离屏幕边缘的内边距（以像素为单位）
-        maxZoom: 16,
+        padding: 30, // 距离屏幕边缘的内边距（以像素为单位）
+        maxZoom: 17,
         duration: 1000
     });
-}
-
-function setDottedLine() {
-    if (endPlaceProt && walkStepsNavs && walkStepsNavs.waypoints.length) {
-        const userfirstDistance = walkStepsNavs.waypoints[0].distance;
-        const { distance, isInPolygon} = isUserOffRoute(userLocation, route);
-        if (userfirstDistance > 5 && distance > 5 && !isInPolygon) {
-            const geometry = {
-                coordinates: [
-                    [userLocation.lng, userLocation.lat],
-                    walkStepsNavs.waypoints[0].location
-                ],
-                type: "LineString",
-            }
-            if (!map.getSource('dottedLine')) {
-                map.addSource('dottedLine', {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'properties': {},
-                        'geometry': geometry,
-                    }
-                });
-            } else {
-                map.getSource('dottedLine').setData({
-                    "type": "Feature",
-                    "geometry": geometry,
-                });
-            }
-            if (!map.getLayer('dottedLineroute')) {
-                map.addLayer({
-                    id: 'dottedLineroute',
-                    type: 'line',
-                    source: 'dottedLine',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#4a5367',
-                        'line-width': 5,
-                        'line-dasharray': [2, 2]
-                    }
-                });
-            }
-        } else if (map.getLayer('dottedLineroute')) {
-            map.removeLayer('dottedLineroute');
-        }
-    }
 }
 
 function displayRoute(placeNames, rawCoordinates, fromUser) {
@@ -1567,34 +1051,13 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
             .then(result => {
                 let cneterPot = [userLocation.lng, userLocation.lat]
                 if (result.legs && result.route) {
-                    geolocateControl.on('geolocate', (position) => {
-                        const cuerrorUserLoc = {
-                            lng: position.coords.longitude,
-                            lat: position.coords.latitude,
-                            userHeading: position.coords.heading,
-                        };
-                        userLocation = cuerrorUserLoc
-                        const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, route);
-                        if (userMarker) {
-                            const CunrrPoint = distance > 10 ? [position.coords.longitude, position.coords.latitude] : nearestPointOnLine.geometry.coordinates
-                            userMarker.setLngLat(CunrrPoint)
-                            if (!userTouch && !firstCilck) {
-                                map.setCenter(CunrrPoint);
-                            }
-                        }
-                        setDottedLine()
-                        if ((distance > 20 || !isInPolygon) && endPlaceProt) {
-                            console.log('User is off-route, recalculating route...');
-                            recalculateRoute(cuerrorUserLoc, endPlaceProt);  // Call reroute function
-                        }
-                    });
                     // console.log('------result->>>>>>>>>', result)
                     // Extract route instructions
                     if (result.route.coordinates && result.route.coordinates.length) {
                         cneterPot = result.route.coordinates[Math.floor(result.route.coordinates.length * 0.5)]
                     }
-                    // var instructions = extractRouteInstructions(result.legs, placeNames);
-                    // resolve(instructions);
+                    var instructions = extractRouteInstructions(result.legs, placeNames);
+                    resolve(instructions);
                 } else if (result.newUrl) {
                     // Handle URL for later use case
                     resolve(result.newUrl);
@@ -1637,8 +1100,6 @@ function getMapboxWlakRoute(coordinates) {
                 }
                 route = data.routes[0].geometry;
                 steps = data.routes[0].legs[0].steps;
-                walkStepsNavs = data
-                paintLine(route);
                 return { legs, route };
             } else {
                 console.error('No route found: ', data);
@@ -1726,30 +1187,10 @@ function submitChat(event) {
         if (message !== "") {
             var chatMessages = document.getElementById("chatbot-messages");
             postMessage(message, chatMessages);
-            // Start the timer if not running
-            // if (!suggestionTimer) {
-            //     resetTimer();  // Replace "someType" with the actual type if needed
-            // }
+
             inputBox.value = "";
         }
     }
-}
-// Chat timer: track time since last message
-function resetTimer() {
-    // Clear any existing timer
-    if (suggestionTimer) {
-        console.log("Resetting suggstion timer.")
-        clearTimeout(suggestionTimer);
-    }
-    console.log("Starting a timer for suggestions.")
-    // Set a new timer that runs after 5 minutes
-    suggestionTimer = setTimeout(() => {
-        console.log("5 minutes since last message, prompting suggestions.")
-        // getSuggestion(3);  // Trigger suggestion after 5 minutes of inactivity
-        // getSuggestion(4);  // recommend another food.beverage option for 2nd demo.
-        clearTimeout(suggestionTimer);  // Stop the timer after suggestion is made
-        suggestionTimer = null;  // Set timer to null, so it can be started again
-    }, suggestionTimeout);
 }
 
 async function postMessage(message, chatMessages) {
@@ -1770,7 +1211,35 @@ async function postMessage(message, chatMessages) {
         let data = await response.json();
         console.log("GPT response: " + JSON.stringify(data));
         // check for operation type and run route functions if neccesarry.
-        if (data.operation == "location") {
+        if (data.operation == "route" && data.response.length > 1) {
+            console.log("PLaces: " + data.response);
+            let cleanedPlaceNames = data.response;
+
+            console.log(cleanedPlaceNames); // Check the cleaned list
+            // Get the route from the get_coordinates function
+            let orderOfVisit = await get_coordinates(cleanedPlaceNames, false);
+            let textResponse = await fetch('/get_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
+            });
+            if (!textResponse.ok) {
+                throw new Error('Network response was not ok ' + textResponse.statusText);
+            }
+            let textData = await textResponse.json();
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'route',
+                placeNames: orderOfVisit[0],
+                longAndlat: orderOfVisit[1],
+                fromUser: '1',
+            });
+            attachEventListenersToHyperlinks();
+
+        } else if (data.operation == "location") {
             let cleanedPlaceNames = data.response;
 
             console.log(cleanedPlaceNames); // Check the cleaned list
@@ -1797,11 +1266,38 @@ async function postMessage(message, chatMessages) {
                 longAndlat: orderOfVisit[1],
             });
             attachEventListenersToHyperlinks();
+        } else if (data.operation == "wayfinding") {
+            console.log("PLaces: " + data.response);
+            let cleanedPlaceNames = data.response;
+
+            console.log(cleanedPlaceNames); // Check the cleaned list
+            // Get the route from the get_coordinates function
+            let orderOfVisit = await get_coordinates(cleanedPlaceNames, true);
+            addMarkers(orderOfVisit[0], orderOfVisit[1]);
+            let textResponse = await fetch('/get_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
+            });
+            if (!textResponse.ok) {
+                throw new Error('Network response was not ok ' + textResponse.statusText);
+            }
+            let textData = await textResponse.json();
+            appendMessage({
+                text: textData.response,
+                chatMessages,
+                type: 'route',
+                placeNames: orderOfVisit[0],
+                longAndlat: orderOfVisit[1],
+            });
+            attachEventListenersToHyperlinks();
         } else {
             appendMessage({ text: data.response, chatMessages });
         }
     } catch (error) {
-        console.error('Error:', error.message || error);
+        console.error('Error:', JSON.stringify(error));
     }
 }
 
@@ -1832,13 +1328,13 @@ async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     if (waypoints.length && places.length) {
         await displayRoute(places, waypoints, isfromUser);
     }
-    // paintLine(route)
+    paintLine(route)
 }
 
 function closedNavfun() {
-    const navigationElem = document.getElementById('navigation');
-    navigationElem.classList.remove('fadeshowin');
-    navigationElem.classList.add('fadeout');
+    const navigation = document.getElementById('navigation');
+    navigation.classList.remove('fadeshowin');
+    navigation.classList.add('fadeout');
     if (map.getLayer('route')) {
         map.removeLayer('route');
     }
@@ -1857,13 +1353,12 @@ function closedNavfun() {
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
-    if (map.getLayer('dottedLineroute')) {
-        map.removeLayer('dottedLineroute');
-    }
-    const geolocate = document.getElementsByClassName('mapboxgl-ctrl-top-right')[0]
-    geolocate.style.top = '80px'
-    isUserRunning = false
-    endPlaceProt = null
+    // Keep map markers after cancelling navigation view.
+    // if (window.mapMarkers) {
+    //     for (const [key, value] of Object.entries(window.mapMarkers)) {
+    //         value.remove();
+    //     }
+    // }
 }
 
 // creaate template and styles for each visitor/guide message.
@@ -2066,8 +1561,8 @@ function getInstructions(data) {
         };
         instructions.push(formattedInstruction);
     });
-    // update the display:
-
+    console.log("instructions length: " + instructions.length);
+    console.log("Full instr: " + JSON.stringify(instructions));
     return instructions;
 }
 
@@ -2123,122 +1618,54 @@ function addMarkers(placeNames, waypoints) {
     window.mapMarkers = {};
     fetchPlacesData(placeNames).then(placesData => {
         fetchTemplate('static/html/info-card.html').then(template => {
-            const parser = new DOMParser();
+            var parser = new DOMParser();
             placeNames.forEach((placeName, index) => {
                 var coord = waypoints[index];
                 if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
                     return; // Skip this iteration if coordinates are invalid
                 }
-                const  description = placesData[placeName] ? placesData[placeName]['description'] : ''
-                addMarkertoMap({ placeName, category: 'dinwei', index, template, description, parser, location: coord })
+
+                // Remove unwanted characters from placeName
+                placeName = placeName.replace(/[\[\]]/g, '');
+                console.log(placeName);
+
+                // Set up the basic place information
+                var place = {
+                    description: placesData[placeName] ? placesData[placeName]['description'] : '',
+                    name: placeName,
+                };
+
+                // Create the thumbnail URL using Google Cloud Storage
+                const formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+                var thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
+                place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
+
+                // Generate the popup content using the template
+                var popupContentString = populateTemplate(template, place);
+                var doc = parser.parseFromString(popupContentString, 'text/html');
+                var popupContent = doc.querySelector('.info-card-content');
+
+                // Add functionality for the button in the popup
+                popupContent.querySelector('button').onclick = async function () {
+                    disminiNav();
+                    await displayRoute([placeName], [coord], true);
+                    paintLine(route)
+                }
+
+                // Create a popup and marker for the map
+                var popupId = placeName.replace(/\s+/g, '-').toLowerCase();
+                var popup = new mapboxgl.Popup().setDOMContent(popupContent);
+                var marker = new mapboxgl.Marker()
+                    .setLngLat([coord[0], coord[1]])
+                    .setPopup(popup)
+                    .addTo(map);
+
+                // Store marker by ID
+                window.mapMarkers[popupId] = marker;
             });
         });
     });
-}
-
-function displayByCategory(category, element) {
-    if (window.mapMarkers) {
-        for (const [key, value] of Object.entries(window.mapMarkers)) {
-            value.remove();
-        }
-    }
-    if (element.getAttribute('class').includes('active')) {
-        element.classList.remove('active')
-        return;
-    }
-    const munts = document.getElementsByClassName('newHeader')[0]
-    const lis = munts.getElementsByClassName('item')
-    for (let index = 0; index < lis.length; index++) {
-        const item = lis[index];
-        item.classList.remove('active')
-    }
-    element.classList.add('active');
-    // Remove existing markers from the map
-    if (window.mapMarkers) {
-        for (const [key, value] of Object.entries(window.mapMarkers)) {
-            value.remove();
-        }
-    }
-    window.mapMarkers = {};
-
-    // Fetch places data by category from the Flask endpoint
-    fetch('/fetch_by_category', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ category }),
-    })
-        .then(response => response.json())
-        .then(placesData => {
-            fetchTemplate('static/html/info-card.html').then(template => {
-                const parser = new DOMParser();
-                let listCont = ''
-                // Loop through the placesData and place markers on the map
-                Object.entries(placesData).forEach(([placeName, placeInfo], index) => {
-                    const { description, location } = placeInfo;
-                    // Ensure location contains valid coordinates [longitude, latitude]
-                    if (!location || location.length !== 2 || isNaN(location[0]) || isNaN(location[1])) {
-                        console.error(`Invalid coordinates for ${placeName}:`, location);
-                        return; // Skip this iteration if coordinates are invalid
-                    }
-                    listCont += addMarkertoMap({ placeName, category, index, template, description, parser, location })
-                });
-                poiList.innerHTML = listCont;
-            });
-        })
-        .catch(error => {
-            console.error('Error fetching places data:', error);
-        });
-}
-
-function addMarkertoMap({ placeName, category, index, template, description, parser, location }) {
-    // Remove unwanted characters from the placeName
-    placeName = placeName.replace(/[\[\]]/g, '');
-    console.log(placeName);
-
-    // Set up the basic place information
-    const place = {
-        description: description || '',
-        name: placeName,
-    };
-
-    // Create the thumbnail URL using Google Cloud Storage
-    let formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
-    if (formattedPlaceName.toLowerCase().includes("toilet")) {
-        formattedPlaceName = "toilet";
-    } else if (formattedPlaceName.toLowerCase().includes("station")) {
-        formattedPlaceName = "station";
-    }
-    const thumbnailUrl = `${thumbnailURI}${formattedPlaceName}.jpg`;
-    place.thumbnail = thumbnailUrl || '/static/icons/default.png'; // Fallback if no thumbnail is found
-
-    // Generate the popup content using the template
-    const popupContentString = populateTemplate(template, place);
-    const doc = parser.parseFromString(popupContentString, 'text/html');
-    const popupContent = doc.querySelector('.info-card-content');
-    // Add functionality for the button in the popup
-    popupContent.querySelector('button').onclick = async function () {
-        disminiNav();
-        await displayRoute([placeName], [location], true);
-    };
-
-    // Create a popup and marker for the map
-    const popupId = placeName.replace(/\s+/g, '-').toLowerCase();
-    const popup = new mapboxgl.Popup().setDOMContent(popupContent);
-
-    const el = document.createElement('div');
-    el.insertAdjacentHTML('beforeend', `<p><img src="static/icons/${category}_maker.svg" width="46" alt="" srcset=""></p>`);
-    const marker = new mapboxgl.Marker({
-        element: el
-    })
-        .setLngLat([location[0], location[1]]) // Use location from the placeInfo
-        .setPopup(popup)
-        .addTo(map);
-    // Store marker by ID
-    window.mapMarkers[popupId] = marker;
-    return setMapList({index, thumbnailUrl: place.thumbnail, placeName});
 }
 
 function fetchTemplate(url) {
@@ -2313,7 +1740,7 @@ function awaitGetPlaceCoordWithName(place) {
 
 function getPromo() {
     idaeBox.classList.add('fadeshowin');
-    // getSuggestion(2);
+    getSuggestion(2)
 }
 
 // Suggestion Button:
@@ -2358,29 +1785,25 @@ async function getSuggestion(type) {
 
 // start
 function startUserNav() {
-    firstCilck = true
-    userTouch = false
     console.log('-----steps-->>>', steps)
-    const img = dingwenndId.getElementsByTagName('img')[0]
-    img.setAttribute('src', `static/icons/nios.svg`);
     if (map.getLayer('prewroute')) {
         map.removeLayer('prewroute');
     }
     if (map.getLayer('lineBorder')) {
         map.removeLayer('lineBorder');
     }
-    setDottedLine()
     setMapRoute(route)
+    const markerElement = userMarker.getElement().getElementsByTagName('img')[0]
+    markerElement.style.transform = `rotate(0deg)`
     startNav.classList.remove('fadeshowin');
     enableNavigationMode(steps);
 }
 function cancelNav() {
-    endPlaceProt = null
     closedNavfun();
     map.easeTo({
         pitch: 0, // Back to 2D top-down view
         bearing: 0,
-        zoom: 15, // Adjust zoom level if needed
+        zoom: 13, // Adjust zoom level if needed
         duration: 1000
     });
     listButton.style.display = 'block';

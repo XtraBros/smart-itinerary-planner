@@ -98,7 +98,7 @@ def ask_plan():
 
         6) **Specific POI Info**: 
         - For details about a specific POI, use `get_poi_by_name` to get the data and reply with operation "message".
-        - For Sensoryscape queries, list the 8 "Sensoryscape:..." attractions first (operation "location"); if more info is needed, introduce "Sentosa Sensoryscape" using "get_poi_by_name" with operation "message".
+        - For introducing Sensoryscape, list the 8 "Sensoryscape:..." attractions (operation "location"); if more info is needed, explain "Sentosa Sensoryscape" using "get_poi_by_name" with operation "message".
         - For cable cars, refer to "Singapore Cable Car Sky Network".
 
         7) **Location Requests**: 
@@ -186,7 +186,7 @@ def get_text():
                     For wayfinding to POIs, the location will be displayed on the user's map, so just inform them so. 
                     Identify the user's location via the nearest place of interest when required. Do not include any formatting tags like ```html and escape sequences like \n in your response.
 
-                    Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list.
+                    Please encase the names of the attractions in "~" symbols to distinguish them, and do not change the names at all (e.g., ~Sensoryscape: Upper Deck~) . Use the exact names given in the list.
                     Conversation history:
                     {history}
                 """
