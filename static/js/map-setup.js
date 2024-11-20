@@ -322,7 +322,7 @@ function errorCallBock(error) {
 }
 
 function getDeviceOrientation() {
-    if (geolocateControl && !isUpTracking) {
+    if (geolocateControl && !isUpTracking && !isTrackSucceed) {
         geolocateControl.trigger();
     }
     if (geoloHidl && !isDownTracking) {
