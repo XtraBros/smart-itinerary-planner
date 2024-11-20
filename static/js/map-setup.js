@@ -4,6 +4,7 @@ var map;
 let hiddenMap;
 var directions;
 var geolocateControl;
+let geoloHidl;
 var walkedRoute = [];
 let route = {};
 const blacklist = new Set();
@@ -32,6 +33,9 @@ const suggestionTimeout = 5 * 60 * 1000;  // 5 minutes in milliseconds
 let switchoverState = 'POSINIT'; // POSINIT or FOCUS
 let userTouch = false;
 let firstCilck = false;
+let isUpTracking = false; // 状态变量
+let isDownTracking = false; // 状态变量
+
 function initProperty() {
     routeIndex = 0;
     currentStepIndex = 0;
@@ -317,6 +321,12 @@ function errorCallBock(error) {
 }
 
 function getDeviceOrientation() {
+    if (geolocateControl && !isUpTracking) {
+        geolocateControl.trigger();
+    }
+    if (geoloHidl && !isDownTracking) {
+        geoloHidl.trigger();
+    }
     if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         // iOS 13+ 需要请求权限
         DeviceOrientationEvent.requestPermission()
@@ -324,7 +334,7 @@ function getDeviceOrientation() {
                 if (response === 'granted') {
                     window.addEventListener('deviceorientation', handleOrientationChange);
                 } else {
-                    alert('未授予设备方向传感器权限');
+                    alert('The device direction sensor permission is not granted');
                 }
             })
             .catch(console.error);
@@ -645,6 +655,7 @@ fetch('/config')
                 maximumAge: 0                  // Prevents caching of location
             },
             trackUserLocation: true,
+            showUserLocation: true,
             showUserHeading: true, // If you want to show user's heading direction
         }
         map.on('load', function () {
@@ -730,9 +741,9 @@ fetch('/config')
             
             // Start the nearby event checking process
             startCheckingNearbyEvents();
-            setTimeout(() => {
-                geolocateControl.trigger();
-            }, 100)
+            // setTimeout(() => {
+            //     geolocateControl.trigger();
+            // }, 100)
             // check navigation and update nav isntructions
             navigator.geolocation.watchPosition(
                 (position) => {
@@ -754,6 +765,7 @@ fetch('/config')
                 }
             );
             geolocateControl.on('trackuserlocationstart', ({target}) => {
+                isUpTracking = true;
                 target.options.geolocation.getCurrentPosition((position) => {
                     setUserLocationMark([position.coords.longitude, position.coords.latitude]);
                     userLocation = {
@@ -770,7 +782,11 @@ fetch('/config')
                     zoom: isUserRunning ? 20 : 13,     // Keep the current zoom level
                     duration: 500         // Animation duration (optional)
                 });
-            }); 
+            });
+            geolocateControl.on('trackuserlocationend', () => {
+                isUpTracking = false;
+                console.log("Tracking stopped");
+            });
             const compassButton = document.querySelector('.mapboxgl-ctrl-compass')
             if (compassButton) {
                 compassButton.addEventListener('click', function(e) {
@@ -780,11 +796,17 @@ fetch('/config')
             }
         });
         hiddenMap.on('load', function () {
-            const geoloHidl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
+            geoloHidl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
             hiddenMap.addControl(geoloHidl);
-            setTimeout(() => {
-                geoloHidl.trigger();
-            }, 500)
+            // setTimeout(() => {
+            //     geoloHidl.trigger();
+            // }, 500);
+            geoloHidl.on('trackuserlocationstart', () => {
+                isDownTracking = true;
+            });
+            geoloHidl.on('trackuserlocationend', () => {
+                isDownTracking = false;
+            });
         });
         map.on('dragstart', () => {
             userTouch = true
