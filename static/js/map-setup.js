@@ -35,6 +35,7 @@ let userTouch = false;
 let firstCilck = false;
 let isUpTracking = false; // 状态变量
 let isDownTracking = false; // 状态变量
+let isTrackSucceed = false;
 
 function initProperty() {
     routeIndex = 0;
@@ -364,6 +365,7 @@ function handlePermission() {
 }
 
 window.onload = function () {
+    dingwenndId.classList.add('defaultAvailable');
     handlePermission();
     console.log("Resetting chat memory")
     fetch("/reset_memory"); // Calls endpoint to reset memory
@@ -765,6 +767,10 @@ fetch('/config')
                 }
             );
             geolocateControl.on('trackuserlocationstart', ({target}) => {
+                if (!isTrackSucceed) {
+                    dingwenndId.classList.remove('defaultAvailable');
+                    dingwenndId.classList.add('awaitError');
+                }
                 isUpTracking = true;
                 target.options.geolocation.getCurrentPosition((position) => {
                     setUserLocationMark([position.coords.longitude, position.coords.latitude]);
@@ -783,9 +789,19 @@ fetch('/config')
                     duration: 500         // Animation duration (optional)
                 });
             });
+            geolocateControl.on('geolocate', () => {
+                isTrackSucceed = true;
+                dingwenndId.classList.remove('defaultAvailable');
+                dingwenndId.classList.remove('awaitError');
+            });
             geolocateControl.on('trackuserlocationend', () => {
                 isUpTracking = false;
                 console.log("Tracking stopped");
+            });
+            geolocateControl.on('error', () => {
+                isUpTracking = false;
+                isTrackSucceed = false;
+                dingwenndId.classList.add('awaitError');
             });
             const compassButton = document.querySelector('.mapboxgl-ctrl-compass')
             if (compassButton) {

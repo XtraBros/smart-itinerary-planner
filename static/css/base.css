@@ -798,12 +798,28 @@ a.mapboxgl-ctrl-logo {
 .cancelBottm {
   background-color: white; border: 1px solid #FF8A00; color: #FF8A00;
 }
-/* .mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { opacity: 0.001 !important; }
+.mapboxgl-user-location, .mapboxgl-user-location-accuracy-circle { opacity: 0.001 !important; }
 .mapboxgl-ctrl-top-right .mapboxgl-ctrl-group:last-child {
   opacity: 0;
-} */
+}
 #dingwennd { width: 46px; height: 46px; border-radius: 26px; background-color: white !important; text-align: center; line-height: 62px; }
 .minumts { color: #2C2C2C; font-weight: 600; font-size: 18px; padding: 3px 0px; }
+.defaultAvailable img{
+  content:url('../icons/posinit_black.svg');
+}
+.awaitError img {
+  content:url('../icons/posinit_error.svg');
+  /* filter: drop-shadow(#d98170 -50px 0);
+  -webkit-filter: drop-shadow(#d98170 -50px 0);
+  transform: translateX(50px);
+  -ms-transform: translateX(50px);
+  -moz-transform: translateX(50px);
+  -webkit-transform: translateX(50px);
+  -o-transform: translateX(50px); */
+}
+.awaitError {
+  animation: mapboxglSpin 2s linear infinite;
+}
 /* 移出动画 */
 @keyframes fadeshowout {
   0% {
@@ -896,4 +912,13 @@ a.mapboxgl-ctrl-logo {
   background-size: contain;
   width: 70px;
    height: 70px;
+}
+@keyframes mapboxglSpin {
+  0% {
+      transform: rotate(0deg)
+  }
+
+  to {
+      transform: rotate(1turn)
+  }
 }
