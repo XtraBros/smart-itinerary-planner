@@ -322,7 +322,7 @@ function errorCallBock(error) {
 }
 
 function getDeviceOrientation() {
-    if (geolocateControl && !isUpTracking && !isTrackSucceed) {
+    if (geolocateControl && !isUpTracking) {
         geolocateControl.trigger();
     }
     if (geoloHidl && !isDownTracking) {
@@ -358,10 +358,15 @@ function handlePermission() {
             // 拒位置权限
             alert('Location permission denied.');
         }
-        result.addEventListener("change", () => {
-            alert(result.state);
-        });
+        // result.addEventListener("change", () => {
+        //     alert(result.state);
+        // });
     });
+}
+
+function displayAiModal () {
+    const popupModal = document.getElementById('popupModal');
+    popupModal.style.display = "none";
 }
 
 window.onload = function () {
@@ -404,29 +409,7 @@ window.onload = function () {
             popupModal.style.display = "none";
         }
     }
-
-    if (tishiDom && isFirstOpen) {
-        tishiDom.style.display = 'none'
-    } else {
-        tishiDom.style.display = 'block'
-    }
     getDeviceOrientation();
-    // if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-    //     // iOS 13+ 需要请求权限
-    //     DeviceOrientationEvent.requestPermission()
-    //         .then(response => {
-    //             if (response === 'granted') {
-    //                 window.addEventListener('deviceorientation', handleOrientationChange);
-    //             } else {
-    //                 alert('未授予设备方向传感器权限');
-    //             }
-    //         })
-    //         .catch(console.error);
-    // } else {
-    //     window.addEventListener('deviceorientation', debounce(function (event) {
-    //         handleOrientationChange(event)
-    //     }, 10));
-    // }
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -800,7 +783,6 @@ fetch('/config')
             });
             geolocateControl.on('error', () => {
                 isUpTracking = false;
-                isTrackSucceed = false;
                 dingwenndId.classList.add('awaitError');
             });
             const compassButton = document.querySelector('.mapboxgl-ctrl-compass')
