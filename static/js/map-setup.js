@@ -902,7 +902,7 @@ function setUserLocationMark(coord) {
     const el = document.createElement('div');
     el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     userMarker = new mapboxgl.Marker({
-        rotationAlignment: 'map',
+        // rotationAlignment: 'map',
         element: el
     })
         .setLngLat(coord)
