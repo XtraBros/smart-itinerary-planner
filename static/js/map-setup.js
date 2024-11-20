@@ -316,6 +316,25 @@ function errorCallBock(error) {
     alert('Error requesting location permission');
 }
 
+function getDeviceOrientation() {
+    if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ 需要请求权限
+        DeviceOrientationEvent.requestPermission()
+            .then(response => {
+                if (response === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientationChange);
+                } else {
+                    alert('未授予设备方向传感器权限');
+                }
+            })
+            .catch(console.error);
+    } else {
+        window.addEventListener('deviceorientation', debounce(function (event) {
+            handleOrientationChange(event)
+        }, 10));
+    }
+}
+
 function handlePermission() {
     navigator.permissions.query({ name: "geolocation" }).then((result) => {
         if (result.state === "granted") {
@@ -368,6 +387,7 @@ window.onload = function () {
         chatMessagesBox.scrollTop = chatMessagesBox.scrollHeight;
     }
     window.onclick = function (event) {
+        getDeviceOrientation();
         if (event.target === popupModal) {
             popupModal.style.display = "none";
         }
@@ -378,22 +398,23 @@ window.onload = function () {
     } else {
         tishiDom.style.display = 'block'
     }
-    if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        // iOS 13+ 需要请求权限
-        DeviceOrientationEvent.requestPermission()
-            .then(response => {
-                if (response === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientationChange);
-                } else {
-                    alert('未授予设备方向传感器权限');
-                }
-            })
-            .catch(console.error);
-    } else {
-        window.addEventListener('deviceorientation', debounce(function (event) {
-            handleOrientationChange(event)
-        }, 10));
-    }
+    getDeviceOrientation();
+    // if (detectDevice() !== 'Android' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    //     // iOS 13+ 需要请求权限
+    //     DeviceOrientationEvent.requestPermission()
+    //         .then(response => {
+    //             if (response === 'granted') {
+    //                 window.addEventListener('deviceorientation', handleOrientationChange);
+    //             } else {
+    //                 alert('未授予设备方向传感器权限');
+    //             }
+    //         })
+    //         .catch(console.error);
+    // } else {
+    //     window.addEventListener('deviceorientation', debounce(function (event) {
+    //         handleOrientationChange(event)
+    //     }, 10));
+    // }
     getUserCurrentPosition();
     const swiper = new Swiper('.swiper', {
         loop: true,
@@ -546,6 +567,7 @@ function handerMap(e, type) {
 }
 function switchoverHandled() {
     handlePermission();
+    getDeviceOrientation();
     userTouch = false
     switchoverState = switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
     const img = dingwenndId.getElementsByTagName('img')[0]
