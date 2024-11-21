@@ -241,15 +241,6 @@ const listButton = document.getElementsByClassName('mapandlistbut')[0]
 const dingwenndId = document.getElementById('dingwennd');
 const mapDiv = document.getElementById("container")
 
-const handleGeolocation = debounce(function(position) {
-    const userPos = {
-        lng: position.coords.longitude,
-        lat: position.coords.latitude,
-    };
-    if(isUserRunning){
-        updateNavigationInstructions(userPos);
-    }
-}, 1000);
 function setMapList({index, placeName, thumbnailUrl}) {
     return `<div class="itemSlide" key='${index}' data-name='${placeName}'>
         <div class="listimg">
@@ -472,7 +463,7 @@ function stopNavFunc() {
     simulationRunning = false;
     simulationPaused = false;
     initProperty()
-    geolocateControl.off('geolocate', handleGeolocation);
+    stopUpdatingNavigation();
 }
 
 function exitNavFunc() {
@@ -701,7 +692,6 @@ fetch('/config')
                             lat: position.coords.latitude,
                             lng: position.coords.longitude
                         };
-            
                         // Call checkNearbyEvent and wait for it to complete
                         Promise.resolve(checkNearbyEvent(loc))
                             .then(() => {
@@ -724,8 +714,6 @@ fetch('/config')
                 checkAndRepeat();
             }
             
-            // Start the nearby event checking process
-            startCheckingNearbyEvents();
             // setTimeout(() => {
             //     geolocateControl.trigger();
             // }, 100)
@@ -834,6 +822,16 @@ async function getRouteObject(userLocation) {
         throw error; // Rethrow the error for higher-level handling
     }
 }
+let instrInterval;
+function checkAndUpdateNavigation(loc) {
+    if (isUserRunning) {
+        updateNavigationInstructions(loc);
+    }
+}
+function stopUpdatingNavigation() {
+    clearInterval(instrInterval);
+    console.log("Navigation updates stopped.");
+}
 // Navigation Mode 
 function enableNavigationMode(data) {
     instructions = getInstructions(data);
@@ -867,6 +865,9 @@ function enableNavigationMode(data) {
     switchoverState = 'FOCUS'
     // Wait for easeTo animation to complete, then start tracking
     map.once('moveend', () => trackUserLocation(route));
+    instrInterval = setInterval(() => {
+        checkAndUpdateNavigation(userLocation);
+    }, 1000);
 }
 // Function to check if user is off-route
 function isUserOffRoute(userLocation, route, tolerance = 0.03) {
@@ -980,7 +981,6 @@ function calculateRemainingDistance(routeCoordinates) {
 function displayInstruction(instructionTextContent, distanceToCheckpoint, remainingDistance, modifier) {
     // Extract the instruction text from the object    
     // Get the pop-up elements
-    console.log("Modifier: " + modifier);
     const instructionPopup = document.getElementById('navigation');
     const instructionIcon = document.getElementById('distanceIcon');
     const instructionText = document.getElementById('instructionText');
@@ -1038,7 +1038,7 @@ function calculateDistance(point1, point2) {
 function updateNavigationInstructions(userLocation) {
     const thresholdDistance = 20; // Distance threshold for reaching a checkpoint
     const arrivalThreshold = 10; // Distance threshold for final destination arrival
-
+    
     // Get current and next checkpoint locations
     const currentCheckpoint = {
         lng: steps[currentStepIndex].maneuver.location[0],
@@ -1051,7 +1051,18 @@ function updateNavigationInstructions(userLocation) {
             lat: steps[currentStepIndex + 1].maneuver.location[1]
         }
         : null; // No next checkpoint if this is the final step
-
+    const finalDestination = {
+        lng: steps[steps.length - 1].maneuver.location[0],
+        lat: steps[steps.length - 1].maneuver.location[1]
+    };
+    const distanceToFinalDestination = calculateDistance(userLocation, finalDestination);
+    if (distanceToFinalDestination <= arrivalThreshold) {
+        // Display arrival message and stop further instructions
+        console.log("User has arrived at the destination.");
+        document.getElementById("distanceText").textContent = "You have arrived at your destination!";
+        stopUpdatingNavigation();
+        return;
+    }
     const distanceToCurrentCheckpoint = calculateDistance(userLocation, currentCheckpoint);
 
     let increment = false;
@@ -1075,17 +1086,7 @@ function updateNavigationInstructions(userLocation) {
         currentStepIndex++;
         console.log("Moving to next checkpoint, step index: " + currentStepIndex);
     }
-    const finalDestination = {
-        lng: steps[steps.length - 1].maneuver.location[0],
-        lat: steps[steps.length - 1].maneuver.location[1]
-    };
-    const distanceToFinalDestination = calculateDistance(userLocation, finalDestination);
-    if (distanceToFinalDestination <= arrivalThreshold) {
-        // Display arrival message and stop further instructions
-        console.log("User has arrived at the destination.");
-        document.getElementById("distanceText").textContent = "You have arrived at your destination!";
-        return;
-    }
+    
     // Display current instruction if still within bounds
     if (currentStepIndex < instructions.length) {
         const nextInstruction = instructions[currentStepIndex].instruction;
@@ -1181,7 +1182,6 @@ function trackUserLocation(route) {
             updateLocation(position);
         }, 100)
     });
-    geolocateControl.on('geolocate', handleGeolocation);
 }
 
 function updateWalkedRoute(line) {
