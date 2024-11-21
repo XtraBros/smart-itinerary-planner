@@ -37,6 +37,9 @@ let isUpTracking = false; // 状态变量
 let isDownTracking = false; // 状态变量
 let isTrackSucceed = false;
 
+let lastPosition = null;
+let lastTime = null;
+
 function initProperty() {
     routeIndex = 0;
     currentStepIndex = 0;
@@ -953,6 +956,8 @@ function setUserLocationMark(coord) {
 }
 
 function disableNavigationMode() {
+    lastPosition = null;
+    lastTime = null;
     map.easeTo({
         pitch: 0, // Back to 2D top-down view
         bearing: 0,
@@ -1522,6 +1527,23 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                             lat: position.coords.latitude,
                             userHeading: position.coords.heading,
                         };
+                        if (position.coords.accuracy > 30) {
+                            // console.log("Skipped due to low accuracy:", position.coords.accuracy);
+                            return;
+                        }
+                        // 过滤无效的点
+                        const currentLocation = [position.coords.longitude, position.coords.latitude];
+                        const currenTime = new Date().getTime();
+                        if (lastPosition && currenTime) {
+                            const sendTime = Math.floor((currenTime - lastTime) / 1000);
+                            const updateDistance = turf.distance(turf.point(lastPosition), turf.point(currentLocation), { units: "miles" }) * 1069;
+                            if (updateDistance / sendTime > 1.5) {  // 如果两次位置变化距离过大或过小，忽略
+                                // console.log("Skipped due to unreasonable distance:", updateDistance, sendTime);
+                                return;
+                            }
+                        }
+                        lastPosition = currentLocation;
+                        lastTime = new Date().getTime();
                         userLocation = cuerrorUserLoc
                         const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, route);
                         if (userMarker) {
