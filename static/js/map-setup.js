@@ -776,6 +776,35 @@ fetch('/config')
                 isUpTracking = false;
                 dingwenndId.classList.add('awaitError');
             });
+            // map.on('click', (e) => {
+            //     console.log(`A click event has occurred at ${e.lngLat}`);
+            //     if (!Object.keys(route).length) return;
+            //     const cuerrorUserLoc = {
+            //         lng: e.lngLat.lng,
+            //         lat: e.lngLat.lat
+            //     }
+            //     // 过滤无效的点
+            //     const currentLocation = [e.lngLat.lng, e.lngLat.lat];
+            //     const currenTime = new Date().getTime();
+            //     if (lastPosition && currenTime) {
+            //         const sendTime = Math.floor((currenTime - lastTime) / 1000);
+            //         const updateDistance = turf.distance(turf.point(lastPosition), turf.point(currentLocation), { units: "miles" }) * 1069;
+            //         console.log("Skipped due to unreasonable distance:", updateDistance, sendTime);
+            //         if (updateDistance / sendTime > 1.5 || updateDistance < 0.05) {  // 如果两次位置变化距离过大或过小，忽略
+            //             return;
+            //         }
+            //     }
+            //     lastPosition = currentLocation;
+            //     lastTime = new Date().getTime();
+            //     const { distance, nearestPointOnLine, isInPolygon  } = isUserOffRoute(cuerrorUserLoc, route);
+            //     if (userMarker) {
+            //         const CunrrPoint = distance > 10 ? currentLocation: nearestPointOnLine.geometry.coordinates
+            //         userMarker.setLngLat(CunrrPoint)
+            //         if (!userTouch && !firstCilck) {
+            //             map.setCenter(CunrrPoint);
+            //         }
+            //     }
+            // });
             const compassButton = document.querySelector('.mapboxgl-ctrl-compass')
             if (compassButton) {
                 compassButton.addEventListener('click', function(e) {
@@ -1537,7 +1566,7 @@ function displayRoute(placeNames, rawCoordinates, fromUser) {
                         if (lastPosition && currenTime) {
                             const sendTime = Math.floor((currenTime - lastTime) / 1000);
                             const updateDistance = turf.distance(turf.point(lastPosition), turf.point(currentLocation), { units: "miles" }) * 1069;
-                            if (updateDistance / sendTime > 1.5) {  // 如果两次位置变化距离过大或过小，忽略
+                            if (updateDistance / sendTime > 1.5 || updateDistance < 0.05) {  // 如果两次位置变化距离过大或过小，忽略
                                 // console.log("Skipped due to unreasonable distance:", updateDistance, sendTime);
                                 return;
                             }
