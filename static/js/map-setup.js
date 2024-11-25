@@ -1755,6 +1755,7 @@ function submitChat(event) {
             //     resetTimer();  // Replace "someType" with the actual type if needed
             // }
             inputBox.value = "";
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     }
 }
@@ -1814,7 +1815,7 @@ async function postMessage(message, chatMessages) {
             }
             let textData = await textResponse.json();
             appendMessage({
-                text: textData.response,
+                text: textData.response ? textData.response.replace(/\*/g, "") : '',
                 chatMessages,
                 type: 'location',
                 placeNames: orderOfVisit[0],
