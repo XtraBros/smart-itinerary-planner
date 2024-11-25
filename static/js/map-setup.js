@@ -716,6 +716,8 @@ fetch('/config')
                 // Start the first check
                 checkAndRepeat();
             }
+            // Start the nearby event checking process
+            startCheckingNearbyEvents();
             
             // setTimeout(() => {
             //     geolocateControl.trigger();
