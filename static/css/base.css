@@ -869,7 +869,7 @@ a.mapboxgl-ctrl-logo {
 
 .dots {
   width: 2.6em;
-  display: flex; padding-top: 8px;
+  display: flex; padding-top: 10px;
   flex-flow: row nowrap;
   align-items: center;
   justify-content: space-between;
