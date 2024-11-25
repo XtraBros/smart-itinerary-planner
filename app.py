@@ -116,7 +116,7 @@ def ask_plan():
         8) **Result Limits**: 
         - Only suggest amenities if requested, and limit to 3 attractions unless the user specifies otherwise.
 
-        9) **Personalized Recommendations**: Use `get_user_profile` to tailor suggestions to the user's group dynamics, dietary needs, and preferences.
+        9) **Personalized Recommendations**: Always use `get_user_profile` to tailor suggestions to the user's group dynamics, dietary needs, and activity preferences.
 
         Conversation history:
         {history}
