@@ -87,28 +87,53 @@ async function getPoisByLocation(location) {
 
         const poisData = await response.json();
         const placeInfoResponse = await fetchPlacesData(poisData);
-        if (poisData && !poisData.length) return
+
+        if (poisData && !poisData.length) return;
+
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
+
+        // Fetch distances and times from the new endpoint
+        const distancesResponse = await fetch('/calculate_distances', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ place_names: poisData, user_location: userLocation }),
+        });
+        const distancesData = await distancesResponse.json();
+
         fetchTemplate('static/html/info-card.html').then(template => {
             const parser = new DOMParser();
             let contenxt = '';
             let listCont = '';
+
             poisData.forEach((placeName, index) => {
                 // Construct the Google Cloud thumbnail URL
                 var formattedPlaceName = placeName.toLowerCase().replace(/\s+/g, '-');
+            
                 // Check if placeName contains "station" or "toilet" and update accordingly
                 if (placeName.toLowerCase().includes("toilet")) {
                     formattedPlaceName = "toilet";
                 } else if (placeName.toLowerCase().includes("station")) {
                     formattedPlaceName = "station";
                 }
+            
                 // Skip adding markers for toilets and stations
                 if (formattedPlaceName === "toilet" || formattedPlaceName === "station") {
-                    return;  // Continue to the next POI without adding a marker
+                    return; // Continue to the next POI without adding a marker
                 }
-                const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
-    
+            
+                const thumbnailUrl = placeInfoResponse[placeName]
+                    ? `${thumbnailURI}${formattedPlaceName}.jpg`
+                    : '/static/icons/default.png';
+            
+                // Get distance and time from distancesData
+                const distance = distancesData[placeName]?.distance ?? 'N/A'; // Use nullish coalescing operator
+                const time = distancesData[placeName]?.time !== undefined 
+                    ? `${Math.round(distancesData[placeName].time)} mins` 
+                    : 'N/A';
+            
                 contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                                 <div class="slideItme">
                                     <div class="swperimg">
@@ -120,28 +145,25 @@ async function getPoisByLocation(location) {
                                         <p class="address">
                                             <span>
                                                 <img src="static/icons/addess.svg" alt="" srcset="">
-                                                500m
+                                                ${distance}m
                                             </span>
                                             <span>
                                                 <img src="static/icons/time.svg" alt="" srcset="">
-                                                5mins
+                                                ${time}
                                             </span>
                                         </p>
                                     </div>
                                 </div>
                             </div>`;
-    
-                listCont += setMapList({index, thumbnailUrl, placeName});
-                // orderOfVisit[0].map((item, i) => {
-                //     if (item === placeName) {
-                //         addMarkertoMap({ placeName, category: 'dinwei', index, template, description: '', parser, location: orderOfVisit[1][i] })
-                //         return orderOfVisit[1][i]
-                //     }
-                // })
+            
+                listCont += setMapList({ index, thumbnailUrl, placeName });
             });
+            
+
             swiperconent.innerHTML = contenxt;
             poiList.innerHTML = listCont;
         });
+
     } catch (error) {
         console.error('Get Pois by Location', error);
         return null;

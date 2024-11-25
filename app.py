@@ -439,6 +439,33 @@ def reset_memory():
     memory.clear()  # Replace with actual memory clearing code
     return jsonify({"status": "Memory reset"})
 
+@app.route('/calculate_distances', methods=['POST'])
+def calculate_distances():
+    try:
+        # Parse the JSON payload
+        data = request.get_json()
+        print(data)
+        place_names = data['place_names']
+        user_location = data['user_location']
+        user_location = [user_location["lng"], user_location["lat"]]
+        # Assume a walking speed of 1.39 m/s (5 km/h)
+        walking_speed = 0.5  # in meters per second
+
+        # Calculate distances and walking times
+        results = {}
+        for placename in place_names:
+            distance = int(get_distance_from_poi(placename, user_location))  # Get the distance
+            time = int(distance / walking_speed / 60)  # Calculate time in minutes
+            results[placename] = {
+                "distance": distance,  # in meters
+                "time": time  # in minutes
+            }
+        print(f"calc distances restults: {results}")
+        return jsonify(results)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 # Not needed in sentosa variant right now.
 # @app.route('/get_centroids', methods=['POST'])
 # def get_centroids():
