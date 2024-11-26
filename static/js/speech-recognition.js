@@ -8,6 +8,8 @@ if ("webkitSpeechRecognition" in window) {
       speechRecognition.lang = document.querySelector("#select_dialect").value;
 
       speechRecognition.onstart = () => {
+            final_transcript = "";
+            document.querySelector("#chatbot-input").value = "";
               //document.querySelector("#status").style.display = "block";
             };
       speechRecognition.onerror = (event) => {
