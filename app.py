@@ -550,17 +550,18 @@ def find_nearby_pois(user_location, radius_in_meters=100):
     user_lat = user_location['latitude']
     print(f"User location in find_nearby_pois: {user_location}")
     try:
-        # Convert radius to radians (radius of Earth is approximately 6378100 meters)
-        radius_in_radians = radius_in_meters / 6378100.0
-
-        # Perform a geospatial query to find POIs directly within the radius
-        nearby_pois = poi_db.find({
-            "location": {
-                "$geoWithin": {
-                    "$centerSphere": [[user_lon, user_lat], radius_in_radians]
-                }
-            }
-        }).limit(10)  # Limit results to a maximum of 10 POIs
+        # Perform a geospatial query using $geoNear
+        nearby_pois = poi_db.aggregate([
+            {
+                "$geoNear": {
+                    "near": {"type": "Point", "coordinates": [user_lon, user_lat]},
+                    "distanceField": "distance",
+                    "spherical": True,
+                    "maxDistance": radius_in_meters
+                  }
+            },
+            {"$limit": 10}  # Limit results to a maximum of 10 POIs
+        ])
 
         # Convert the cursor to a list to check what is returned
         nearby_pois_list = list(nearby_pois)
