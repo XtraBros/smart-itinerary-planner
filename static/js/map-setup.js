@@ -78,6 +78,16 @@ export async function getPoisByLocation(location) {
         if (poisData && !poisData.length) return
         const swiperconent = document.getElementById('swiperconent');
         const poiList = document.getElementById('poiList');
+        // Fetch distances and times from the new endpoint
+        const distancesResponse = await fetch('/calculate_distances', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ place_names: poisData, user_location: userLocation }),
+        });
+        const distancesData = await distancesResponse.json();
+
         fetchTemplate('static/html/info-card.html').then(template => {
             const parser = new DOMParser();
             let contenxt = '';
@@ -96,7 +106,11 @@ export async function getPoisByLocation(location) {
                     return;  // Continue to the next POI without adding a marker
                 }
                 const thumbnailUrl = placeInfoResponse[placeName] ? `${thumbnailURI}${formattedPlaceName}.jpg` : '/static/icons/default.png';
-    
+                // Get distance and time from distancesData
+                const distance = distancesData[placeName]?.distance ?? 'N/A'; // Use nullish coalescing operator
+                const time = distancesData[placeName]?.time !== undefined 
+                    ? `${Math.round(distancesData[placeName].time)} mins` 
+                    : 'N/A';
                 contenxt += `<div class="swiper-slide" key='${index}' data-name='${placeName}'>
                                 <div class="slideItme">
                                     <div class="swperimg">
@@ -108,11 +122,11 @@ export async function getPoisByLocation(location) {
                                         <p class="address">
                                             <span>
                                                 <img src="static/icons/addess.svg" alt="" srcset="">
-                                                500m
+                                                ${distance}m
                                             </span>
                                             <span>
                                                 <img src="static/icons/time.svg" alt="" srcset="">
-                                                5mins
+                                                ${time}
                                             </span>
                                         </p>
                                     </div>
