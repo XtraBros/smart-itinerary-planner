@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name='viewport'
         content='width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' />
     <title>Smart Tour Guide</title>
@@ -50,7 +50,7 @@
                 <p>Retail</p>
             </li>
         </ul>
-    </div>    
+    </div>
     <div class="weather-widget" id="weather-widget">
         <button class="close-button" id="close-button">&times;</button>
         <div class="weather-column main-forecast" id="day-1">
@@ -89,52 +89,52 @@
             </div>
         </div>
     </div>
+    <div class="mapandlistbut">
+        <button id="tabMap" class="activeButton" onclick="handerMap(event, 'map')">
+            Map
+        </button>
+        <button id="tabList" onclick="handerMap(event, 'list')">
+            List
+        </button>
+    </div>
+    <div id="poiList"></div>
+    <div id="zoom-controls">
+        <div style="text-align: right; padding-right: 15px;">
+            <button id="dingwennd" onclick="switchoverHandled()">
+                <img src="static/icons/posinit.svg" width="26" alt="" srcset="">
+            </button>
+        </div>
+        <div class="lunchtime">
+            <div class="infomfor" id="tishi">It's lunchtime. I've picked out a few restaurants
+                in the neighbourhoods that I think you'll like.
+                Take a look at them.</div>
+            <div id="foodBox" class="none">
+                <img width="70%" src="static/icons/food.png" alt="" srcset="">
+            </div>
+            <div id="idaeBox" class="none"></div>
+                <img width="70%" src="static/icons/idae.png" alt="" srcset="">
+            </div>
+            <button id="robotIcoId" class="robotIco"></button>
+                <div class="robot-eye robot-eye-left"></div>
+                <div class="robot-eye robot-eye-right"></div>
+                <img src="static/icons/morx.svg" alt="" srcset="">
+            </button>
+        </div>
+        <!-- 推荐poi -->
+        <div id="poiSwiper" class="none">
+            <div class="promo">
+                <img src="static/icons/start.svg" alt="" srcset="">
+                <button onclick="">Discover Nearby</button>
+            </div>
+            <div class="swiper">
+                <div class="swiper-wrapper" id="swiperconent">
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="container">
         <div id="map"></div>
         <div id="hiddenMap"></div>
-        <div id="zoom-controls">
-            <div style="text-align: right; padding-right: 15px;">
-                <button id="dingwennd" onclick="Setup.switchoverHandled()">
-                    <img src="static/icons/posinit.svg" width="26" alt="" srcset="">
-                </button>
-            </div>
-            <div class="lunchtime">
-                <div class="infomfor" id="tishi">It's lunchtime. I've picked out a few restaurants
-                    in the neighbourhoods that I think you'll like.
-                    Take a look at them.</div>
-                <div id="foodBox" class="none">
-                    <img width="70%" src="static/icons/food.png" alt="" srcset="">
-                </div>
-                <div id="idaeBox" class="none">
-                    <img width="70%" src="static/icons/idae.png" alt="" srcset="">
-                </div>
-                <button id="robotIcoId" class="robotIco">
-                    <div class="robot-eye robot-eye-left"></div>
-                    <div class="robot-eye robot-eye-right"></div>
-                    <img src="static/icons/morx.svg" alt="" srcset="">
-                </button>
-            </div>
-            <!-- 推荐poi -->
-            <div id="poiSwiper" class="none">
-                <div class="promo">
-                    <img src="static/icons/start.svg" alt="" srcset="">
-                    <button onclick="">Discover Nearby</button>
-                </div>
-                <div class="swiper">
-                    <div class="swiper-wrapper" id="swiperconent">
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="poiList"></div>
-        <div class="mapandlistbut">
-            <button id="tabMap" class="activeButton" onclick="Setup.handerMap(event, 'map')">
-                Map
-            </button>
-            <button id="tabList" onclick="Setup.handerMap(event, 'list')">
-                List
-            </button>
-        </div>
     </div>
 
     <!-- chatgpt -->
