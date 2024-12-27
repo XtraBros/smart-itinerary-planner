@@ -310,3 +310,8 @@ fetch('/config')
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
+
+function displayAiModal () {
+    const popupModal = document.getElementById('popupModal');
+    popupModal.style.display = "none";
+}
