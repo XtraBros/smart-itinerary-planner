@@ -20,7 +20,19 @@ export function updateNavigationInstructions(userLocation) {
             lat: sharedState.steps[sharedState.currentStepIndex + 1].maneuver.location[1]
         }
         : null; // No next checkpoint if this is the final step
-
+    
+    const finalDestination = {
+        lng: sharedState.steps[steps.length - 1].maneuver.location[0],
+        lat: sharedState.steps[steps.length - 1].maneuver.location[1]
+    };
+    const distanceToFinalDestination = calculateDistance(userLocation, finalDestination);
+    if (distanceToFinalDestination <= arrivalThreshold) {
+        // Display arrival message and stop further instructions
+        console.log("User has arrived at the destination.");
+        document.getElementById("distanceText").textContent = "You have arrived at your destination!";
+        stopUpdatingNavigation();
+        return;
+    }
     const distanceToCurrentCheckpoint = calculateDistance(userLocation, currentCheckpoint);
 
     let increment = false;
@@ -43,17 +55,6 @@ export function updateNavigationInstructions(userLocation) {
     if (increment) {
         sharedState.currentStepIndex++;
         console.log("Moving to next checkpoint, step index: " + sharedState.currentStepIndex);
-    }
-    const finalDestination = {
-        lng: sharedState.steps[sharedState.steps.length - 1].maneuver.location[0],
-        lat: sharedState.steps[sharedState.steps.length - 1].maneuver.location[1]
-    };
-    const distanceToFinalDestination = calculateDistance(userLocation, finalDestination);
-    if (distanceToFinalDestination <= arrivalThreshold) {
-        // Display arrival message and stop further instructions
-        console.log("User has arrived at the destination.");
-        document.getElementById("distanceText").textContent = "You have arrived at your destination!";
-        return;
     }
     // Display current instruction if still within bounds
     if (sharedState.currentStepIndex < sharedState.instructions.length) {
@@ -414,6 +415,18 @@ export function displayInstruction(instructionTextContent, distanceToCheckpoint,
     // Show the pop-up
     instructionPopup.classList.add('fadeshowin')
 }
+
+let instrInterval;
+function checkAndUpdateNavigation(loc) {
+    if (isUserRunning) {
+        updateNavigationInstructions(loc);
+    }
+}
+function stopUpdatingNavigation() {
+    clearInterval(instrInterval);
+    console.log("Navigation updates stopped.");
+}
+
 // Navigation Mode 
 export function enableNavigationMode(data) {
     sharedState.instructions = getInstructions(data);
@@ -447,6 +460,9 @@ export function enableNavigationMode(data) {
     sharedState.switchoverState = 'FOCUS'
     // Wait for easeTo animation to complete, then start tracking
     sharedState.map.once('moveend', () => trackUserLocation(sharedState.route));
+    instrInterval = setInterval(() => {
+        checkAndUpdateNavigation(userLocation);
+    }, 1000);
 }
 // Function to check if user is off-route
 export function isUserOffRoute(userLocation, route, tolerance = 0.03) {
