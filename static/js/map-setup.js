@@ -30,7 +30,7 @@ export function setUserLocationMark(coord) {
     const el = document.createElement('div');
     el.insertAdjacentHTML('beforeend', `<div class='user-location-marker'></div>`);
     sharedState.userMarker = new mapboxgl.Marker({
-        // rotationAlignment: 'map',
+        rotationAlignment: 'map',
         element: el
     })
         .setLngLat(coord)
@@ -266,8 +266,8 @@ export async function getPlaceCoordWithName(place, isNotMarker) {
 }
 
 export function showMapTab() {
-    mapEl.style.display = 'block';
-    poiList.style.display = 'none';
+    mapDiv.style.zIndex = 5
+    poiList.style.zIndex = 1
     tabList.classList.remove('activeButton');
     tabMap.classList.add('activeButton');
 }
@@ -280,7 +280,6 @@ export function navDitle(e, name) {
 export function handerMap(e, type) {
     e.preventDefault();
     window.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
-    const mapDiv = document.getElementById("container")
     if (type === 'list') {
         tabMap.classList.remove('activeButton');
         mapDiv.style.zIndex = 1
@@ -580,7 +579,8 @@ export function getMapboxWalkRoute(coordinates) {
                 sharedState.route = data.routes[0].geometry;
                 const result = data.routes[0].geometry;
                 sharedState.steps = data.routes[0].legs[0].steps;
-                sharedState.walkStepsNavs = data
+                sharedState.walkStepsNavs = data;
+                paintLine(route);
                 return { legs: legs, route: result };
             } else {
                 console.error('No route found: ', data);
@@ -749,7 +749,6 @@ export function addMarkertoMap({ placeName, category, index, template, descripti
     popupContent.querySelector('button').onclick = async function () {
         disminiNav();
         await displayRoute([placeName], [location], true);
-        paintLine(route);
     };
 
     // Create a popup and marker for the map

@@ -596,7 +596,6 @@ export async function navFunc(e, typeSuge, place, longAndlat, fromUser) {
     if (waypoints.length && places.length) {
         await displayRoute(places, waypoints, isfromUser);
     }
-    paintLine(sharedState.route)
 }
 export function closedNavfun() {
     const navigationElem = document.getElementById('navigation');
