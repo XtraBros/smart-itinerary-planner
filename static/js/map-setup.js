@@ -290,7 +290,37 @@ export function handerMap(e, type) {
     e.target.classList.add('activeButton')
     e.preventDefault();
 }
+
+function revealPosition(position) {
+    userLocation = {
+        lng: position.coords.longitude,
+        lat: position.coords.latitude,
+        userHeading: position.coords.heading,
+    };
+}
+function errorCallBock(error) {
+    alert('Error requesting location permission');
+}
+export function handlePermission() {
+    navigator.permissions.query({ name: "geolocation" }).then((result) => {
+        if (result.state === "granted") {
+            // 有用户权限
+          getUserCurrentPosition();
+        } else if (result.state === "prompt") {
+            // 请求用户权限
+            navigator.geolocation.getCurrentPosition(revealPosition, errorCallBock);
+        } else if (result.state === "denied") {
+            // 拒位置权限
+            alert('Location permission denied.');
+        }
+        result.addEventListener("change", () => {
+            alert(result.state);
+        });
+    });
+}
+
 export function switchoverHandled() {
+    handlePermission();
     sharedState.userTouch = false
     sharedState.switchoverState = sharedState.switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
     const img = dingwenndId.getElementsByTagName('img')[0]

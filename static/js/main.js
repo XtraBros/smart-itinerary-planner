@@ -39,6 +39,7 @@ const zoomControls = document.getElementById('zoom-controls');
 const dingwenndId = document.getElementById('dingwennd');
 
 window.onload = function () {
+    handlePermission();
     console.log("Resetting chat memory")
     fetch("/reset_memory"); // Calls endpoint to reset memory
     window.mapMarkers = {};
