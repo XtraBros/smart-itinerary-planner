@@ -24,6 +24,24 @@ export function submitChat(event) {
         }
     }
 }
+window.submitChat = function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        var inputBox = document.getElementById("chatbot-input");
+        var message = inputBox.value;
+
+        if (message !== "") {
+            var chatMessages = document.getElementById("chatbot-messages");
+            postMessage(message, chatMessages);
+            // Start the timer if not running
+            // if (!suggestionTimer) {
+            //     resetTimer();  // Replace "someType" with the actual type if needed
+            // }
+            inputBox.value = "";
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+}
 
 export async function postMessage(message, chatMessages) {
     appendMessage({ text: message, className: 'visitor-message', chatMessages });

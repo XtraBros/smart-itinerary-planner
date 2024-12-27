@@ -37,9 +37,12 @@ const idaeBox = document.getElementById('idaeBox');
 const chatbotArea = document.getElementById('chatbot-area');
 const zoomControls = document.getElementById('zoom-controls');
 const dingwenndId = document.getElementById('dingwennd');
-
+export function displayAiModal () {
+    const popupModal = document.getElementById('popupModal');
+    popupModal.style.display = "none";
+}
 window.onload = function () {
-    handlePermission();
+    Setup.handlePermission();
     console.log("Resetting chat memory")
     fetch("/reset_memory"); // Calls endpoint to reset memory
     window.mapMarkers = {};
@@ -304,7 +307,7 @@ fetch('/config')
         });
         sharedState.hiddenMap.on('load', function () {
             const geoloHidl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
-            hiddenMap.addControl(geoloHidl);
+            sharedState.hiddenMap.addControl(geoloHidl);
             setTimeout(() => {
                 geoloHidl.trigger();
             }, 500)
@@ -325,8 +328,3 @@ fetch('/config')
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
-
-function displayAiModal () {
-    const popupModal = document.getElementById('popupModal');
-    popupModal.style.display = "none";
-}
