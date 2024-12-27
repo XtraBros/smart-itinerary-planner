@@ -266,6 +266,7 @@ export async function getPlaceCoordWithName(place, isNotMarker) {
 }
 
 export function showMapTab() {
+    const mapDiv = document.getElementById("container")
     mapDiv.style.zIndex = 5
     poiList.style.zIndex = 1
     tabList.classList.remove('activeButton');
@@ -277,7 +278,8 @@ export function navDitle(e, name) {
     showMapTab();
 }
 
-export function handerMap(e, type) {
+window.handerMap = function(e, type) {
+    const mapDiv = document.getElementById("container")
     e.preventDefault();
     window.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
     if (type === 'list') {
@@ -288,7 +290,7 @@ export function handerMap(e, type) {
         tabList.classList.remove('activeButton');
         mapDiv.style.zIndex = 5
         poiList.style.zIndex = 1
-        map.resize();
+        sharedState.map.resize();
     }
     e.target.classList.add('activeButton')
 }
@@ -321,7 +323,7 @@ export function handlePermission() {
     });
 }
 
-export function switchoverHandled() {
+window.switchoverHandled =  function() {
     handlePermission();
     sharedState.userTouch = false
     sharedState.switchoverState = sharedState.switchoverState === 'POSINIT' ? 'FOCUS' : 'POSINIT'
@@ -664,7 +666,7 @@ export function addMarkers(placeNames, waypoints) {
     });
 }
 
-export function displayByCategory(category, element) {
+window.displayByCategory = function(category, element) {
     if (window.mapMarkers) {
         for (const [key, value] of Object.entries(window.mapMarkers)) {
             value.remove();
