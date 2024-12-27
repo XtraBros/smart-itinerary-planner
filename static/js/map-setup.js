@@ -175,11 +175,8 @@ let firstTime = null;
 export function handleOrientationChange(event) {
     // console.log("User facing direction changed.")
     const mapUserLocation = document.getElementsByClassName('mapboxgl-user-location')[0] 
-    // if (mapUserLocation) {
-    //         document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(mapUserLocation.style.transform)} > ${normalizeAngle(userHeading)}: -${userHeading}`
-    // }
+    const holdMapUser = document.getElementsByClassName('mapboxgl-user-location')[1]
     if (sharedState.map && event.alpha !== null && sharedState.switchoverState === 'FOCUS') {
-        const userHeading = (360 - event.alpha) % 360;
         if (sharedState.firstClick) {
             if (!firstTime) {
                 firstTime = setTimeout(() => {
@@ -189,16 +186,18 @@ export function handleOrientationChange(event) {
                 }, 600)
             }
         } else {
-            sharedState.map.rotateTo(360 - event.alpha, { animate: false });
+            if (holdMapUser && mapUserLocation) {
+                const angle = normalizeAngle(getRotateZ(holdMapUser.style.transform));
+                // document.getElementsByClassName('newHeader')[0].innerText = `${getRotateZ(holdMapUser.style.transform)} : ${angle}`
+                sharedState.map.rotateTo(angle, { animate: false });
+            }
         }
     }
+    
     if (sharedState.userMarker && mapUserLocation) {
         const markerElement = sharedState.userMarker.getElement().getElementsByClassName('user-location-marker')[0]
-        if (sharedState.switchoverState === 'POSINIT') {
-            markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
-        } else {
-            markerElement.style.transform = `rotateZ(0deg)`
-        }
+        markerElement.style.transform = `rotateZ(${getRotateZ(mapUserLocation.style.transform)}deg)`
+    
     }
 }
 

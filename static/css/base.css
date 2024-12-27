@@ -18,6 +18,15 @@ h3 {
 #map {
   height: calc(100vh);
   width: 100%;
+  z-index: 1;
+}
+#hiddenMap {
+  height: calc(100vh);
+  width: 100%;
+  position: absolute;
+  left: 0px; top: 0px;
+  display: none ;
+  z-index: 0;
 }
 #zoom-controls {
   position: fixed;

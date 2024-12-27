@@ -25,7 +25,8 @@ export const sharedState = {
     geolocateControl: null,
     directions: null,
     isUserRunning: false,
-    switchoverState: 'POSINIT'// POSINIT or FOCUS
+    switchoverState: 'POSINIT',// POSINIT or FOCUS
+    hiddenMap: null
 };
 export let isFirstOpen = false;
 export let thumbnailURI;
@@ -132,16 +133,20 @@ fetch('/config')
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.THUMBNAIL_URI;
         const center = [103.827973, 1.250277]
-        sharedState.map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v12',
-            //style: 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
-            //center: [103.8285654153839, 1.24791502223719],
+        const comfig = {
+            style: 'mapbox://styles/mapbox/streets-v12', // 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
             center,
             zoom: 13,
             minZoom: 10,
+        }
+        sharedState.hiddenMap = new mapboxgl.Map({
+            container: 'hiddenMap',
+            ...comfig,
         });
-
+        sharedState.map = new mapboxgl.Map({
+            container: 'map',
+            ...comfig,
+        });
         sharedState.directions = new MapboxDirections({
             accessToken: mapboxgl.accessToken,
             unit: 'metric',
@@ -154,6 +159,15 @@ fetch('/config')
         //     [104.1, 1.5]   // 东北角 (大致在东北海域)
         // ];
         // map.setMaxBounds(bounds);
+        const geolocationCogif = {
+            positionOptions: {
+                enableHighAccuracy: true,
+                timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
+                maximumAge: 0                  // Prevents caching of location
+            },
+            trackUserLocation: true,
+            showUserHeading: true, // If you want to show user's heading direction
+        }
         sharedState.map.on('load', function () {
             // Define and set bounds for the map
             // 3D Layer for navigation view.    
@@ -194,15 +208,8 @@ fetch('/config')
                 }
             });
             // geolocation tracking
-            sharedState.geolocateControl = new mapboxgl.GeolocateControl({
-                positionOptions: {
-                    enableHighAccuracy: true,
-                    timeout: 3000,                 // Maximum time (in ms) allowed to get a new location
-                    maximumAge: 0                  // Prevents caching of location
-                },
-                trackUserLocation: true,
-                showUserHeading: true, // If you want to show user's heading direction
-            });
+            sharedState.geolocateControl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
+
             sharedState.map.addControl(sharedState.geolocateControl);
             // force mapbox to stop changing map view when geolocating
             sharedState.geolocateControl._updateCamera = () => { }
@@ -293,6 +300,13 @@ fetch('/config')
                     e.preventDefault();
                 });
             }
+        });
+        sharedState.hiddenMap.on('load', function () {
+            const geoloHidl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
+            hiddenMap.addControl(geoloHidl);
+            setTimeout(() => {
+                geoloHidl.trigger();
+            }, 500)
         });
         sharedState.map.on('dragstart', () => {
             sharedState.userTouch  = true
