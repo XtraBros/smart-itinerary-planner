@@ -170,6 +170,7 @@ cython_debug/
 
 # Zac's misc files
 notes.md
+todo.md
 refactor.md
 graph/distance_matrix_gen.ipynb
 graph/upload_sentosa.py
