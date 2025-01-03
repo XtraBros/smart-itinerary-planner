@@ -52,6 +52,31 @@ def home():
 def get_config():
     return jsonify({'config': config})
 
+@app.route('/ops_router')
+def ops_route():
+    user_input = request.json['message']
+    prompt = f"""
+    You are a operations handler. Your task is to understand a query and classify it under one of the following categories: [Wayfinding, POI Introduction, Recommendation Generation, Unclassified].
+    Here are some guidelines to determine the classification:
+    - Wayfinding: The query involves navigation, how to move from place to palce, or locating a POI.
+    - POI Introduction: The query is asking for information or details about a specific POI.
+    - Recommendation Generation: The query is asking for recommendations or suggestions.
+    - Unclassified: Any query that does not fall into any of the above categories.
+
+    Your response should contain only the category name you have selected and nothing else.
+    """
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_input}
+    ]
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+    )
+    message = response.choices[0].message
+    # Given the classification, run the subsequent tasks
+    return
+
 # end point to send message to LLM to get POIs
 @app.route('/ask_plan', methods=['POST'])
 def ask_plan():
