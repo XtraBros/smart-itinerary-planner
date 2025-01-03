@@ -13,10 +13,9 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import HumanMessage, AIMessage
 import certifi
 import re
-import gridfs
-import math
-from helpers.route_solver import solve_route
+from concurrent.futures import ThreadPoolExecutor
 from helpers.text_processing import *
+from api.data_apis import *
 
 app = Flask(__name__)
 
@@ -25,38 +24,25 @@ CONFIG_FILE = 'config.json'
 with open(CONFIG_FILE, 'r') as file:
     config = json.load(file)
 
+######################### LLM INIT #########################
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
 # Initialize memory for conversation
 memory = ConversationBufferWindowMemory(k=3, memory_key="history")
-######################### MONGO #########################
+######################### MongoDB #########################
 # Connect to MongoDB
 mongo_client = MongoClient(config['MONGO_CLUSTER_URI'], tlsCAFile=certifi.where())
 db = mongo_client[config['MONGO_DB_NAME']]
 poi_db = db[config['POI_DB_NAME']]
 events_db = db[config['EVENTS_DB_NAME']]
 profile_db = db["PROFILES"]
-# create geosphere index
-poi_db.create_index([('location', '2dsphere')])
-indexes = poi_db.index_information()
-dist_mat = db[config["DISTANCE_MATRIX"]]
-fs = gridfs.GridFS(db)
-#cluster_loc = db[config['CLUSTER_LOCATIONS']]
-# LOAD Vector store into memory if needed. Currently kept in db as column.
-# Load the embedding model for semantic search
-model = SentenceTransformer('all-MiniLM-L6-v2')
-######################### MONGO #########################
-
 ######################### CSV DATA #########################
-place_info_df = pd.DataFrame(list(poi_db.find({}, {"_id": 0})))
-# place_info_df.columns = place_info_df.columns.str.strip()
-# place_info_df['name'] = place_info_df['name'].str.strip()
-name_to_index = {name: idx for idx, name in enumerate(place_info_df['name'])}
-#cluster_locations = pd.DataFrame(list(cluster_loc.find({}, {"_id": 0})))
-######################### CSV DATA #########################
-
-sentosa_name = "Singapore Sentosa Island"
-sentosa_places_list = place_info_df["name"].tolist()
+# Load POI List from csv file:
+place_info = pd.read_csv("./jewel.csv")
+# Table columns: [floor, floorId, icon, location, name, poiId, unit]
+place_info_df = pd.DataFrame(place_info)
+######################### MISC init #########################
+api_url = config['API_URL']
 
 @app.route('/')
 def home():
@@ -107,7 +93,6 @@ def ask_plan():
         7) **Location Requests**: 
         - For current location, use `find_nearest_poi` with operation "location."
         - For directions to a POI, use operation "location" and include the POI name. If no POI is specified, refer to the last mentioned POI in conversation history without confirmation. Avoid function calls for directions.
-        - For distance queries, use `get_distance_from_poi` and respond with operation "message". For weather queries, use `fetch_weather_data` with operation "message".
 
         8) **Result Limits**: 
         - Only suggest amenities if requested, and limit to 3 attractions unless the user specifies otherwise.
@@ -250,62 +235,21 @@ def get_coordinates():
     print(len(coordinates))
     return jsonify({"coordinates": coordinates, "places": found_places})
 
-# POST endpoint for optimizing route
-@app.route('/optimize_route', methods=['POST'])
-def optimize_route():
-    try:
-        # Parse the incoming JSON request
-        data = request.get_json()
-        print(data)
-
-        # Extract the list of place names
-        place_names = data.get('placeNames')
-        print(place_names)
-
-        # Assuming place_names is a list of names to optimize
-        ordered_place_indexes = solve_route(place_names, dist_mat, name_to_index)
-        print(ordered_place_indexes)
-
-        # Return the optimized route indexes as a JSON response
-        return jsonify(ordered_place_indexes)
-
-    except Exception as e:
-        # Log the error for debugging purposes
-        print(f"Error encountered: {e}")
-
-        # Return a failsafe response indicating a potential network issue
-        return jsonify({"message": "It seems my network connection with you is unstable. Please try sending me your message again."}), 500
-
-
-# enpoint to load POI info from csv file: returns name:description pair
+# enpoint to load POI detail. returns name:description pair
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
     place_info = {}
+    # Fetch the uids from the DataFrame
+    uids = place_info_df[place_info_df['name'].isin(places)]['poiId'].tolist()
+    # Use ThreadPoolExecutor to map the API call over the list of uids
+    with ThreadPoolExecutor() as executor:
+        results = list(executor.map(get_poi_description, uids))
 
-    for place in places:
-        place = place.strip()
-        result = poi_db.find_one({"name": place}, {"_id": 0, "name": 1, "description": 1,"location":1})
-        if result:
-            place_name = result['name']
-            description = result['description']
-            location = result['location']
-            place_info[place_name] = {
-                "description": description,
-                "location": location
-            }
+    # Combine the uids with their respective API call results
+    output = [{"uid": uid, "data": result} for uid, result in zip(uids, results)]
+    return jsonify(output)
 
-    return jsonify(place_info)
-
-# @app.route('/weather_icon', methods=['POST'])
-# def weather_icon():
-#     forecast = request.json
-#     lib = ["Fair", "Fair (Day)", "Fair (Night)", "Fair and Warm", "Partly Cloudy",
-#            "Partly Cloudy (Day)", "Partly Cloudy (Night)", "Cloudy", "Hazy", "Slightly Hazy",
-#            "Windy", "Mist", "Fog", "Light Rain", "Moderate Rain", "Heavy Rain", "Passing Showers",
-#            "Light Showers", "Showers", "Heavy Showers", "Thundery Showers", "Heavy Thundery Showers",
-#            "Heavy Thundery Showers with Gusty Winds"]
-#     return jsonify(process.extractOne(forecast,lib)[0])
 
 @app.route('/find_nearby_pois', methods=['POST'])
 def find_nearby():
@@ -408,23 +352,10 @@ def fetch_by_category():
 
         if not category:
             return jsonify({"error": "No category provided"}), 400
-
-        # Query MongoDB for entries with matching category, excluding _id
-        results = poi_db.find({"category": category}, {"_id": 0, "name": 1, "description": 1, "location": 1})
-
-        # Create a place_info-like structure
-        place_info = {}
-        for result in results:
-            place_name = result['name']
-            description = result['description']
-            location = result['location']
-            place_info[place_name] = {
-                "description": description,
-                "location": location
-            }
-
+        payload = {"page": 1, "size": 50, "category": category}
+        output = call_api(api_url,payload)
         # Return the result as a JSON response
-        return jsonify(place_info), 200
+        return jsonify(output.data.content), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -435,39 +366,6 @@ def reset_memory():
     memory.clear()  # Replace with actual memory clearing code
     return jsonify({"status": "Memory reset"})
 
-@app.route('/calculate_distances', methods=['POST'])
-def calculate_distances():
-    try:
-        # Parse the JSON payload
-        data = request.get_json()
-        print(data)
-        place_names = data['place_names']
-        user_location = data['user_location']
-        user_location = [user_location["lng"], user_location["lat"]]
-        # Assume a walking speed of 1.39 m/s (5 km/h)
-        walking_speed = 0.5  # in meters per second
-        # Calculate distances and walking times
-        results = {}
-        for placename in place_names:
-            distance = int(get_distance_from_poi(placename, user_location))  # Get the distance
-            time = int(distance / walking_speed / 60)  # Calculate time in minutes
-            results[placename] = {
-                "distance": distance,  # in meters
-                "time": time  # in minutes
-            }
-        print(f"calc distances restults: {results}")
-        return jsonify(results)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Not needed in sentosa variant right now.
-# @app.route('/get_centroids', methods=['POST'])
-# def get_centroids():
-#     names = request.json['names']
-#     if not names:
-#         return jsonify({'error': 'No names provided'}), 400
-#     coords_str = get_unique_clusters_coordinates(names, poi_db, cluster_locations)
-#     return jsonify({'centroids': coords_str})
 ###########################################################################################################
 ####################################  FUNCTION CALLING METHODS    #########################################
 ###########################################################################################################
@@ -504,44 +402,6 @@ def get_poi_by_name(name):
     
     if poi:
         return poi  # Return the data row/document
-    else:
-        return None
-
-def get_distance_from_poi(placename, user_location):
-    def haversine(coord1, coord2):
-        # Coordinates in decimal degrees (e.g. (lng, lat))
-        lon1, lat1 = coord1
-        lon2, lat2 = coord2
-        
-        # Radius of Earth in meters
-        R = 6371000  
-        
-        # Convert decimal degrees to radians
-        phi1 = math.radians(lat1)
-        phi2 = math.radians(lat2)
-        
-        delta_phi = math.radians(lat2 - lat1)
-        delta_lambda = math.radians(lon2 - lon1)
-        
-        # Haversine formula
-        a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        
-        # Distance in meters
-        distance = R * c
-        
-        return distance
-    # Fetch the place's coordinates from MongoDB by name
-    poi = poi_db.find_one({"name": placename}, {"_id": 0})
-    
-    if poi and 'longitude' in poi and 'latitude' in poi:
-        # Extract the coordinates from the MongoDB result
-        poi_coord = (poi['longitude'], poi['latitude'])
-        
-        # Calculate the distance using the Haversine formula
-        distance = haversine(poi_coord, user_location)
-        print(f"== Distance from POI == {distance}")
-        return distance
     else:
         return None
 
@@ -624,7 +484,6 @@ function_mapping = {
     "get_poi_by_name": get_poi_by_name,
     "find_nearest_poi": find_nearest_poi,
     "get_user_profile": get_user_profile,
-    "get_distance_from_poi": get_distance_from_poi
     # "get_poi_list":get_poi_list
 }
 '''
@@ -748,29 +607,6 @@ function_schemas = [
         "description": "Fetches the user profile from the database. Includes racial profile, group dynamics and other relevant considerations required to make a recommendation.",
         "parameters": {}
     },
-    {
-        "name": "get_distance_from_poi",
-        "description": "Calculates the distance of a POI from the user using the Haversine formula. Use the exact name of attractions as given in the system prompt.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "placename": {
-                "type": "string",
-                "description": "The name of the POI for which the distance should be calculated."
-            },
-            "user_location": {
-                "type": "array",
-                "description": "The [longitude, latitude] coordinates of the user's location.",
-                "items": {
-                "type": "number"
-                },
-                "minItems": 2,
-                "maxItems": 2
-            }
-            },
-            "required": ["placename", "user_location"]
-        }
-    }
 ]
 
 def handle_function_calls(messages, state):
