@@ -15,6 +15,7 @@ import certifi
 import re
 from concurrent.futures import ThreadPoolExecutor
 from helpers.text_processing import *
+from helpers.prompts import *
 from api.data_apis import *
 
 app = Flask(__name__)
@@ -41,6 +42,7 @@ profile_db = db["PROFILES"]
 place_info = pd.read_csv("./jewel.csv")
 # Table columns: [floor, floorId, icon, location, name, poiId, unit]
 place_info_df = pd.DataFrame(place_info)
+name_id_table = dict(zip(place_info_df[["name","poiId"]]))
 ######################### MISC init #########################
 api_url = config['API_URL']
 
@@ -55,6 +57,11 @@ def get_config():
 @app.route('/ops_router')
 def ops_route():
     user_input = request.json['message']
+    # Fetch stored memory (previous conversation history)
+    conversation_history = memory.load_memory_variables({})
+    # Format the conversation history for the prompt (as a string)
+    history = process_formatted_history(conversation_history.get('history', ''))
+    print(f"==conv== {history}")
     prompt = f"""
     You are a operations handler. Your task is to understand a query and classify it under one of the following categories: [Wayfinding, POI Introduction, Recommendation Generation, Unclassified].
     Here are some guidelines to determine the classification:
@@ -63,7 +70,9 @@ def ops_route():
     - Recommendation Generation: The query is asking for recommendations or suggestions.
     - Unclassified: Any query that does not fall into any of the above categories.
 
-    Your response should contain only the category name you have selected and nothing else.
+    Your response should contain a dictionary with the keys "operation" and "poi". The value for "operation" will be the category the query is classfied as.
+    The value for "poi" will be a list of any names of POIs in the user's query. An example response will be: {"operation": "Wayfinding", "poi":["Miniso"]}.
+    Your response should contain only this dictionary and nothing else.
     """
     messages = [
         {"role": "system", "content": prompt},
@@ -73,9 +82,39 @@ def ops_route():
         model=model_name,
         messages=messages,
     )
-    message = response.choices[0].message
+    message = remove_code_blocks(response.choices[0].message)
     # Given the classification, run the subsequent tasks
-    return
+    # alternatively, use NLP package to classify queries.
+    if message.poi: # fetch poi data
+        uids = match_names(message.poi)
+        # Use ThreadPoolExecutor to map the API call over the list of uids
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(get_poi_data, uids))
+        # Combine the uids with their respective API call results
+        poi_data = [
+            {
+                "name": next((name for name, uid in name_id_table.items() if uid == poi_id), None),
+                "uid": poi_id,
+                "data": result
+            }
+            for poi_id, result in zip(uids, results)
+        ] 
+        print(poi_data)
+    if message.operation == "Wayfinding":
+        response = wayfind_prompt(user_input,history,poi_data)
+        # return message + poiId to run routing function
+        return jsonify({'response' : response, "poiId": poi_data.uid})
+    elif message.operation == "POI Introduction":
+        response = intro_prompt(user_input,history,poi_data)
+        # return message + poiId to run routing function
+        return jsonify({'response' : response, "poiId": poi_data.uid})
+    elif message.operation == "Recommendation":
+        # more complex
+        pass
+    else:
+        # Unclassified or errornous response, simply respond to query with LLM. 
+        response = basic_prompt(user_input,history)
+        return jsonify({'response' : response})
 
 # end point to send message to LLM to get POIs
 @app.route('/ask_plan', methods=['POST'])
@@ -133,7 +172,6 @@ def ask_plan():
     prompt = prompt_template.format(
         history=formatted_history,  # Inject conversation history
         user_location=user_location,
-        sentosa_places_list=sentosa_places_list
     )
 
     messages = [
@@ -489,9 +527,6 @@ def find_nearest_poi(user_location):
     except Exception as e:
         print(f"Error: {e}")
         return None
-    
-def get_poi_list():
-    return sentosa_places_list
 
 def get_user_profile():
     user_profile = profile_db.find_one({"profile": 0})
@@ -524,7 +559,7 @@ function_schemas = [
     },
     {
         "name": "get_poi_by_name",
-        "description": "Retrieve the data row of a Point of Interest (POI) from the database by its name.",
+        "description": "Retrieve the data row of a Point of Interest (POI) by its name.",
         "parameters": {
             "type": "object",
             "properties": {
