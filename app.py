@@ -43,6 +43,7 @@ place_info = pd.read_csv("./jewel.csv")
 # Table columns: [floor, floorId, icon, location, name, poiId, unit]
 place_info_df = pd.DataFrame(place_info)
 name_id_table = dict(zip(place_info_df[["name","poiId"]]))
+categories = ['health_medical', 'education', 'professional_services', 'arts_entertainment', 'beauty_spas', 'restaurants', 'workplace', 'facility', 'shopping']
 ######################### MISC init #########################
 api_url = config['API_URL']
 
@@ -63,16 +64,18 @@ def ops_route():
     history = process_formatted_history(conversation_history.get('history', ''))
     print(f"==conv== {history}")
     prompt = f"""
-    You are a operations handler. Your task is to understand a query and classify it under one of the following categories: [Wayfinding, POI Introduction, Recommendation Generation, Unclassified].
+    You are a operations handler. Your task is to understand a query and classify it under one of the following categories: [Wayfinding, POI Introduction, Recommendation, Unclassified].
     Here are some guidelines to determine the classification:
     - Wayfinding: The query involves navigation, how to move from place to palce, or locating a POI.
     - POI Introduction: The query is asking for information or details about a specific POI.
-    - Recommendation Generation: The query is asking for recommendations or suggestions.
+    - Recommendation: The query is asking for recommendations or suggestions.
     - Unclassified: Any query that does not fall into any of the above categories.
 
     Your response should contain a dictionary with the keys "operation" and "poi". The value for "operation" will be the category the query is classfied as.
-    The value for "poi" will be a list of any names of POIs in the user's query. An example response will be: {"operation": "Wayfinding", "poi":["Miniso"]}.
-    Your response should contain only this dictionary and nothing else.
+    The value for "poi" will be a list of any names of POIs in the user's query. An example response will be: {{"operation": "Wayfinding", "poi":["Miniso"]}}.
+    For "operation" Recommendation, your response should have the keys "operation" and "category". Select the most appropriate category from {categories}, and use that as the value for "category".
+    An example response for Reommendation is: {{"operation": "Recommendation", "category": "restaurants"}}.
+    Your response should contain only one dictionary and nothing else.
     """
     messages = [
         {"role": "system", "content": prompt},
@@ -109,8 +112,16 @@ def ops_route():
         # return message + poiId to run routing function
         return jsonify({'response' : response, "poiId": poi_data.uid})
     elif message.operation == "Recommendation":
-        # more complex
-        pass
+        # fetch poi by category and randomly select. In future, implement ranking by relevance or vendor
+        category = message.category
+        payload = {"page": 1, "size": 50, "category": category}
+        pois = call_api(api_url,payload).content
+        # RAndom sample of 7 pois to recommend
+        sample = sample_pois(pois,7)
+        # Return the result as a JSON response
+        response = rec_prompt(user_input,history,sample)
+        # return message + poiId to run routing function
+        return jsonify({'response' : response, "poiId": poi_data.uid})
     else:
         # Unclassified or errornous response, simply respond to query with LLM. 
         response = basic_prompt(user_input,history)

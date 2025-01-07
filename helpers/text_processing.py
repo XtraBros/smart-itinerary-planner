@@ -1,5 +1,7 @@
 import re
+from rapidfuzz import process, fuzz
 import json
+
 # Function to handle duplicated GPT output
 def remove_dupes(response_text):
     # Use a regular expression to find all occurrences of dictionaries
@@ -98,3 +100,34 @@ def process_formatted_history(history):
             processed_history.append(line)
     
     return "\n".join(processed_history)
+
+def match_names(names, dataframe, threshold=80):
+    """
+    Matches names from a list to the names in a pandas DataFrame, compensating for typos.
+    
+    Args:
+        names (list): A list of names to match.
+        dataframe (pd.DataFrame): A DataFrame with columns "name" and "poiId".
+        threshold (int): Minimum similarity score (0-100) for a match.
+        
+    Returns:
+        list: A list of poiIds where the name matches with the input names.
+    """
+    matched_poiIds = set()
+    
+    # Iterate through the names to match
+    for input_name in names:
+        # Find the best matches for the current input_name in the dataframe
+        results = process.extract(
+            input_name,
+            dataframe['name'],
+            scorer=fuzz.ratio,
+            limit=None
+        )
+        
+        # Filter matches that meet the similarity threshold
+        for match_name, score, index in results:
+            if score >= threshold:
+                matched_poiIds.add(dataframe.iloc[index]['poiId'])
+    
+    return list(matched_poiIds)

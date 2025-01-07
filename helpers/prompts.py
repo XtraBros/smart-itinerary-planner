@@ -64,3 +64,23 @@ def intro_prompt(user_input, chat_history, poi_data):
     )
     message = response.choices[0].message
     return message
+
+def rec_prompt(user_input, chat_history, poi_data):
+    prompt = f"""
+    You are a helpful assistant. The user wants you to reccommend some POIs to them based on their query. 
+    The following data entails the shortlisted POIs to recommend the user: 
+    POI Data: {poi_data}
+    Determine the 3 most suitable POIs to recommend, and generate a message to introduce them to the user.
+    Chat history:
+    {chat_history}
+    """
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_input}
+    ]
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+    )
+    message = response.choices[0].message
+    return message

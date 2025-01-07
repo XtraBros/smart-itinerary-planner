@@ -1,4 +1,20 @@
 import requests
+import random
+
+def sample_pois(pois, sample_size):
+    """
+    Randomly samples a specified number of POIs from the filtered list.
+    
+    Parameters:
+    - pois: List of POI dictionaries.
+    - sample_size: Number of POIs to sample.
+    
+    Returns:
+    - List of sampled POIs.
+    """
+    if len(pois) <= sample_size:
+        return pois  # Return all POIs if the sample size exceeds available POIs
+    return random.sample(pois, sample_size)
 
 def get_poi_data(api_url,uid):
     """
