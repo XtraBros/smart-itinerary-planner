@@ -12,7 +12,8 @@ from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import PromptTemplate
 from langchain.schema import HumanMessage, AIMessage
 import certifi
-import re
+import ast
+from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 from helpers.text_processing import *
 from helpers.prompts import *
@@ -42,7 +43,8 @@ profile_db = db["PROFILES"]
 place_info = pd.read_csv("./jewel.csv")
 # Table columns: [floor, floorId, icon, location, name, poiId, unit]
 place_info_df = pd.DataFrame(place_info)
-name_id_table = dict(zip(place_info_df[["name","poiId"]]))
+name_to_poiId = dict(zip(place_info_df["name"], place_info_df["poiId"]))
+poiId_to_name = dict(zip(place_info_df["poiId"], place_info_df["name"]))
 categories = ['health_medical', 'education', 'professional_services', 'arts_entertainment', 'beauty_spas', 'restaurants', 'workplace', 'facility', 'shopping']
 ######################### MISC init #########################
 api_url = config['API_URL']
@@ -55,7 +57,7 @@ def home():
 def get_config():
     return jsonify({'config': config})
 
-@app.route('/ops_router')
+@app.route('/ops_router', methods=['POST'])
 def ops_route():
     user_input = request.json['message']
     # Fetch stored memory (previous conversation history)
@@ -85,33 +87,37 @@ def ops_route():
         model=model_name,
         messages=messages,
     )
-    message = remove_code_blocks(response.choices[0].message)
+    message = ast.literal_eval(remove_code_blocks(response.choices[0].message.content))
+    print(message)
     # Given the classification, run the subsequent tasks
     # alternatively, use NLP package to classify queries.
-    if message.poi: # fetch poi data
-        uids = match_names(message.poi)
+    if message["poi"]: # fetch poi data
+        uids = match_names(message['poi'],place_info_df)
+        print(uids)
+        get_poi_data_with_url = partial(get_poi_data, api_url)
         # Use ThreadPoolExecutor to map the API call over the list of uids
         with ThreadPoolExecutor() as executor:
-            results = list(executor.map(get_poi_data, uids))
+            results = list(executor.map(get_poi_data_with_url, uids))
         # Combine the uids with their respective API call results
         poi_data = [
             {
-                "name": next((name for name, uid in name_id_table.items() if uid == poi_id), None),
+                "name": next((name for name, uid in name_to_poiId.items() if uid == poi_id), None),
                 "uid": poi_id,
                 "data": result
             }
             for poi_id, result in zip(uids, results)
         ] 
-        print(poi_data)
-    if message.operation == "Wayfinding":
-        response = wayfind_prompt(user_input,history,poi_data)
+    if message['operation'] == "Wayfinding":
+        response = wayfind_prompt(user_input,history,poi_data).content
+        print(response)
         # return message + poiId to run routing function
-        return jsonify({'response' : response, "poiId": poi_data.uid})
-    elif message.operation == "POI Introduction":
-        response = intro_prompt(user_input,history,poi_data)
+        return jsonify({'response' : response, "poiData": poi_data})
+    elif message['operation'] == "POI Introduction":
+        response = intro_prompt(user_input,history,poi_data).content
+        print(response)
         # return message + poiId to run routing function
-        return jsonify({'response' : response, "poiId": poi_data.uid})
-    elif message.operation == "Recommendation":
+        return jsonify({'response' : response, "poiData": poi_data})
+    elif message['operation'] == "Recommendation":
         # fetch poi by category and randomly select. In future, implement ranking by relevance or vendor
         category = message.category
         payload = {"page": 1, "size": 50, "category": category}
@@ -119,12 +125,14 @@ def ops_route():
         # RAndom sample of 7 pois to recommend
         sample = sample_pois(pois,7)
         # Return the result as a JSON response
-        response = rec_prompt(user_input,history,sample)
+        response = rec_prompt(user_input,history,sample).content
+        print(response)
         # return message + poiId to run routing function
-        return jsonify({'response' : response, "poiId": poi_data.uid})
+        return jsonify({'response' : response, "poiData": poi_data})
     else:
         # Unclassified or errornous response, simply respond to query with LLM. 
-        response = basic_prompt(user_input,history)
+        response = basic_prompt(user_input,history).content
+        print(response)
         return jsonify({'response' : response})
 
 # end point to send message to LLM to get POIs
