@@ -36,7 +36,9 @@ def wayfind_prompt(user_input, chat_history, poi_data):
     # fetch poi info
     prompt = f"""
     You are a helpful assistant. The user is trying to locate a place of interest. 
-    Refer to the following data related to the POI to most accurately determine the location of the POI.
+    Refer to the following data related to the POI to most accurately determine the location of the POI. 
+    The user only needs the floor, unit number and current opening status of the store. If the opening status is unavailable, give the operating hours instead. Omit any unavailable information.
+    The user will be provided a button below your response to generate a navigation aid. Inform them to "Click the button to find out how to get there!".
     POI Data: {poi_data}
     Chat history:
     {chat_history}
