@@ -48,7 +48,7 @@ export async function postMessage(message, chatMessages) {
     appendMessage({ text: null, chatMessages });
     try {
         // Send message to Flask endpoint and get the response
-        let response = await fetch('/ask_plan', {
+        let response = await fetch('/ops_router', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -60,37 +60,38 @@ export async function postMessage(message, chatMessages) {
         }
         let data = await response.json();
         console.log("GPT response: " + JSON.stringify(data));
-        // check for operation type and run route functions if neccesarry.
-        if (data.operation == "location") {
-            let cleanedPlaceNames = data.response;
+        appendMessage({ text: data.response, chatMessages });
+        // // check for operation type and run route functions if neccesarry.
+        // if (data.operation == "location") {
+        //     let cleanedPlaceNames = data.response;
 
-            console.log(cleanedPlaceNames); // Check the cleaned list
-            // Get the route from the get_coordinates function
-            let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
-            addMarkers(orderOfVisit[0], orderOfVisit[1]);
-            console.log("Location op POIs: " + orderOfVisit)
-            let textResponse = await fetch('/get_text', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
-            });
-            if (!textResponse.ok) {
-                throw new Error('Network response was not ok ' + textResponse.statusText);
-            }
-            let textData = await textResponse.json();
-            appendMessage({
-                text: textData.response ? textData.response.replace(/\*/g, "") : '',
-                chatMessages,
-                type: 'location',
-                placeNames: orderOfVisit[0],
-                longAndlat: orderOfVisit[1],
-            });
-            attachEventListenersToHyperlinks();
-        } else {
-            appendMessage({ text: data.response, chatMessages });
-        }
+        //     console.log(cleanedPlaceNames); // Check the cleaned list
+        //     // Get the route from the get_coordinates function
+        //     let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
+        //     addMarkers(orderOfVisit[0], orderOfVisit[1]);
+        //     console.log("Location op POIs: " + orderOfVisit)
+        //     let textResponse = await fetch('/get_text', {
+        //         method: 'POST',
+        //         headers: {
+        //             'Content-Type': 'application/json'
+        //         },
+        //         body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
+        //     });
+        //     if (!textResponse.ok) {
+        //         throw new Error('Network response was not ok ' + textResponse.statusText);
+        //     }
+        //     let textData = await textResponse.json();
+        //     appendMessage({
+        //         text: textData.response ? textData.response.replace(/\*/g, "") : '',
+        //         chatMessages,
+        //         type: 'location',
+        //         placeNames: orderOfVisit[0],
+        //         longAndlat: orderOfVisit[1],
+        //     });
+        //     attachEventListenersToHyperlinks();
+        // } else {
+            
+        // }
     } catch (error) {
         console.error('Error:', error.message || error);
     }
