@@ -1,9 +1,16 @@
 from openai import OpenAI
 import json
+import os
 from api.data_apis import *
 
-CONFIG_FILE = '../config.json'
-with open(CONFIG_FILE, 'r') as file:
+# Get the directory of the current file
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to the config file
+config_file_path = os.path.join(current_dir, '..', 'config.json')
+
+# Read the config file
+with open(config_file_path, 'r') as file:
     config = json.load(file)
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
