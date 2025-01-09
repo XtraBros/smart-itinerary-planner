@@ -91,7 +91,7 @@ def ops_route():
     print(message)
     # Given the classification, run the subsequent tasks
     # alternatively, use NLP package to classify queries.
-    if message["poi"]: # fetch poi data
+    if "poi" in message.keys(): # fetch poi data
         uids = match_names(message['poi'],place_info_df)
         print(uids)
         get_poi_data_with_url = partial(get_poi_data, api_url)
@@ -119,16 +119,17 @@ def ops_route():
         return jsonify({'response' : response, "poiData": poi_data})
     elif message['operation'] == "Recommendation":
         # fetch poi by category and randomly select. In future, implement ranking by relevance or vendor
-        category = message.category
+        category = message['category']
         payload = {"page": 1, "size": 50, "category": category}
-        pois = call_api(api_url,payload).content
+        pois = call_api(api_url,payload)['data']['content']
         # RAndom sample of 7 pois to recommend
         sample = sample_pois(pois,7)
+        print(sample)
         # Return the result as a JSON response
         response = rec_prompt(user_input,history,sample).content
         print(response)
         # return message + poiId to run routing function
-        return jsonify({'response' : response, "poiData": poi_data})
+        return jsonify({'response' : response, "poiData": sample})
     else:
         # Unclassified or errornous response, simply respond to query with LLM. 
         response = basic_prompt(user_input,history).content
