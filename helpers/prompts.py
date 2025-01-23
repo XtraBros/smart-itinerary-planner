@@ -79,7 +79,7 @@ def rec_prompt(user_input, chat_history, poi_data):
     You are a helpful assistant. The user wants you to reccommend some POIs to them based on their query. 
     The following data entails the shortlisted POIs to recommend the user: 
     POI Data: {poi_data}
-    Determine the 3 most suitable POIs to recommend, and generate a message to introduce them to the user.
+    Generate a message to introfuce these POIs to the user.
     Chat history:
     {chat_history}
     """

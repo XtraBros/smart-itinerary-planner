@@ -123,7 +123,7 @@ def ops_route():
         payload = {"page": 1, "size": 50, "category": category}
         pois = call_api(api_url,payload)['data']['content']
         # RAndom sample of 7 pois to recommend
-        sample = sample_pois(pois,7)
+        sample = sample_pois(pois,3)
         print(sample)
         # Return the result as a JSON response
         response = rec_prompt(user_input,history,sample).content
