@@ -1,23 +1,12 @@
 # app.py
 
 from flask import Flask, render_template, request, jsonify
-from openai import OpenAI
 import pandas as pd
 import json
-from pymongo import MongoClient
-from sentence_transformers import SentenceTransformer
-# from thefuzz import process
-import requests
 from langchain.memory import ConversationBufferWindowMemory
-from langchain.prompts import PromptTemplate
-from langchain.schema import HumanMessage, AIMessage
-import certifi
 import ast
-from functools import partial
-from concurrent.futures import ThreadPoolExecutor
 from helpers.text_processing import *
 from helpers.prompts import *
-from api.data_apis import *
 from helpers.RAG import RAGPlatform
 from helpers.model import LLMPipeline
 
@@ -145,23 +134,6 @@ def place_info():
     places = request.json['places']
     output = rag.query(places)
     return jsonify(output)
-
-@app.route('/find_nearby_pois', methods=['POST'])
-def find_nearby():
-    data = request.get_json()  # Parse the JSON data from the request
-
-    # Extract the required arguments
-    user_location = data.get('user_location')
-    radius_in_meters = data.get('radius_in_meters')
-
-    if user_location is None or radius_in_meters is None:
-        return jsonify({'error': 'Missing required parameters'}), 400
-
-    # Call the find_nearby_pois function with the provided arguments
-    nearby_pois = find_nearby_pois(user_location, radius_in_meters)
-
-    # Return the result as JSON
-    return jsonify(nearby_pois)
 
 # Endpoint to fetch events for a given set of POI names, and return a LLM response to inform the user about the events.
 # Requires Geospatial database
