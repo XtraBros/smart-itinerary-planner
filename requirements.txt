@@ -53,3 +53,4 @@ pymongo==4.7.3
 geopy==2.4.1
 certifi==2024.2.2
 langchain==0.3.4
+faiss_cpu==1.10.0
