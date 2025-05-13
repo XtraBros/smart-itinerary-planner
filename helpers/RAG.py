@@ -60,3 +60,31 @@ class RAGPlatform:
             if dist <= distance_threshold:
                 matches.append(self.names[i])
         return matches
+    
+    def filter_by_categories(self, categories: List[str], top_k: int = 5) -> List[dict]:
+        if 'category' not in self.data.columns:
+            raise ValueError("CSV must contain a 'category' column to use this method.")
+        
+        # Normalize the category column to lowercase for case-insensitive matching
+        data_copy = self.data.copy()
+        data_copy['category_lower'] = data_copy['category'].str.lower()
+        
+        # Lowercase all input categories
+        categories = [cat.lower() for cat in categories]
+        
+        # Filter where category matches any of the given categories
+        filtered = data_copy[data_copy['category_lower'].apply(
+            lambda x: any(cat in x for cat in categories)
+        )]
+
+        results = []
+        for _, row in filtered.head(top_k).iterrows():
+            results.append({
+                'name': row['name'],
+                'description': row['description'],
+                'category': row['category']
+            })
+        
+        return results
+
+    # Location based searching is dependent on the site's location detection system and the POI data.
