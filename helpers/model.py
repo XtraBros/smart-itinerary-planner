@@ -14,11 +14,13 @@ class LLMPipeline:
         self.model = model
         self.api_key = api_key or os.getenv("LLM_API_KEY")
 
-        if not self.api_key:
-            raise ValueError("API key is required for selected provider.")
+        # Require API key only if provider is NOT huggingface
+        if self.provider != "huggingface" and not self.api_key:
+            raise ValueError(f"API key is required for provider '{self.provider}'.")
 
         # Optional: provider-specific setup
         if self.provider == "openai":
+            import openai
             openai.api_key = self.api_key
 
     def invoke(self, prompt: str) -> str:

@@ -51,3 +51,55 @@ Example: **[#5958] Error alert email has a very long subject**
 Format: close/fix/resolve $IssueNumber
 
 Example: **close/fix/resolve #5958**
+
+# RAG Platform & LLM Pipeline
+This project provides a modular **Retrieval-Augmented Generation (RAG) Platform** paired with a pluggable **LLM Pipeline** to support intelligent query answering over a custom dataset (e.g. POIs, attractions, places).
+
+## RAG Platform:
+Load a CSV or prebuilt FAISS index to perform semantic and category-based retrievals.
+### Initialize
+``` python
+from rag_platform import RAGPlatform
+
+rag = RAGPlatform(data_path="pois.csv")  # CSV must include: name, description, category, etc.
+```
+
+### Query by Name
+``` python
+matches = rag.find_similar_names(["sky garden", "universal studios"])
+```
+### Query by Description
+``` python
+description_matches = rag.query("I want a relaxing place with nature and greenery")
+```
+
+### Query by Category
+``` python
+category_matches = rag.filter_by_category(["nature", "park"])
+```
+## LLM Pipeline:
+Supports OpenAI, HuggingFace, Zhipu, Google Gemini, and DeepSeek out of the box.
+
+### Initialize
+``` python
+from llm_pipeline import LLMPipeline
+
+llm = LLMPipeline(provider="openai", model="gpt-4o", api_key="your-api-key")
+```
+
+### Generate Answer
+``` python
+response = llm.invoke("What are some kid-friendly attractions in the city?")
+print(response)
+```
+
+## Combine RAG & LLM 
+``` python
+query = "I'm looking for exciting theme parks for teenagers"
+context_pois = rag.query(query)
+context = "\n".join([f"{x['name']}: {x['description']}" for x in context_pois])
+
+final_prompt = f"Based on the following places, recommend the best one:\n{context}"
+answer = llm.invoke(final_prompt)
+print(answer)
+```

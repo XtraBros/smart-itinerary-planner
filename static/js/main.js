@@ -131,18 +131,18 @@ window.onload = function () {
 }
 
 fetch('/config')
-    .then(response => response.json())
+  .then(response => response.json())
     .then(data => {
-        // Assuming the response contains a JSON object with an 'accessToken' property
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.THUMBNAIL_URI;
-        const center = [103.827973, 1.250277]
+
+        const center = [103.827973, 1.250277];
         const comfig = {
-            style: 'mapbox://styles/mapbox/streets-v12', // 'mapbox://styles/wangchongyu86/clp0j9hcy01b301o44qt07gg1',
-            center,
-            zoom: 13,
-            minZoom: 10,
-        }
+        style: data.config.MAPBOX_STYLE_URL,
+        center,
+        zoom: 13,
+        minZoom: 10,
+        };
         sharedState.hiddenMap = new mapboxgl.Map({
             container: 'hiddenMap',
             ...comfig,
