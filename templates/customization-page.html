@@ -15,19 +15,6 @@
   </style>
 </head>
 <body>
-
-  <h2>🔧 Configure RAG Platform</h2>
-  <div class="section">
-    <label>Upload CSV File</label>
-    <input type="file" id="csvUpload" accept=".csv" />
-
-    <label>OR Select Index File</label>
-    <input type="file" id="indexUpload" accept=".faiss" />
-
-    <button onclick="uploadRAGConfig()">Initialize RAG</button>
-    <div id="rag-status" class="status-message"></div>
-  </div>
-
   <h2>🤖 Configure LLM Pipeline</h2>
   <div class="section">
     <form id="model-config-form">
@@ -60,33 +47,6 @@
   </div>
 
   <script>
-    // RAG initialization handler
-    async function uploadRAGConfig() {
-      const csvFile = document.getElementById('csvUpload').files[0];
-      const indexFile = document.getElementById('indexUpload').files[0];
-      const formData = new FormData();
-
-      if (csvFile) formData.append("csv", csvFile);
-      if (indexFile) formData.append("index", indexFile);
-
-      const status = document.getElementById('rag-status');
-      status.textContent = '⏳ Initializing...';
-
-      try {
-        const res = await fetch('/api/init_rag', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-        status.textContent = `✅ RAG initialized: ${data.message}`;
-        status.className = "status-message success";
-      } catch (err) {
-        status.textContent = `❌ Failed to initialize RAG`;
-        status.className = "status-message error";
-        console.error(err);
-      }
-    }
-
     // LLM config update handler
     document.getElementById('model-config-form').addEventListener('submit', async (e) => {
       e.preventDefault();
