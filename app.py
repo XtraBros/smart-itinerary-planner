@@ -79,63 +79,82 @@ def update_map_style():
 @app.route('/ops_router', methods=['POST'])
 def ops_route():
     user_input = request.json['message']
-    # Fetch stored memory (previous conversation history)
     conversation_history = memory.load_memory_variables({})
-    # Format the conversation history for the prompt (as a string)
     history = process_formatted_history(conversation_history.get('history', ''))
-    print(f"==conv== {history}")
     prompt = f"""
-    You are a operations handler. Your task is to understand a query and classify it under one of the following categories: [Wayfinding, POI Introduction, Recommendation, Unclassified].
-    Here are some guidelines to determine the classification:
-    - Wayfinding: The query involves navigation, how to move from place to palce, or locating a POI.
-    - POI Introduction: The query is asking for information or details about a specific POI.
-    - Recommendation: The query is asking for recommendations or suggestions.
-    - Unclassified: Any query that does not fall into any of the above categories.
+    You are a routing agent in a chat-based assistant. Your task is to determine what kind of data is needed to best respond to the user's message. Choose from the following data types:
 
-    Your response should contain a dictionary with the keys "operation" and "poi". The value for "operation" will be the category the query is classfied as.
-    The value for "poi" will be a list of any names of POIs in the user's query. An example response will be: {{"operation": "Wayfinding", "poi":["Miniso"]}}.
-    For "operation" Recommendation, your response should have the keys "operation" and "category". Select the most appropriate category from {categories}, and use that as the value for "category".
-    An example response for Reommendation is: {{"operation": "Recommendation", "category": "restaurants"}}.
-    Your response should contain only one dictionary and nothing else.
+    - "poi_data": Information about specific points of interest (e.g., descriptions, opening hours)
+    - "poi_location": Data required to help with wayfinding, directions, or location lookup
+    - "poi_category": When the user asks for suggestions or recommendations based on categories
+    - "weather_data": If the query relates to weather or planning around weather
+    - "event_data": If the user asks about local events
+    - "none": If the query can be answered using general knowledge without fetching external data
+
+    You should return a JSON object with:
+    - "data_required": a list of data types needed (e.g., ["poi_data", "weather_data"])
+    - "entities": list of any POIs, categories, or locations mentioned in the query
+
+    Examples:
+    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"]}}
+    {{"data_required": ["poi_category"], "entities": ["museums"]}}
+    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"]}}
+    {{"data_required": ["none"], "entities": []}}
+
+    Respond ONLY with the JSON object.
     """
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": user_input}
     ]
     response = llm.invoke(messages)
-    message = ast.literal_eval(remove_code_blocks(response.choices[0].message.content))
-    # Given the classification, run the subsequent tasks
-    # alternatively, use NLP package to classify queries.
-    if "poi" in message.keys(): # fetch poi data
-        poi_data = rag.query(message['poi'])
-    if message['operation'] == "Wayfinding":
-        response = wayfind_prompt(user_input,history,poi_data).content
-        print(response)
-        # return message + poiId to run routing function
-        return jsonify({'response' : response, "poiData": poi_data})
-    elif message['operation'] == "POI Introduction":
-        response = intro_prompt(user_input,history,poi_data).content
-        print(response)
-        # return message + poiId to run routing function
-        return jsonify({'response' : response, "poiData": poi_data})
-    elif message['operation'] == "Recommendation":
-        # fetch poi by category and randomly select. In future, implement ranking by relevance or vendor
-        category = message['category']
+    parsed = ast.literal_eval(remove_code_blocks(response.choices[0].message.content))
+
+    data_required = parsed["data_required"]
+    entities = parsed.get("entities", [])
+
+    # Initialize data bundle
+    gathered_data = {}
+
+    if "poi_data" in data_required:
+        gathered_data["poi_data"] = rag.query(entities)
+
+    if "poi_location" in data_required:
+        gathered_data["poi_data"] = location_lookup(user_input, rag)
+
+    if "poi_category" in data_required:
+        category = entities[0] if entities else "general"
         payload = {"page": 1, "size": 50, "category": category}
-        pois = call_api(api_url,payload)['data']['content']
-        # RAndom sample of 7 pois to recommend
-        sample = sample_pois(pois,3)
-        print(sample)
-        # Return the result as a JSON response
-        response = rec_prompt(user_input,history,sample).content
-        print(response)
-        # return message + poiId to run routing function
-        return jsonify({'response' : response, "poiData": sample})
+        pois = call_api(api_url, payload)['data']['content']
+        gathered_data["poi_category"] = sample_pois(pois, 3)
+
+    # if "weather_data" in data_required:
+    #     gathered_data["weather_data"] = fetch_weather_data(entities)
+
+    # if "event_data" in data_required:
+    #     gathered_data["event_data"] = fetch_event_data(entities)
+
+    # Choose appropriate response template
+    if "poi_data" in data_required and "poi_location" in data_required:
+        response = nav_intro_prompt(user_input, history, gathered_data).content
+    elif "poi_data" in data_required:
+        response = intro_prompt(user_input, history, gathered_data["poi_data"]).content
+    elif "poi_location" in data_required:
+        response = wayfind_prompt(user_input, history, gathered_data["poi_location"]).content
+    elif "poi_category" in data_required:
+        response = rec_prompt(user_input, history, gathered_data["poi_category"]).content
+    # elif "weather_data" in data_required:
+    #     response = weather_prompt(user_input, history, gathered_data["weather_data"]).content
+    # elif "event_data" in data_required:
+    #     response = event_prompt(user_input, history, gathered_data["event_data"]).content
     else:
-        # Unclassified or errornous response, simply respond to query with LLM. 
-        response = basic_prompt(user_input,history).content
-        print(response)
-        return jsonify({'response' : response})
+        response = basic_prompt(user_input, history).content
+
+    return jsonify({
+        "response": response,
+        "gatheredData": gathered_data
+    })
+
     
 ############################################ CUSTOMIZATION UI ENDPOINTS #####################################################
 @app.route('/settings', methods=["GET"])

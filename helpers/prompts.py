@@ -57,7 +57,27 @@ def wayfind_prompt(user_input, chat_history, poi_data):
 def intro_prompt(user_input, chat_history, poi_data):
     # fetch poi info
     prompt = f"""
-    You are a helpful assistant. The user wants to know more about a POI. 
+    You are a helpful assistant. The user wants to know more about a POI. Give the user a brief introduction of the POI, including its name, description, and any other relevant information to a visitor.
+    Refer to the following data related to the POI to most accurately respond to the user's query about the POI.
+    POI Data: {poi_data}
+    Chat history:
+    {chat_history}
+    """
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_input}
+    ]
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+    )
+    message = response.choices[0].message
+    return message
+
+def nav_intro_prompt(user_input, chat_history, poi_data):
+    # fetch poi info
+    prompt = f"""
+    You are a helpful assistant. The user wants to know more about a POI and how to get there. Give the user a brief introduction of the POI and its location.
     Refer to the following data related to the POI to most accurately respond to the user's query about the POI.
     POI Data: {poi_data}
     Chat history:

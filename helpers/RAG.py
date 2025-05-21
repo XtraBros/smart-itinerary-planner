@@ -202,3 +202,37 @@ class RAGPlatform:
             except Exception as e:
                 print(f"[{unit.id}] Error during query: {e}")
         return results
+    
+def location_lookup(user_query: str, rag_platform: RAGPlatform, top_k: int = 3) -> List[dict]:
+    """
+    Finds the most relevant POIs mentioned in the user query based on name similarity.
+    
+    Parameters:
+        user_query (str): User's location-related question
+        rag_platform (RAGPlatform): The central platform containing all RAG units
+        top_k (int): Number of matches to return
+    
+    Returns:
+        List[dict]: List of matched POIs with name, description, and optional location data
+    """
+    matched_pois = []
+
+    for unit in rag_platform.units.values():
+        try:
+            matched_names = unit.match_names_vector(user_query, top_k=top_k)
+            if matched_names:
+                for name in matched_names:
+                    poi_row = unit.data[unit.data['name'] == name].iloc[0]  # assume exact match
+                    result = {
+                        'name': poi_row['name'],
+                        'description': poi_row['description']
+                    }
+                    # Optionally include coordinates if available
+                    if 'longitude' in poi_row and 'latitude' in poi_row:
+                        result['longitude'] = poi_row['longitude']
+                        result['latitude'] = poi_row['latitude']
+                    matched_pois.append(result)
+        except Exception as e:
+            print(f"[{unit.name}] Location lookup error: {e}")
+
+    return matched_pois
