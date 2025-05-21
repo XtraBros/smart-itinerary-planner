@@ -1,15 +1,13 @@
 from typing import Optional
 import os
-
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage
-
 # Import provider-specific LangChain classes
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.chat_models import ChatZhipuAI
 from langchain_community.chat_models import ChatHuggingFace
-from langchain_deepseek import ChatDeepSeek  # if deepseek is not available, you can wrap manually
+from langchain_deepseek import ChatDeepSeek
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
 
 class LLMPipeline:
     def __init__(
@@ -40,9 +38,25 @@ class LLMPipeline:
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
-    def invoke(self, prompt: str) -> str:
+    def invoke(self, messages: list[dict]) -> str:
         if not self.llm:
             raise RuntimeError("LLM model not initialized.")
         
-        response = self.llm.invoke([HumanMessage(content=prompt)])
+        # Convert messages to LangChain format
+        lc_messages: list[BaseMessage] = []
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+
+            if role == "system":
+                lc_messages.append(SystemMessage(content=content))
+            elif role == "user":
+                lc_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                lc_messages.append(AIMessage(content=content))
+            else:
+                raise ValueError(f"Unsupported message role: {role}")
+
+        # Invoke model
+        response = self.llm.invoke(lc_messages)
         return response.content.strip()
