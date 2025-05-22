@@ -59,7 +59,7 @@ def create_hyperlinks(place_list, coordinates):
     return hyperlinks
 
 
-def insertHyperlinks(message, replacements):
+def insert_hyperlinks(message, replacements):
     # Split the message into chunks by the `~` delimiter
     chunks = message.split("~")
     # Replace chunks with hyperlinks where applicable

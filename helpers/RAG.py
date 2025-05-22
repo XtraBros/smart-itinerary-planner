@@ -6,7 +6,8 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import create_engine
 from pymongo import MongoClient
-import json
+import numpy as np
+import faiss
 
 '''
 RAGUnit: One unit of RAG platform
@@ -113,19 +114,38 @@ class RAGUnit:
         name_texts = self.data["name"].astype(str).tolist()
         desc_texts = self.data["description"].astype(str).tolist()
 
-        self.name_embeddings = self.embedding_model.encode(name_texts, convert_to_tensor=True)
-        self.description_embeddings = self.embedding_model.encode(desc_texts, convert_to_tensor=True)
+        self.name_embeddings = self.embedding_model.encode(name_texts, convert_to_numpy=True)
+        self.description_embeddings = self.embedding_model.encode(desc_texts, convert_to_numpy=True)
+
+        # Build FAISS indices
+        dim = self.description_embeddings.shape[1]
+        self.description_index = faiss.IndexFlatL2(dim)
+        self.description_index.add(np.array(self.description_embeddings, dtype='float32'))
+
+        self.name_index = faiss.IndexFlatL2(dim)
+        self.name_index.add(np.array(self.name_embeddings, dtype='float32'))
 
 
     def query(self, input_text: str, top_k: int = 3) -> List[dict]:
-        query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True)
-        distances, indices = self.description_index.search(query_vec, top_k)
-        results = []
-        for idx in indices[0]:
-            if idx < len(self.data):
-                row = self.data.iloc[idx]
-                results.append({'name': row['name'], 'description': row['description']})
-        return results
+        if self.description_index is not None:
+            # Use vector search
+            query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True).astype("float32")
+            distances, indices = self.description_index.search(query_vec, top_k)
+            results = []
+            for idx in indices[0]:
+                if idx < len(self.data):
+                    row = self.data.iloc[idx]
+                    results.append({'name': row['name'], 'description': row['description']})
+            return results
+        else:
+            # Fallback to text search
+            mask = self.data["description"].str.contains(input_text, case=False, na=False)
+            filtered = self.data[mask].head(top_k)
+            return [
+                {"name": row["name"], "description": row["description"]}
+                for _, row in filtered.iterrows()
+            ]
+
 
     def match_names_vector(self, input_text: str, top_k: int = 3, distance_threshold: float = 1.0) -> List[str]:
         query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True)
