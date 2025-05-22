@@ -3,18 +3,18 @@
 <div id="map-manager" class="tab-content" style="display: block;">
     <h3>🌍 Update Mapbox Style URL</h3>
     <label for="mapStyleInput">Mapbox Style URL:</label>
-    <input type="text" id="mapStyleInput" placeholder="e.g. mapbox://styles/your-style-id" required />
+    <input type="text" id="mapStyleInput" placeholder="e.g. mapbox://styles/your-style-id" style="width: 500px;" required />
     <br><br>
     <label for="mapCenterInput" style="margin-top: 10px;">Map Center (lng, lat):</label>
-    <input type="text" id="mapCenterInput" placeholder="e.g. 103.8198, 1.3521" required />
+    <input type="text" id="mapCenterInput" placeholder="e.g. 103.8198, 1.3521" style="width: 200px;" required />
     <br><br>
     <button onclick="submitMapSettings()" style="margin-top: 10px;">Update Map Settings</button>
     <div id="mapStyleStatus" class="status-message"></div>
 
   <script>
-    function submitMapStyle() {
+    function submitMapSettings() {
         const styleUrl = document.getElementById('mapStyleInput').value.trim();
-        const centreInput = document.getElementById('mapCentreInput').value.trim();
+        const centreInput = document.getElementById('mapCenterInput').value.trim();
         const status = document.getElementById('mapStyleStatus');
 
         status.textContent = '⏳ Updating...';
@@ -25,9 +25,9 @@
         if (centreInput) {
             const centreArray = centreInput.split(',').map(Number);
             if (centreArray.length !== 2 || centreArray.some(isNaN)) {
-            status.textContent = "❌ Invalid map centre format. Use 'lng,lat'.";
-            status.className = "status-message error";
-            return;
+                status.textContent = "❌ Invalid map centre format. Use 'lng,lat'.";
+                status.className = "status-message error";
+                return;
             }
             payload.map_centre = centreArray;
         }
@@ -46,11 +46,11 @@
         .then(res => res.json())
         .then(data => {
             if (data.error) {
-            status.textContent = `❌ ${data.error}`;
-            status.className = "status-message error";
+                status.textContent = `❌ ${data.error}`;
+                status.className = "status-message error";
             } else {
-            status.textContent = `✅ Updated: ${data.message}`;
-            status.className = "status-message success";
+                status.textContent = `✅ Updated: ${data.message}`;
+                status.className = "status-message success";
             }
         })
         .catch(err => {
@@ -58,21 +58,40 @@
             status.textContent = "❌ Failed to update";
             status.className = "status-message error";
         });
+        fetchMapConfig(); // Refresh the config after update
     }
+
     function fetchMapConfig() {
+        console.log("Fetching config...");
         fetch('/config')
             .then(res => res.json())
-            .then(config => {
-            document.getElementById('mapStyleInput').value = config.MAPBOX_STYLE_URL || '';
-            if (config.MAP_CENTRE && Array.isArray(config.MAP_CENTRE)) {
-                document.getElementById('mapCenterInput').value = config.MAP_CENTRE.join(', ');
-            }
-        })
-        .catch(err => {
-        console.error('Failed to fetch config:', err);
-        document.getElementById('mapStyleStatus').textContent = "⚠️ Unable to fetch config";
-        });
+            .then(data => {
+                const config = data.config;
+                // Use placeholders instead of values
+                if (config.MAPBOX_STYLE_URL) {
+                    document.getElementById('mapStyleInput').placeholder = config.MAPBOX_STYLE_URL;
+                }
+                if (config.MAP_CENTRE) {
+                    try {
+                        const parsed = JSON.parse(config.MAP_CENTRE);
+                        if (Array.isArray(parsed) && parsed.length === 2 && parsed.every(val => typeof val === 'number')) {
+                            document.getElementById('mapCenterInput').placeholder = parsed.join(', ');
+                        } else {
+                            console.warn('Invalid MAP_CENTRE format:', config.MAP_CENTRE);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing MAP_CENTRE:', e);
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Failed to fetch config:', err);
+                document.getElementById('mapStyleStatus').textContent = "⚠️ Unable to fetch config";
+            });
     }
-  </script>
-{% endblock %}
 
+    // Fetch config on page load
+    window.addEventListener('DOMContentLoaded', fetchMapConfig);
+  </script>
+</div>
+{% endblock %}
