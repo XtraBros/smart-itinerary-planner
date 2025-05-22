@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Management Dashboard</title>
+  <style>
+    body { font-family: Arial; padding: 0; margin: 0; }
+    .navbar {
+      display: flex;
+      background-color: #333;
+    }
+    .navbar a {
+      flex: 1;
+      padding: 14px 16px;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      background-color: #333;
+      border-right: 1px solid #ccc;
+    }
+    .navbar a.active {
+      background-color: #444;
+    }
+    .navbar a:hover {
+      background-color: #444;
+    }
+    .navbar a:last-child {
+    border-right: none; /* No border after last tab */
+    }
+    .content {
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="navbar">
+    <a href="/llm_manager" class="{{ 'active' if active_tab == 'llm' else '' }}">LLM Manager</a>
+    <a href="/rag_manager" class="{{ 'active' if active_tab == 'rag' else '' }}">RAG Manager</a>
+    <a href="/map_manager" class="{{ 'active' if active_tab == 'map' else '' }}">Map Manager</a>
+  </div>
+
+  <div class="content">
+    {% block content %}{% endblock %}
+  </div>
+
+</body>
+</html>

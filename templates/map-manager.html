@@ -1,0 +1,78 @@
+{% extends "home.html" %}
+{% block content %}
+<div id="map-manager" class="tab-content" style="display: block;">
+    <h3>🌍 Update Mapbox Style URL</h3>
+    <label for="mapStyleInput">Mapbox Style URL:</label>
+    <input type="text" id="mapStyleInput" placeholder="e.g. mapbox://styles/your-style-id" required />
+    <br><br>
+    <label for="mapCenterInput" style="margin-top: 10px;">Map Center (lng, lat):</label>
+    <input type="text" id="mapCenterInput" placeholder="e.g. 103.8198, 1.3521" required />
+    <br><br>
+    <button onclick="submitMapSettings()" style="margin-top: 10px;">Update Map Settings</button>
+    <div id="mapStyleStatus" class="status-message"></div>
+
+  <script>
+    function submitMapStyle() {
+        const styleUrl = document.getElementById('mapStyleInput').value.trim();
+        const centreInput = document.getElementById('mapCentreInput').value.trim();
+        const status = document.getElementById('mapStyleStatus');
+
+        status.textContent = '⏳ Updating...';
+
+        const payload = {};
+        if (styleUrl) payload.mapbox_style_url = styleUrl;
+
+        if (centreInput) {
+            const centreArray = centreInput.split(',').map(Number);
+            if (centreArray.length !== 2 || centreArray.some(isNaN)) {
+            status.textContent = "❌ Invalid map centre format. Use 'lng,lat'.";
+            status.className = "status-message error";
+            return;
+            }
+            payload.map_centre = centreArray;
+        }
+
+        if (!payload.mapbox_style_url && !payload.map_centre) {
+            status.textContent = "❌ Please provide either a style URL or map centre.";
+            status.className = "status-message error";
+            return;
+        }
+
+        fetch('/update_map_style', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+            status.textContent = `❌ ${data.error}`;
+            status.className = "status-message error";
+            } else {
+            status.textContent = `✅ Updated: ${data.message}`;
+            status.className = "status-message success";
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            status.textContent = "❌ Failed to update";
+            status.className = "status-message error";
+        });
+    }
+    function fetchMapConfig() {
+        fetch('/config')
+            .then(res => res.json())
+            .then(config => {
+            document.getElementById('mapStyleInput').value = config.MAPBOX_STYLE_URL || '';
+            if (config.MAP_CENTRE && Array.isArray(config.MAP_CENTRE)) {
+                document.getElementById('mapCenterInput').value = config.MAP_CENTRE.join(', ');
+            }
+        })
+        .catch(err => {
+        console.error('Failed to fetch config:', err);
+        document.getElementById('mapStyleStatus').textContent = "⚠️ Unable to fetch config";
+        });
+    }
+  </script>
+{% endblock %}
+

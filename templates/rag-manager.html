@@ -1,17 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>RAG Unit Manager</title>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    .unit-card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 6px; }
-    .remove-btn { color: white; background-color: red; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
-    .add-btn { color: white; background-color: gray; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; }
-  </style>
-</head>
-<body>
-
+{% extends "home.html" %}
+{% block content %}
   <h1>RAG Unit Manager</h1>
 
   <div id="unit-container" class="unit-grid"></div>
@@ -305,5 +293,4 @@
         background-color: #c62828;
     }
     </style>
-</body>
-</html>
+{% endblock %}
