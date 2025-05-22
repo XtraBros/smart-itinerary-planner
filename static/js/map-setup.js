@@ -643,28 +643,49 @@ export async function get_coordinates_without_route(data) {
 function normalizeAngle(angle) {
     return (angle % 360 + 360) % 360;
 }
-export function addMarkers(placeNames, waypoints) {
+export function addMarkers(placeNames) {
+    // Clear existing markers
     if (window.mapMarkers) {
         for (const [key, value] of Object.entries(window.mapMarkers)) {
             value.remove();
         }
     }
     window.mapMarkers = {};
+
+    // Fetch POI data from backend
     fetchPlacesData(placeNames).then(placesData => {
         fetchTemplate('static/html/info-card.html').then(template => {
             const parser = new DOMParser();
+
             placeNames.forEach((placeName, index) => {
-                var coord = waypoints[index];
+                const placeInfo = placesData.find(p => p.name === placeName);
+                if (!placeInfo) {
+                    console.error(`Place not found in response: ${placeName}`);
+                    return;
+                }
+
+                const coord = [placeInfo.longitude, placeInfo.latitude];
+                const description = placeInfo.description || '';
+
                 if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
                     console.error(`Invalid coordinates for ${placeName}:`, coord);
-                    return; // Skip this iteration if coordinates are invalid
+                    return; // Skip invalid coordinates
                 }
-                const  description = placesData[placeName] ? placesData[placeName]['description'] : ''
-                addMarkertoMap({ placeName, category: 'dinwei', index, template, description, parser, location: coord })
+
+                addMarkertoMap({
+                    placeName,
+                    category: 'dinwei',
+                    index,
+                    template,
+                    description,
+                    parser,
+                    location: coord
+                });
             });
         });
     });
 }
+
 
 window.displayByCategory = function(category, element) {
     if (window.mapMarkers) {
@@ -672,26 +693,22 @@ window.displayByCategory = function(category, element) {
             value.remove();
         }
     }
+
     if (element.getAttribute('class').includes('active')) {
-        element.classList.remove('active')
+        element.classList.remove('active');
         return;
     }
-    const munts = document.getElementsByClassName('newHeader')[0]
-    const lis = munts.getElementsByClassName('item')
+
+    const munts = document.getElementsByClassName('newHeader')[0];
+    const lis = munts.getElementsByClassName('item');
     for (let index = 0; index < lis.length; index++) {
         const item = lis[index];
-        item.classList.remove('active')
+        item.classList.remove('active');
     }
+
     element.classList.add('active');
-    // Remove existing markers from the map
-    if (window.mapMarkers) {
-        for (const [key, value] of Object.entries(window.mapMarkers)) {
-            value.remove();
-        }
-    }
     window.mapMarkers = {};
 
-    // Fetch places data by category from the Flask endpoint
     fetch('/fetch_by_category', {
         method: 'POST',
         headers: {
@@ -699,28 +716,45 @@ window.displayByCategory = function(category, element) {
         },
         body: JSON.stringify({ category }),
     })
-        .then(response => response.json())
-        .then(placesData => {
-            fetchTemplate('static/html/info-card.html').then(template => {
-                const parser = new DOMParser();
-                let listCont = ''
-                // Loop through the placesData and place markers on the map
-                Object.entries(placesData).forEach(([placeName, placeInfo], index) => {
-                    const { description, location } = placeInfo;
-                    // Ensure location contains valid coordinates [longitude, latitude]
-                    if (!location || location.length !== 2 || isNaN(location[0]) || isNaN(location[1])) {
-                        console.error(`Invalid coordinates for ${placeName}:`, location);
-                        return; // Skip this iteration if coordinates are invalid
-                    }
-                    listCont += addMarkertoMap({ placeName, category, index, template, description, parser, location })
+    .then(response => response.json())
+    .then(placesData => {
+        fetchTemplate('static/html/info-card.html').then(template => {
+            const parser = new DOMParser();
+            let listCont = '';
+
+            Object.entries(placesData).forEach(([placeName, placeInfo], index) => {
+                const { description, longitude, latitude } = placeInfo;
+                const location = [parseFloat(longitude), parseFloat(latitude)];
+
+                if (
+                    !location ||
+                    location.length !== 2 ||
+                    isNaN(location[0]) ||
+                    isNaN(location[1])
+                ) {
+                    console.error(`Invalid coordinates for ${placeName}:`, location);
+                    return;
+                }
+
+                listCont += addMarkertoMap({
+                    placeName,
+                    category,
+                    index,
+                    template,
+                    description,
+                    parser,
+                    location,
                 });
-                poiList.innerHTML = listCont;
             });
-        })
-        .catch(error => {
-            console.error('Error fetching places data:', error);
+
+            poiList.innerHTML = listCont;
         });
+    })
+    .catch(error => {
+        console.error('Error fetching places data:', error);
+    });
 }
+
 
 export function addMarkertoMap({ placeName, category, index, template, description, parser, location }) {
     // Remove unwanted characters from the placeName

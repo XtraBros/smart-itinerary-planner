@@ -1,6 +1,9 @@
 import pandas as pd
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
-
+import math
+from sklearn.neighbors import BallTree
+import numpy as np
+from helpers.RAG import RAGPlatform
 ###########################################################################################################
 # route optimisation function:
 # input: list of place names from CSV.
@@ -75,3 +78,92 @@ def solve_tsp(distance_matrix):
         return list(set(optimal_sequence))
     else:
         return None
+    
+def get_distance_from_poi(poi, user_location):
+    def haversine(coord1, coord2):
+        # Coordinates in decimal degrees (e.g. (lng, lat))
+        lon1, lat1 = coord1
+        lon2, lat2 = coord2
+        
+        # Radius of Earth in meters
+        R = 6371000  
+        
+        # Convert decimal degrees to radians
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        
+        delta_phi = math.radians(lat2 - lat1)
+        delta_lambda = math.radians(lon2 - lon1)
+        
+        # Haversine formula
+        a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+        # Distance in meters
+        distance = R * c
+        
+        return distance
+    if poi and 'longitude' in poi and 'latitude' in poi:
+        # Extract the coordinates from the MongoDB result
+        poi_coord = (poi['longitude'], poi['latitude'])
+        
+        # Calculate the distance using the Haversine formula
+        distance = haversine(poi_coord, user_location)
+        print(f"== Distance from POI == {distance}")
+        return distance
+    else:
+        return None
+    
+def haversine_np(lon1, lat1, lon2, lat2):
+    # Convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
+    
+    # Haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = np.sin(dlat/2.0)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2.0)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+    km = 6371 * c
+    return km * 1000  # Convert to meters
+
+    
+def find_nearby_with_tree(ball_tree, poi_df, user_location, radius_m=100):
+    user_coords_rad = np.radians([[user_location['latitude'], user_location['longitude']]])
+    radius_radians = radius_m / 6371000  # Earth radius in meters
+
+    indices = ball_tree.query_radius(user_coords_rad, r=radius_radians)[0]
+
+    results = poi_df.iloc[indices].copy()
+    results['distance_m'] = (
+        6371000 * np.ravel(
+            haversine_np(user_location['longitude'], user_location['latitude'],
+                         results['longitude'], results['latitude'])
+        )
+    )
+
+    return results.sort_values('distance_m')[['name', 'latitude', 'longitude', 'distance_m']].to_dict(orient='records')
+
+def build_balltree_from_rag_platform(rag_platform: RAGPlatform):
+    all_pois = []
+
+    for unit in rag_platform.units.values():
+        try:
+            df = unit.get_location_data()
+            if not df.empty:
+                all_pois.append(df)
+        except Exception as e:
+            print(f"[{unit.id}] Failed to fetch location data: {e}")
+
+    if not all_pois:
+        raise ValueError("No POIs with valid coordinates found.")
+
+    combined_df = pd.concat(all_pois, ignore_index=True)
+    coords_rad = np.radians(combined_df[['latitude', 'longitude']].values)
+    tree = BallTree(coords_rad, metric='haversine')
+
+    return tree, combined_df
+
+def update_ball_tree(poi_df):
+    coordinates_rad = np.radians(poi_df[['latitude', 'longitude']].values)
+    ball_tree = BallTree(coordinates_rad, metric='haversine')
+    return ball_tree

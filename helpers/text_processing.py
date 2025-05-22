@@ -70,6 +70,31 @@ def insert_hyperlinks(message, replacements):
     final_message = format_paragraphs(final_message)
     return final_message
 
+def mark_poi_names(text, poi_names):
+    # Sort longer names first to avoid substring conflicts
+    sorted_names = sorted(poi_names, key=len, reverse=True)
+
+    for name in sorted_names:
+        pattern = r'\b' + re.escape(name) + r'\b'
+        text = re.sub(pattern, f'~{name}~', text)
+    
+    return text
+
+def extract_poi_names_and_coords(poi_data):
+    names = []
+    coordinates = []
+    for poi in poi_data:
+        names.append(poi["name"])
+        coordinates.append((poi["longitude"], poi["latitude"]))
+    return names, coordinates
+
+def hyperlink_pois_in_response(response_text, poi_data):
+    names, coords = extract_poi_names_and_coords(poi_data)
+    hyperlinks = create_hyperlinks(names, coords)
+    marked_text = mark_poi_names(response_text, names)
+    hyperlinked_response = insert_hyperlinks(marked_text, hyperlinks)
+    return hyperlinked_response
+
 def format_paragraphs(text):
     # Split text into paragraphs by double line breaks
     paragraphs = text.split('\n\n')

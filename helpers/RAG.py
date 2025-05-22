@@ -8,6 +8,9 @@ from sqlalchemy import create_engine
 from pymongo import MongoClient
 import numpy as np
 import faiss
+import requests
+import sqlalchemy
+import pymongo
 
 '''
 RAGUnit: One unit of RAG platform
@@ -74,7 +77,10 @@ class RAGUnit:
         source_type = source.get("type")
         
         if source_type == "csv":
-            self.data = pd.read_csv(source.get("path"))
+            try:
+                self.data = pd.read_csv(source.get("path"), encoding="utf-8")
+            except UnicodeDecodeError:
+                self.data = pd.read_csv(source.get("path"), encoding="ISO-8859-1")
         elif source_type == "excel":
             self.data = pd.read_excel(source.get("path"))
         elif source_type == "sql":
@@ -145,7 +151,73 @@ class RAGUnit:
                 {"name": row["name"], "description": row["description"]}
                 for _, row in filtered.iterrows()
             ]
+        
+    def get_data(self):
+        if self.data is not None:
+            return self.data
 
+        source_type = self.data_source["type"]
+
+        if source_type == "csv":
+            df = pd.read_csv(self.data_source["path"])
+
+        elif source_type == "json":
+            df = pd.read_json(self.data_source["path"])
+
+        elif source_type == "excel":
+            df = pd.read_excel(self.data_source["path"])
+
+        elif source_type == "mongo":
+            uri = self.data_source["uri"]
+            db_name = self.data_source["db"]
+            collection = self.data_source["collection"]
+
+            client = pymongo.MongoClient(uri)
+            db = client[db_name]
+            collection = db[collection]
+            docs = list(collection.find({}, {"_id": 0}))
+            df = pd.DataFrame(docs)
+
+        elif source_type == "sql":
+            user = self.data_source.get("user")
+            password = self.data_source.get("password")
+            host = self.data_source.get("host")
+            port = self.data_source.get("port", 3306)
+            database = self.data_source["database"]
+            query = self.data_source["query"]
+
+            # Compose SQLAlchemy URI
+            if user and password:
+                uri = f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
+            else:
+                uri = f"mysql+pymysql://{host}:{port}/{database}"
+
+            engine = sqlalchemy.create_engine(uri)
+            df = pd.read_sql(query, con=engine)
+
+        elif source_type == "cms":
+            api_url = self.data_source["api_url"]
+            headers = {}
+            if self.data_source.get("auth"):
+                token = self.data_source["auth"].get("token")
+                if token:
+                    headers["Authorization"] = f"Bearer {token}"
+
+            response = requests.get(api_url, headers=headers)
+            if response.status_code != 200:
+                raise Exception(f"Failed to fetch CMS data: {response.text}")
+            data = response.json()
+
+            # Handle cases where CMS returns a list or nested structure
+            if isinstance(data, dict) and "results" in data:
+                data = data["results"]
+            df = pd.DataFrame(data)
+
+        else:
+            raise ValueError(f"Unsupported data source type: {source_type}")
+
+        self.data = df
+        return df
 
     def match_names_vector(self, input_text: str, top_k: int = 3, distance_threshold: float = 1.0) -> List[str]:
         query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True)
@@ -181,7 +253,18 @@ class RAGUnit:
             })
         
         return results
-
+    
+    def get_location_data(self) -> pd.DataFrame:
+        """
+        Returns a DataFrame with 'name', 'longitude', and 'latitude' columns.
+        Should return an empty DataFrame if not applicable.
+        """
+        if hasattr(self, "data") and isinstance(self.data, pd.DataFrame):
+            required = {'name', 'longitude', 'latitude'}
+            if required.issubset(self.data.columns):
+                return self.data[list(required)].dropna()
+        # fallback or raise warning if not available
+        return pd.DataFrame(columns=['name', 'longitude', 'latitude'])
     # Location based searching is dependent on the site's location detection system and the POI data.
 
 class RAGPlatform:
@@ -223,6 +306,34 @@ class RAGPlatform:
                 print(f"[{unit.id}] Error during query: {e}")
         return results
     
+    def search_by_field(self, field_name, field_value):
+        """
+        Search all RAG units for entries where field_name equals field_value.
+        Returns a list of dicts containing matched entries.
+        """
+        results = []
+
+        for unit in self.units.values():
+            try:
+                data = unit.get_data()
+
+                # Ensure field exists
+                if field_name not in data.columns:
+                    continue
+
+                # Filter by field using pandas
+                filtered = data[data[field_name] == field_value]
+
+                # Convert to list of dicts
+                matches = filtered.to_dict(orient='records')
+                results.extend(matches)
+
+            except Exception as e:
+                print(f"Error during filtering: {e}")
+
+        return results
+
+##################################### Other Functions #####################################
 def location_lookup(user_query: str, rag_platform: RAGPlatform, top_k: int = 3) -> List[dict]:
     """
     Finds the most relevant POIs mentioned in the user query based on name similarity.

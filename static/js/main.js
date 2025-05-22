@@ -135,8 +135,16 @@ fetch('/config')
     .then(data => {
         mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
         thumbnailURI = data.config.THUMBNAIL_URI;
-
-        const center = [103.827973, 1.250277];
+        let center;
+        try {
+            center = JSON.parse(data.config.MAP_CENTRE);
+            if (!Array.isArray(center) || center.length !== 2) {
+                throw new Error("Invalid MAP_CENTRE format");
+        }
+        } catch (err) {
+            console.error("Failed to parse MAP_CENTRE:", err);
+            center = [103.8198, 1.3521];  // default fallback center (Singapore)
+        }
         const comfig = {
         style: data.config.MAPBOX_STYLE_URL,
         center,

@@ -8,6 +8,7 @@ import ast
 from helpers.text_processing import *
 from helpers.prompts import *
 from helpers.RAG import *
+from helpers.route_solver import *
 from helpers.model import LLMPipeline
 from werkzeug.utils import secure_filename
 
@@ -35,7 +36,15 @@ unit1 = RAGUnit(
     description="Zoo info CSV",
     name= "Mandai Zoo CSV"
 )
-rag = RAGPlatform([unit1])
+unit2= RAGUnit(
+    data_source={"type": "csv", "path": "./sentosa.csv"},
+    description="Sentosa POI CSV",
+    name= "Sentosa Island CSV"
+)
+rag = RAGPlatform([unit2])
+balltree, poi_df = build_balltree_from_rag_platform(rag)
+app.balltree = balltree
+app.poi_df = poi_df
 ######################### MISC init #########################
 api_url = config['API_URL']
 locale_name = "Sentosa Island"
@@ -55,29 +64,45 @@ def save_config(data):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
-# Existing endpoint
 @app.route('/config', methods=['GET'])
 def get_config():
     config = load_config()
     return jsonify({'config': config})
 
-# New endpoint to update MAPBOX_STYLE_URL
 @app.route('/update_map_style', methods=['POST'])
 def update_map_style():
     data = request.json
     new_style_url = data.get("mapbox_style_url")
+    new_map_centre = data.get("map_centre")
 
-    if not new_style_url:
-        return jsonify({"error": "Missing mapbox_style_url"}), 400
+    if not new_style_url and not new_map_centre:
+        return jsonify({"error": "No data provided for update"}), 400
 
     config = load_config()
-    config["MAPBOX_STYLE_URL"] = new_style_url
+
+    if new_style_url:
+        config["MAPBOX_STYLE_URL"] = new_style_url
+
+    if new_map_centre:
+        if not isinstance(new_map_centre, list) or len(new_map_centre) != 2:
+            return jsonify({"error": "Invalid map_centre format"}), 400
+        try:
+            lng = float(new_map_centre[0])
+            lat = float(new_map_centre[1])
+            config["MAP_CENTRE"] = json.dumps([lng, lat])  # Save as stringified list
+        except ValueError:
+            return jsonify({"error": "Map centre must be numeric"}), 400
+
     save_config(config)
 
-    return jsonify({"message": "Map style URL updated successfully", "style_url": new_style_url})
+    return jsonify({
+        "message": "Map settings updated",
+        "style_url": config.get("MAPBOX_STYLE_URL"),
+        "map_centre": config.get("MAP_CENTRE")
+    })
 
 @app.route('/ops_router', methods=['POST'])
-def ops_route():
+def ops_router():
     user_input = request.json['message']
     conversation_history = memory.load_memory_variables({})
     history = process_formatted_history(conversation_history.get('history', ''))
@@ -108,8 +133,8 @@ def ops_route():
         {"role": "user", "content": user_input}
     ]
     response = llm.invoke(messages)
-    parsed = ast.literal_eval(remove_code_blocks(response.choices[0].message.content))
-
+    parsed = ast.literal_eval(remove_code_blocks(response))
+    print(parsed)
     data_required = parsed["data_required"]
     entities = parsed.get("entities", [])
 
@@ -127,7 +152,7 @@ def ops_route():
         payload = {"page": 1, "size": 50, "category": category}
         pois = call_api(api_url, payload)['data']['content']
         gathered_data["poi_category"] = sample_pois(pois, 3)
-
+    print(gathered_data)
     # if "weather_data" in data_required:
     #     gathered_data["weather_data"] = fetch_weather_data(entities)
 
@@ -135,14 +160,18 @@ def ops_route():
     #     gathered_data["event_data"] = fetch_event_data(entities)
 
     # Choose appropriate response template
-    if "poi_data" in data_required and "poi_location" in data_required:
+    if "poi_location" in data_required:
         response = nav_intro_prompt(user_input, history, gathered_data).content
+        response = hyperlink_pois_in_response(response, gathered_data["poi_data"])
     elif "poi_data" in data_required:
         response = intro_prompt(user_input, history, gathered_data["poi_data"]).content
-    elif "poi_location" in data_required:
-        response = wayfind_prompt(user_input, history, gathered_data["poi_location"]).content
+        response = hyperlink_pois_in_response(response, gathered_data["poi_data"])
+
+    # elif "poi_location" in data_required:
+    #     response = wayfind_prompt(user_input, history, gathered_data["poi_data"]).content
     elif "poi_category" in data_required:
-        response = rec_prompt(user_input, history, gathered_data["poi_category"]).content
+        response = rec_prompt(user_input, history, gathered_data["poi_data"]).content 
+        response = hyperlink_pois_in_response(response, gathered_data["poi_data"])
     # elif "weather_data" in data_required:
     #     response = weather_prompt(user_input, history, gathered_data["weather_data"]).content
     # elif "event_data" in data_required:
@@ -152,18 +181,54 @@ def ops_route():
 
     return jsonify({
         "response": response,
-        "gatheredData": gathered_data
+        "gatheredData": gathered_data["poi_data"]
     })
 
-    
+@app.route('/find_nearby_pois', methods=['POST'])
+def find_nearby_pois():
+    try:
+        data = request.get_json()
+        user_loc = data.get("user_location")
+        radius_m = data.get("radius_in_meters", 500)
+
+        if not user_loc or "latitude" not in user_loc or "longitude" not in user_loc:
+            return jsonify({"error": "Missing or invalid location"}), 400
+
+        # Convert user location to radians
+        user_coords_rad = np.radians([[user_loc["latitude"], user_loc["longitude"]]])
+        
+        # Radius in radians (Earth's radius ≈ 6,371,000 m)
+        radius_rad = radius_m / 6371000.0
+
+        # Query BallTree for nearby POIs
+        indices = app.balltree.query_radius(user_coords_rad, r=radius_rad)[0]
+
+        # Get names of nearby POIs
+        nearby_poi_names = app.poi_df.iloc[indices]["name"].tolist()
+
+        return jsonify(nearby_poi_names)
+
+    except Exception as e:
+        print(f"Error in /find_nearby_pois: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
 ############################################ CUSTOMIZATION UI ENDPOINTS #####################################################
-@app.route('/settings', methods=["GET"])
+@app.route('/bms', methods=["GET"])
+def bms_page():
+    return render_template("llm-manager.html" , active_tab="llm")
+
+@app.route('/llm_manager', methods=["GET"])
 def settings_page():
-    return render_template("customization-page.html")
+    return render_template("llm-manager.html", active_tab="llm")
 
 @app.route('/rag_manager', methods=["GET"])
 def rag_manager_page():
-    return render_template("rag-manager.html")
+    return render_template("rag-manager.html", active_tab="rag")
+
+@app.route('/map_manager', methods=["GET"])
+def map_manager_page():
+    return render_template("map-manager.html", active_tab="map")
 
 @app.route("/api/init_rag", methods=["POST"])
 def init_rag():
@@ -218,8 +283,14 @@ def remove_rag_unit():
     print(unit_id)
     if unit_id in rag.units:
         rag.remove_unit_by_id(unit_id)
+
+        # === HERE: Update app.poi_df and balltree ===
+        app.poi_df = rag.get_all_pois_as_dataframe()
+        app.balltree = update_ball_tree(app.poi_df)
+
         return jsonify({"message": f"RAG Unit {unit_id} removed."}), 200
     return jsonify({"error": f"RAG Unit {unit_id} not found."}), 404
+
 
 @app.route("/api/add_unit", methods=["POST"])
 def add_rag_unit():
@@ -243,7 +314,6 @@ def add_rag_unit():
             file_path = os.path.join(temp_dir, filename)
             file.save(file_path)
 
-            # If source is 'index', we still treat the content format as CSV unless further logic is defined
             actual_type = source_type if source_type != "index" else "csv"
 
             data_source = {
@@ -303,13 +373,17 @@ def add_rag_unit():
 
         # Create and build the unit
         new_unit = RAGUnit(name=name, description=description, data_source=data_source)
-        new_unit.build_index()
         rag.add_unit(new_unit)
+
+        # === HERE: Update app.poi_df and balltree ===
+        app.poi_df = rag.get_all_pois_as_dataframe()
+        app.balltree = update_ball_tree(app.poi_df)
 
         return jsonify({"message": f"Unit added with ID {new_unit.id}"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/get_units", methods=["GET"])
 def get_units():
@@ -322,7 +396,7 @@ def get_units():
             "name": unit.name
         })
     return jsonify(units=units)
-############################################ LEGACY ENDPOINTS #####################################################
+############################################ MAP RELATED ENDPOINTS #####################################################
 @app.route('/get_coordinates', methods=['POST'])
 def get_coordinates():
     places = request.json['places']
@@ -352,64 +426,60 @@ def place_info():
     output = rag.query(places)
     return jsonify(output)
 
-# Endpoint to fetch events for a given set of POI names, and return a LLM response to inform the user about the events.
-# Requires Geospatial database
-# @app.route('/check_events', methods=['POST'])
-# def check_events():
-#     data = request.get_json()  # Get the list of names from the POST request
-#     print(f"===check_events==> {data}")
-#     places = data.get("places", [])  # Retrieve the 'names' list from the JSON body
-#     coordinates = data.get("coordinates", [])
-#     promo_blacklist = data.get("blacklist", [])
-#     if not places:
-#         return jsonify({"error": "No POIs provided"}), 400
-#     places =  [place for place in places if place not in promo_blacklist]
-#     # Query the database for entries with the given names
-#     entries = list(events_db.find({"location": {"$in": places}}))
-#     print(f"===check_events results==> {entries}")
-#     if entries:
-#         found_places = []
-#         found_coordinates = []
-#         for entry in entries:
-#             location = entry['location']
-#             if location in places:
-#                 index = places.index(location)
-#                 found_places.append(location)
-#                 found_coordinates.append(coordinates[index])
-#         response = client.chat.completions.create(
-#             model=model_name,
-#             messages=[
-#                 {"role": "system", "content": f"""You are an excited event promoter.
-#                  Given this list of places: {found_places}, and data regarding the events/promotions happening at these places: {entries}, craft a promotional message to a tourist/visitor to {locale_name}.
-#                  Your main task is to introduce the attraction, enticing visitors to visit the attraction with a promotional message. These attractions are determiend to be near the visitor.
-#                  The message is addressed to a generic audience, and should be as succint as possible. Leave out any salutations at the end.
-#                  Please encase the names of the attractions in "~" symbols (e.g., ~Attraction Name~) to distinguish them. Use the exact names given in the list. """},
-#             ],
-#             temperature=0,
-#         )
-#         print(f"===check_events GPT response==> {response}")
-#         hyperlinks = create_hyperlinks(places, coordinates)
-#         response_text = insertHyperlinks(response.choices[0].message.content.strip(), hyperlinks)
-#         memory.save_context({"user_input": ""}, {"response": response.choices[0].message.content.strip()})
-#         return jsonify({'response': response_text, "places": found_places, "coordinates": found_coordinates})
-#     else:
-#         # Return no content if no entries are found
-#         return jsonify({}), 204
-    
-# Fetch POIs by category
+@app.route('/calculate_distances', methods=['POST'])
+def calculate_distances():
+    try:
+        # Parse the JSON payload
+        data = request.get_json()
+        print(data)
+        pois = data['pois']
+        user_location = data['user_location']
+        user_location = [user_location["lng"], user_location["lat"]]
+        # Assume a walking speed of 1.39 m/s (5 km/h)
+        walking_speed = 0.5  # in meters per second
+
+        # Calculate distances and walking times
+        results = {}
+        for poi in pois:
+            distance = int(get_distance_from_poi(poi, user_location))  # Get the distance
+            time = int(distance / walking_speed / 60)  # Calculate time in minutes
+            results[poi['name']] = {
+                "distance": distance,  # in meters
+                "time": time  # in minutes
+            }
+        print(f"calc distances restults: {results}")
+        return jsonify(results)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/fetch_by_category', methods=['POST'])
 def fetch_by_category():
     try:
-        # Get the category from the incoming JSON request
         data = request.get_json()
         category = data.get('category')
 
         if not category:
             return jsonify({"error": "No category provided"}), 400
-        payload = {"page": 1, "size": 50, "category": category}
-        output = call_api(api_url,payload)
-        # Return the result as a JSON response
-        return jsonify(output.data.content), 200
+
+        results = rag.search_by_field("category", category)
+        print(results)
+        # Compose the place_info dict similar to your original code
+        place_info = {}
+        for item in results:
+            place_name = item.get("name")
+            description = item.get("description")
+            location = item.get("longitude")
+            latitude = item.get("latitude")
+            if place_name:
+                place_info[place_name] = {
+                    "description": description,
+                    "longitude": location,
+                    "latitude": latitude
+                }
+
+        return jsonify(place_info), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
