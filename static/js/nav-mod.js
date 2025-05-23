@@ -742,3 +742,6 @@ export function cancelNav() {
     listButton.style.display = 'block';
     startNav.classList.remove('fadeshowin');
 }
+
+window.startUserNav = startUserNav;
+window.cancelNav = cancelNav;

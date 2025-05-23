@@ -145,14 +145,13 @@ def ops_router():
         gathered_data["poi_data"] = rag.query(entities)
 
     if "poi_location" in data_required:
-        gathered_data["poi_data"] = location_lookup(user_input, rag)
+        gathered_data["poi_data"] = rag.location_lookup(entities)
 
     if "poi_category" in data_required:
         category = entities[0] if entities else "general"
         payload = {"page": 1, "size": 50, "category": category}
         pois = call_api(api_url, payload)['data']['content']
         gathered_data["poi_category"] = sample_pois(pois, 3)
-    print(gathered_data)
     # if "weather_data" in data_required:
     #     gathered_data["weather_data"] = fetch_weather_data(entities)
 
@@ -178,7 +177,6 @@ def ops_router():
     #     response = event_prompt(user_input, history, gathered_data["event_data"]).content
     else:
         response = basic_prompt(user_input, history).content
-
     return jsonify({
         "response": response,
         "gatheredData": gathered_data["poi_data"]
@@ -423,7 +421,9 @@ def get_coordinates():
 @app.route('/place_info', methods=['POST'])
 def place_info():
     places = request.json['places']
-    output = rag.query(places)
+    print(places)
+    output = rag.location_lookup(places)
+    print(output)
     return jsonify(output)
 
 @app.route('/calculate_distances', methods=['POST'])

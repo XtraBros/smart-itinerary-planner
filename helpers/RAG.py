@@ -130,12 +130,14 @@ class RAGUnit:
 
         self.name_index = faiss.IndexFlatL2(dim)
         self.name_index.add(np.array(self.name_embeddings, dtype='float32'))
-
+        print(f"{self.name} Name index size:", self.name_index.ntotal)
+        print(f"{self.name} Name list size:", len(self.names))
+        print(f"{self.name} Description index size:", self.description_index.ntotal)
 
     def query(self, input_text: str, top_k: int = 3) -> List[dict]:
         if self.description_index is not None:
             # Use vector search
-            query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True).astype("float32")
+            query_vec = self.embedding_model.encode(input_text, convert_to_numpy=True)
             distances, indices = self.description_index.search(query_vec, top_k)
             results = []
             for idx in indices[0]:
@@ -218,15 +220,41 @@ class RAGUnit:
 
         self.data = df
         return df
+    
+    def match_names_vector(
+        self, input_text: str, top_k: int = 3, distance_threshold: float = 0.4, is_facility: bool = False
+    ) -> List[str]:
+        if self.name_index is None or len(self.names) == 0:
+            return []
 
-    def match_names_vector(self, input_text: str, top_k: int = 3, distance_threshold: float = 1.0) -> List[str]:
-        query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True)
+        # Keywords you want to filter out unless is_facility is True
+        unwanted_keywords = ["elevator", "toilet", "restroom", "escalator", "parking"]
+        if isinstance(input_text, str):
+            input_list = [input_text]
+        elif isinstance(input_text, list) and all(isinstance(x, str) for x in input_text):
+            input_list = input_text
+        else:
+            raise ValueError("input_text must be a string or list of strings.")
+        if not input_list:
+            print("Warning: Empty input passed to embedding model.")
+            return []
+        # Run vector search
+        query_vec = self.embedding_model.encode(input_list, convert_to_numpy=True)
         distances, indices = self.name_index.search(query_vec, top_k)
+
         matches = []
         for i, dist in zip(indices[0], distances[0]):
+            if i == -1 or i >= len(self.names):
+                continue
             if dist <= distance_threshold:
-                matches.append(self.names[i])
+                name = str(self.names[i])
+                if is_facility:
+                    matches.append(name)
+                elif not any(kw in name.lower() for kw in unwanted_keywords):
+                    matches.append(name)
+        print(matches)
         return matches
+
     
     def filter_by_categories(self, categories: List[str], top_k: int = 5) -> List[dict]:
         if 'category' not in self.data.columns:
@@ -265,7 +293,6 @@ class RAGUnit:
                 return self.data[list(required)].dropna()
         # fallback or raise warning if not available
         return pd.DataFrame(columns=['name', 'longitude', 'latitude'])
-    # Location based searching is dependent on the site's location detection system and the POI data.
 
 class RAGPlatform:
     def __init__(self, rag_units: List[RAGUnit] = None):
@@ -332,38 +359,44 @@ class RAGPlatform:
                 print(f"Error during filtering: {e}")
 
         return results
+    
+    def location_lookup(self, name_list: List[str], top_k: int = 1) -> List[dict]:
+        """
+        Finds the most relevant POIs based on a list of names.
+
+        Parameters:
+            name_list (List[str]): List of POI names to look up.
+            top_k (int): Number of top matches to return per name and unit.
+
+        Returns:
+            List[dict]: List of matched POIs with name, description, and optional location data.
+        """
+        matched_pois = []
+        seen_names = set()  # To avoid duplicate POIs
+
+        for name_query in name_list:
+            for unit in self.units.values():
+                try:
+                    matched_names = unit.match_names_vector(name_query, top_k=top_k)
+                    if matched_names:
+                        for name in matched_names:
+                            if name in seen_names:
+                                continue
+                            poi_row = unit.data[unit.data['name'] == name].iloc[0]
+                            result = {
+                                'name': poi_row['name'],
+                                'description': poi_row['description']
+                            }
+                            if 'longitude' in poi_row and 'latitude' in poi_row:
+                                result['longitude'] = poi_row['longitude']
+                                result['latitude'] = poi_row['latitude']
+                            matched_pois.append(result)
+                            seen_names.add(name)
+                except Exception as e:
+                    print(f"[{unit.name}] Location lookup error: {e}")
+
+        return matched_pois
+
 
 ##################################### Other Functions #####################################
-def location_lookup(user_query: str, rag_platform: RAGPlatform, top_k: int = 3) -> List[dict]:
-    """
-    Finds the most relevant POIs mentioned in the user query based on name similarity.
-    
-    Parameters:
-        user_query (str): User's location-related question
-        rag_platform (RAGPlatform): The central platform containing all RAG units
-        top_k (int): Number of matches to return
-    
-    Returns:
-        List[dict]: List of matched POIs with name, description, and optional location data
-    """
-    matched_pois = []
 
-    for unit in rag_platform.units.values():
-        try:
-            matched_names = unit.match_names_vector(user_query, top_k=top_k)
-            if matched_names:
-                for name in matched_names:
-                    poi_row = unit.data[unit.data['name'] == name].iloc[0]  # assume exact match
-                    result = {
-                        'name': poi_row['name'],
-                        'description': poi_row['description']
-                    }
-                    # Optionally include coordinates if available
-                    if 'longitude' in poi_row and 'latitude' in poi_row:
-                        result['longitude'] = poi_row['longitude']
-                        result['latitude'] = poi_row['latitude']
-                    matched_pois.append(result)
-        except Exception as e:
-            print(f"[{unit.name}] Location lookup error: {e}")
-
-    return matched_pois

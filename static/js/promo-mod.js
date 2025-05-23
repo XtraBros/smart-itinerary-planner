@@ -1,5 +1,5 @@
 const blacklist = new Set();
-import { fetchPlacesData, attachEventListenersToHyperlinks } from "./map-setup.js";
+import { fetchPlacesData } from "./map-setup.js";
 import { appendMessage } from "./chat-mod.js";
 
 export async function checkNearbyEvent(location) {

@@ -336,3 +336,38 @@ fetch('/config')
     .catch(error => {
         console.error('Error fetching the access token:', error);
     });
+
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('location-link')) {
+        e.preventDefault();
+        const markerId = e.target.getAttribute('data-marker-id');
+        Setup.showMapTab();
+        pauseAndpaly.style.display = 'none';
+        document.getElementById('popupModal').style.display = 'none';
+
+        Object.keys(window.mapMarkers).forEach(item => {
+            if (window.mapMarkers[item].getPopup().isOpen()) {
+                window.mapMarkers[item].togglePopup();
+            }
+        });
+
+        const marker = window.mapMarkers[markerId];
+        if (marker) {
+            const markerCoordinates = marker.getLngLat();
+            console.log(sharedState);
+            sharedState.map.flyTo({
+                center: markerCoordinates,
+                zoom: 15,
+                essential: true
+            });
+            if (!marker.getPopup().isOpen()) {
+                marker.togglePopup();
+            }
+        } else {
+            if (e.target.innerText) {
+                getPlaceCoordWithName(e.target.innerText);
+            }
+            console.error('Marker with ID ' + markerId + ' not found.');
+        }
+    }
+});

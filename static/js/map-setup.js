@@ -826,44 +826,6 @@ export function fetchPlacesData(places) {
         });
 }
 
-// Add event listeners to the hyperlinks
-export function attachEventListenersToHyperlinks() {
-    document.querySelectorAll('.location-link').forEach(function (link) {
-        link.addEventListener('click', function (e) {
-            showMapTab();
-            pauseAndpaly.style.display = 'none';
-            const markerId = this.getAttribute('data-marker-id');
-            // Hide the popup modal
-            document.getElementById('popupModal').style.display = 'none';
-            Object.keys(window.mapMarkers).forEach(item => {
-                if (window.mapMarkers[item].getPopup().isOpen()) {
-                    window.mapMarkers[item].togglePopup()
-                }
-            })
-            const marker = window.mapMarkers[markerId]; // Get the marker
-            if (marker) { // Ensure marker exists
-                var markerCoordinates = marker.getLngLat();
-
-                // Center the map on the marker's coordinates
-                window.sharedState.map.flyTo({
-                    center: markerCoordinates,
-                    zoom: 15, // Adjust the zoom level as needed
-                    essential: true // This ensures the animation is considered essential by the browser
-                });
-
-                // Show the map popup if it's not already open
-                if (!marker.getPopup().isOpen()) {
-                    marker.togglePopup(); // Open the popup if it's not already open
-                }
-            } else {
-                if (e.target.innerText) {
-                    getPlaceCoordWithName(e.target.innerText);
-                }
-                console.error('Marker with ID ' + markerId + ' not found.');
-            }
-        });
-    });
-}
 
 export function awaitGetPlaceCoordWithName(place) {
     // Return a promise that resolves when the getPlaceCoordWithName function completes
@@ -874,42 +836,89 @@ export function awaitGetPlaceCoordWithName(place) {
     });
 }
 
-// Suggestion Button:
-// EXAMPLE usage of endpoint:
-// async function getSuggestion(type) {
-//     if (!chatMessages) {
-//         var chatMessages = document.getElementById("chatbot-messages");
-//     }
-//     try {
-//         // Send a POST request to the /suggestion endpoint
-//         const response = await fetch('/suggestion', {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json'
-//             },
-//             body: JSON.stringify({ choice: type })
-//         });
+function setMapRoute(resRoute) {
+    if (!map.getLayer('route')) {
+        map.loadImage(
+            'static/icons/nav.png',
+            (error, image) => {
+                if (error) throw error;
+                if (!map.hasImage('arrow')) {
+                    map.addImage('arrow', image);
+                }
+                // Add route to map
+                if (!map.getSource('route')) {
+                    map.addSource('route', {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'properties': {},
+                            'geometry': resRoute
+                        }
+                    });
+                }
+                map.addLayer({
+                    id: 'route',
+                    type: 'line',
+                    source: 'route',
+                    layout: {
+                        'icon-size': 0.8,
+                        'icon-allow-overlap': false,
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-pattern': 'arrow',
+                        'line-width': 10
+                    }
+                });
+            }
+        );
 
-//         // Check if the response is OK (status code 200-299)
-//         if (!response.ok) {
-//             throw new Error(`HTTP error! status: ${response.status}`);
-//         }
+        // Update route data on map
+        directions.on('route', function (e) {
+            const route = e.route[0].geometry;
+            map.getSource('route').setData(route);
+        });
+    }
 
-//         // Parse the JSON response
-//         const data = await response.json();
-//         // Check response in console:
-//         console.log('Response from /suggestion: ', data);
-//         // Get info of poi and make marker
-//         suggestionData = await awaitGetPlaceCoordWithName(data.POI);
-//         //Post the message in chatbox:
-//         appendMessage({
-//             text: data.message,
-//             chatMessages,
-//             type: 'location',
-//             suggestion: 'suggestion',
-//         });
-//         attachEventListenersToHyperlinks();
-//     } catch (error) {
-//         console.error('Error fetching suggestion:', error);
-//     }
-// }
+    if (!map.getSource('walked-route')) {
+        map.addSource('walked-route', {
+            "type": "geojson",
+            "data": {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": []
+                }
+            }
+        });
+    }
+
+    if (!map.getLayer('walked-route')) {
+        // map.addLayer({
+        //     "id": "walked-route",
+        //     "type": "symbol",
+        //     "source": "walked-route",
+        //     'layout': {
+        //         'symbol-placement': 'line',
+        //         'symbol-spacing': 2,
+        //         'icon-image': 'walkedArrow',
+        //         'icon-size': 0.5,
+        //         'icon-allow-overlap': true,
+        //     },
+        // });
+        map.addLayer({
+            id: 'walked-route',
+            type: 'line',
+            source: 'walked-route',
+            layout: {
+                'icon-size': 0.8,
+                'icon-allow-overlap': false,
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-pattern': 'walkedArrow',
+                'line-width': 10
+            }
+        });
+    }
+}

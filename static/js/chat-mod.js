@@ -1,5 +1,5 @@
 import { sharedState } from "./main.js";
-import { get_coordinates_without_route, addMarkers, attachEventListenersToHyperlinks } from "./map-setup.js";
+import { get_coordinates_without_route, addMarkers } from "./map-setup.js";
 
 export function systemQuestionFunc(e) {
     const chatMessages = document.getElementById("chatbot-messages");
@@ -46,8 +46,8 @@ window.submitChat = function(event) {
 export async function postMessage(message, chatMessages) {
     appendMessage({ text: message, className: 'visitor-message', chatMessages });
     appendMessage({ text: null, chatMessages });
+
     try {
-        // Send message to Flask endpoint and get the response
         let response = await fetch('/ops_router', {
             method: 'POST',
             headers: {
@@ -55,47 +55,36 @@ export async function postMessage(message, chatMessages) {
             },
             body: JSON.stringify({ message: message, userLocation: sharedState.userLocation })
         });
+
         if (!response.ok) {
             throw new Error('Network response was not ok ' + response.statusText);
         }
-        let data = await response.json();
-        console.log("GPT response: " + JSON.stringify(data));
-        appendMessage({ text: data.response, chatMessages });
-        // // check for operation type and run route functions if neccesarry.
-        // if (data.operation == "location") {
-        //     let cleanedPlaceNames = data.response;
 
-        //     console.log(cleanedPlaceNames); // Check the cleaned list
-        //     // Get the route from the get_coordinates function
-        //     let orderOfVisit = await get_coordinates_without_route(cleanedPlaceNames);
-        //     addMarkers(orderOfVisit[0], orderOfVisit[1]);
-        //     console.log("Location op POIs: " + orderOfVisit)
-        //     let textResponse = await fetch('/get_text', {
-        //         method: 'POST',
-        //         headers: {
-        //             'Content-Type': 'application/json'
-        //         },
-        //         body: JSON.stringify({ route: orderOfVisit[0], message: message, coordinates: orderOfVisit[1] })
-        //     });
-        //     if (!textResponse.ok) {
-        //         throw new Error('Network response was not ok ' + textResponse.statusText);
-        //     }
-        //     let textData = await textResponse.json();
-        //     appendMessage({
-        //         text: textData.response ? textData.response.replace(/\*/g, "") : '',
-        //         chatMessages,
-        //         type: 'location',
-        //         placeNames: orderOfVisit[0],
-        //         longAndlat: orderOfVisit[1],
-        //     });
-        //     attachEventListenersToHyperlinks();
-        // } else {
-            
-        // }
+        let data = await response.json();
+        if (data.gatheredData) {
+            let gatheredData = data.gatheredData;
+
+            // Extract names and coordinates
+            let placeNames = gatheredData.map(poi => poi.name);
+            let coordinates = gatheredData.map(poi => [poi.longitude, poi.latitude]);
+
+            // Use these arrays as needed
+            addMarkers(placeNames, coordinates);
+            console.log("Location of POIs: ", coordinates);
+
+            appendMessage({
+                text: data.response ? data.response.replace(/\*/g, "") : '',
+                chatMessages,
+                type: 'location',
+                placeNames: placeNames,
+                longAndlat: coordinates,
+            });
+        }
     } catch (error) {
         console.error('Error:', error.message || error);
     }
 }
+
 // creaate template and styles for each visitor/guide message.
 export function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat, fromUser }) {
     let long = ''
