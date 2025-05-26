@@ -396,6 +396,16 @@ class RAGPlatform:
                     print(f"[{unit.name}] Location lookup error: {e}")
 
         return matched_pois
+    
+    def get_all_pois_as_dataframe(self):
+        all_dfs = []
+        for unit in self.units.values():
+            df = unit.get_data()
+            all_dfs.append(df)
+        if all_dfs:
+            return pd.concat(all_dfs, ignore_index=True)
+        else:
+            return pd.DataFrame()
 
 
 ##################################### Other Functions #####################################
