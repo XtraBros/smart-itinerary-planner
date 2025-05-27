@@ -167,3 +167,25 @@ def update_ball_tree(poi_df):
     coordinates_rad = np.radians(poi_df[['latitude', 'longitude']].values)
     ball_tree = BallTree(coordinates_rad, metric='haversine')
     return ball_tree
+
+def solve_route_with_balltree(place_names, poi_df, tree):
+    dist_df = build_distance_matrix_from_balltree(place_names, poi_df, tree)
+    permutation = solve_tsp(dist_df)
+    return permutation
+
+def build_distance_matrix_from_balltree(place_names, poi_df, tree):
+    # Get indices and coordinates for selected POIs
+    name_to_index = {name: idx for idx, name in enumerate(poi_df['name'])}
+    indices = [name_to_index[name] for name in place_names]
+    coords_subset = np.radians(poi_df.iloc[indices][['latitude', 'longitude']].to_numpy())
+    
+    # Use haversine distance (returns in radians, multiply by Earth's radius to get meters)
+    earth_radius = 6371000  # in meters
+    dist_matrix = np.zeros((len(indices), len(indices)))
+    
+    for i, coord in enumerate(coords_subset):
+        # BallTree returns distance to all points (including itself)
+        dists, _ = tree.query([coord], k=len(coords_subset))
+        dist_matrix[i] = dists[0][:len(indices)] * earth_radius
+
+    return pd.DataFrame(dist_matrix, index=place_names, columns=place_names)
