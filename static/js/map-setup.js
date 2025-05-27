@@ -582,7 +582,7 @@ export function getMapboxWalkRoute(coordinates) {
                 const result = data.routes[0].geometry;
                 sharedState.steps = data.routes[0].legs[0].steps;
                 sharedState.walkStepsNavs = data;
-                paintLine(route);
+                paintLine(result);
                 return { legs: legs, route: result };
             } else {
                 console.error('No route found: ', data);
