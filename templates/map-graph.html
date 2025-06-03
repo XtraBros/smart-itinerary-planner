@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Mapbox Graph</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        fetch('/config')
+            .then(response => response.json())
+            .then(data => {
+                mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
+    
+                const map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/streets-v12',
+                    center: [103.82, 1.25],
+                    zoom: 15
+                });
+    
+                map.on('load', async () => {
+                    const response = await fetch('/graph_data');
+                    const geojson = await response.json();
+    
+                    map.addSource('graph', {
+                        type: 'geojson',
+                        data: geojson
+                    });
+    
+                    map.addLayer({
+                        id: 'nodes',
+                        type: 'circle',
+                        source: 'graph',
+                        filter: ['==', '$type', 'Point'],
+                        paint: {
+                            'circle-radius': 6,
+                            'circle-color': '#FF5733'
+                        }
+                    });
+    
+                    map.addLayer({
+                        id: 'edges',
+                        type: 'line',
+                        source: 'graph',
+                        filter: ['==', '$type', 'LineString'],
+                        paint: {
+                            'line-width': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'weight'],
+                                0, 1,
+                                100, 6
+                            ],
+                            'line-color': '#00BFFF',
+                            'line-opacity': 0.6
+                        }
+                    });
+    
+                    map.on('click', 'nodes', (e) => {
+                        const name = e.features[0].properties.name;
+                        new mapboxgl.Popup()
+                            .setLngLat(e.lngLat)
+                            .setHTML(`<strong>${name}</strong>`)
+                            .addTo(map);
+                    });
+    
+                    map.on('mouseenter', 'nodes', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+                    map.on('mouseleave', 'nodes', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                });
+            })
+            .catch(err => {
+                console.error("Error loading Mapbox token:", err);
+            });
+    </script>    
+</body>
+</html>

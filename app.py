@@ -510,27 +510,82 @@ def reset_memory():
 def show_graph():
     net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white")
 
+    # Scale factor to spread out nodes visually
+    SCALE_X = 100000
+    SCALE_Y = 100000
+
+    min_lon = poi_df['longitude'].min()
+    min_lat = poi_df['latitude'].min()
+
     for _, row in poi_df.iterrows():
         name = row["name"]
-        net.add_node(n_id=name, label=name, title=name)
+        lon = (row["longitude"] - min_lon) * SCALE_X
+        lat = (row["latitude"] - min_lat) * SCALE_Y
+        net.add_node(n_id=name, label=name, title=name, x=lon, y=-lat, fixed=True)
 
+    # Add edges with distance as weight
     for u, v, data in graph.edges(data=True):
         weight = data.get("weight", 1)
         net.add_edge(u, v, value=weight, title=f"{weight:.0f}m")
 
-    net.toggle_physics(True)
+    # Disable physics so coordinates remain fixed
+    net.toggle_physics(False)
 
     # Save to static folder instead of templates
     output_path = os.path.join("templates", "graph.html")
     net.save_graph(output_path)
 
-    # Redirect user to view the static file
     return render_template("graph.html")
 
-@app.route("/graph_map")
-def show_graph_map():
-    return render_template("graph_map.html", pois=poi_df.to_dict(orient="records"), edges=list(graph.edges()))
 
+@app.route("/graph_data")
+def get_graph_data():
+    nodes = []
+    edges = []
+
+    for node in graph.nodes(data=True):
+        name = node[0]
+        lon, lat = node[1]['pos']
+        nodes.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [lon, lat]
+            },
+            "properties": {
+                "name": name
+            }
+        })
+
+    for u, v, data in graph.edges(data=True):
+        u_pos = graph.nodes[u]['pos']
+        v_pos = graph.nodes[v]['pos']
+        edges.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [u_pos[0], u_pos[1]],
+                    [v_pos[0], v_pos[1]]
+                ]
+            },
+            "properties": {
+                "from": u,
+                "to": v,
+                "weight": data.get("weight", 1)
+            }
+        })
+
+    geojson = {
+        "type": "FeatureCollection",
+        "features": nodes + edges
+    }
+
+    return jsonify(geojson)
+
+@app.route("/map_graph")
+def map_graph():
+    return render_template("map-graph.html")
 ############################################# ITINERARY PLANNER ENDPOINTS #####################################################
 @app.route('/plan')
 def show_form():
