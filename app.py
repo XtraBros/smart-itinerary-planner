@@ -1,6 +1,4 @@
-# app.py
-
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 import pandas as pd
 import json
 from langchain.memory import ConversationBufferWindowMemory
@@ -9,8 +7,10 @@ from helpers.text_processing import *
 from helpers.prompts import *
 from helpers.RAG import *
 from helpers.route_solver import *
+from helpers.planner import *
 from helpers.model import LLMPipeline
 from werkzeug.utils import secure_filename
+from pyvis.network import Network
 
 app = Flask(__name__)
 
@@ -43,6 +43,7 @@ unit2= RAGUnit(
 )
 rag = RAGPlatform([unit2])
 balltree, poi_df = build_balltree_from_rag_platform(rag)
+graph = build_graph_from_balltree(poi_df, balltree, np.radians(poi_df[['latitude', 'longitude']].values), k=5)
 app.balltree = balltree
 app.poi_df = poi_df
 ######################### MISC init #########################
@@ -69,38 +70,6 @@ def get_config():
     config = load_config()
     return jsonify({'config': config})
 
-@app.route('/update_map_style', methods=['POST'])
-def update_map_style():
-    data = request.json
-    new_style_url = data.get("mapbox_style_url")
-    new_map_centre = data.get("map_centre")
-
-    if not new_style_url and not new_map_centre:
-        return jsonify({"error": "No data provided for update"}), 400
-
-    config = load_config()
-
-    if new_style_url:
-        config["MAPBOX_STYLE_URL"] = new_style_url
-
-    if new_map_centre:
-        if not isinstance(new_map_centre, list) or len(new_map_centre) != 2:
-            return jsonify({"error": "Invalid map_centre format"}), 400
-        try:
-            lng = float(new_map_centre[0])
-            lat = float(new_map_centre[1])
-            config["MAP_CENTRE"] = json.dumps([lng, lat])  # Save as stringified list
-        except ValueError:
-            return jsonify({"error": "Map centre must be numeric"}), 400
-
-    save_config(config)
-
-    return jsonify({
-        "message": "Map settings updated",
-        "style_url": config.get("MAPBOX_STYLE_URL"),
-        "map_centre": config.get("MAP_CENTRE")
-    })
-
 @app.route('/ops_router', methods=['POST'])
 def ops_router():
     user_input = request.json['message']
@@ -116,15 +85,19 @@ def ops_router():
     - "event_data": If the user asks about local events
     - "none": If the query can be answered using general knowledge without fetching external data
 
+    In addition, if the user's query involves **planning a trip, itinerary, or sequence of visits**, set `"itinerary_planning"` to `true`.
+
     You should return a JSON object with:
     - "data_required": a list of data types needed (e.g., ["poi_data", "weather_data"])
     - "entities": list of any POIs, categories, or locations mentioned in the query
+    - "itinerary_planning": a boolean indicating whether the user is requesting help with planning an itinerary
 
     Examples:
-    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"]}}
-    {{"data_required": ["poi_category"], "entities": ["museums"]}}
-    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"]}}
-    {{"data_required": ["none"], "entities": []}}
+    {"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": false}
+    {"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": false}
+    {"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": false}
+    {"data_required": ["poi_category", "weather_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": true}
+    {"data_required": ["none"], "entities": [], "itinerary_planning": false}
 
     Respond ONLY with the JSON object.
     """
@@ -140,7 +113,17 @@ def ops_router():
 
     # Initialize data bundle
     gathered_data = {}
-
+    if response.get("itinerary_planning") is True:
+        # get schema
+        schema = load_schema()
+        # Generate skeleton
+        skeleton = generate_skeleton(llm, schema, user_input)
+        # RAG
+        pois = rag.query_by_tags(extract_tags_from_trip_schema(schema), top_k=5*get_trip_duration_days(schema))
+        # FIll in skeleton
+        itinerary = fill_itinerary_skeleton(llm, skeleton, pois, schema)
+        # structure itinerary from json.
+        pass
     if "poi_data" in data_required:
         gathered_data["poi_data"] = rag.query(entities)
 
@@ -394,6 +377,39 @@ def get_units():
             "name": unit.name
         })
     return jsonify(units=units)
+
+@app.route('/update_map_style', methods=['POST'])
+def update_map_style():
+    data = request.json
+    new_style_url = data.get("mapbox_style_url")
+    new_map_centre = data.get("map_centre")
+
+    if not new_style_url and not new_map_centre:
+        return jsonify({"error": "No data provided for update"}), 400
+
+    config = load_config()
+
+    if new_style_url:
+        config["MAPBOX_STYLE_URL"] = new_style_url
+
+    if new_map_centre:
+        if not isinstance(new_map_centre, list) or len(new_map_centre) != 2:
+            return jsonify({"error": "Invalid map_centre format"}), 400
+        try:
+            lng = float(new_map_centre[0])
+            lat = float(new_map_centre[1])
+            config["MAP_CENTRE"] = json.dumps([lng, lat])  # Save as stringified list
+        except ValueError:
+            return jsonify({"error": "Map centre must be numeric"}), 400
+
+    save_config(config)
+
+    return jsonify({
+        "message": "Map settings updated",
+        "style_url": config.get("MAPBOX_STYLE_URL"),
+        "map_centre": config.get("MAP_CENTRE")
+    })
+
 ############################################ MAP RELATED ENDPOINTS #####################################################
 @app.route('/get_coordinates', methods=['POST'])
 def get_coordinates():
@@ -489,6 +505,62 @@ def reset_memory():
     # Clear memory
     memory.clear()  # Replace with actual memory clearing code
     return jsonify({"status": "Memory reset"})
+
+@app.route("/graph")
+def show_graph():
+    net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white")
+
+    for _, row in poi_df.iterrows():
+        name = row["name"]
+        net.add_node(n_id=name, label=name, title=name)
+
+    for u, v, data in graph.edges(data=True):
+        weight = data.get("weight", 1)
+        net.add_edge(u, v, value=weight, title=f"{weight:.0f}m")
+
+    net.toggle_physics(True)
+
+    # Save to static folder instead of templates
+    output_path = os.path.join("templates", "graph.html")
+    net.save_graph(output_path)
+
+    # Redirect user to view the static file
+    return render_template("graph.html")
+
+@app.route("/graph_map")
+def show_graph_map():
+    return render_template("graph_map.html", pois=poi_df.to_dict(orient="records"), edges=list(graph.edges()))
+
+############################################# ITINERARY PLANNER ENDPOINTS #####################################################
+@app.route('/plan')
+def show_form():
+    return render_template('itinerary-form.html')
+
+@app.route('/submit_itinerary', methods=['POST'])
+def submit_itinerary():
+    data = request.form.to_dict()
+    data['group_type'] = request.form.getlist('group_type')  # ensure list values are captured
+
+    # Convert checkbox inputs to booleans
+    checkbox_fields = ['has_children', 'has_elderly', 'avoid_heat', 'backup_plan']
+    for field in checkbox_fields:
+        data[field] = field in request.form
+
+    # Save data to user_schema.json
+    filepath = './static/data/user_schema.json'
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as f:
+            all_data = json.load(f)
+    else:
+        all_data = []
+
+    all_data.append(data)
+
+    with open(filepath, 'w') as f:
+        json.dump(all_data, f, indent=2)
+
+    return redirect('/')
+
 
 ###########################################################################################################
 if __name__ == '__main__':

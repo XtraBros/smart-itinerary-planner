@@ -1,0 +1,69 @@
+<!-- itinerary_form.html -->
+<form id="itineraryForm" method="POST" action="/submit_itinerary">
+    <h2>Trip Basics</h2>
+    <label>Trip Title: <input name="trip_title" type="text" required></label><br>
+    <label>Start Date: <input name="start_date" type="date" required></label><br>
+    <label>End Date: <input name="end_date" type="date" required></label><br>
+    <label>Available Hours: <input name="available_hours" type="text" placeholder="e.g. 10 AM - 6 PM"></label><br>
+  
+    <h2>Group Information</h2>
+    <label>Number of People: <input name="group_size" type="number" min="1" required></label><br>
+    <label>Group Type:
+      <select name="group_type" multiple>
+        <option value="Family">Family</option>
+        <option value="Friends">Friends</option>
+        <option value="Couple">Couple</option>
+        <option value="Solo">Solo</option>
+      </select>
+    </label><br>
+    <label>Children Present?
+      <input name="has_children" type="checkbox">
+      <input name="children_ages" type="text" placeholder="e.g. 5, 8">
+    </label><br>
+    <label>Elderly Present?
+      <input name="has_elderly" type="checkbox">
+      <input name="elderly_needs" type="text" placeholder="e.g. wheelchair access">
+    </label><br>
+    <label>Accessibility Needs: <input name="accessibility_needs" type="text"></label><br>
+    <label>Pace Preference:
+      <select name="pace_preference">
+        <option>Relaxed</option>
+        <option>Balanced</option>
+        <option>Fast-paced</option>
+      </select>
+    </label><br>
+  
+    <h2>Preferences & Interests</h2>
+    <label>Activity Interests: <input name="interests" type="text" placeholder="e.g. Nature, Food, Museums"></label><br>
+    <label>Dining Preference: <input name="dining_preference" type="text"></label><br>
+    <label>Daily Budget (per person): <input name="daily_budget" type="number"></label><br>
+    <label>Transport Preference: <input name="transport" type="text" placeholder="e.g. MRT, Walking"></label><br>
+  
+    <h2>Timing Preferences</h2>
+    <label>Earliest Start: <input name="start_time" type="time"></label><br>
+    <label>Latest End: <input name="end_time" type="time"></label><br>
+    <label>Meal Times: <input name="meal_times" type="text" placeholder="e.g. Lunch at 1 PM, Dinner at 7 PM"></label><br>
+    <label>Break Frequency:
+      <select name="break_frequency">
+        <option>Every 2 hours</option>
+        <option>Every 3 hours</option>
+        <option>Flexible</option>
+      </select>
+    </label><br>
+  
+    <h2>Must-Do / Must-Avoid</h2>
+    <label>Must-Visit Places: <input name="must_visit" type="text"></label><br>
+    <label>Must-Avoid Places: <input name="must_avoid" type="text"></label><br>
+    <label>Pre-Booked Activities: <input name="prebooked" type="text"></label><br>
+    <label>Exclude Activity Types: <input name="excluded_activities" type="text"></label><br>
+  
+    <h2>Environment Sensitivities</h2>
+    <label>Weather Sensitivity: <input name="weather_preference" type="text"></label><br>
+    <label>Heat Avoidance: <input name="avoid_heat" type="checkbox"></label><br>
+    <label>Backup Rainy Day Plan: <input name="backup_plan" type="checkbox"></label><br>
+  
+    <h2>Additional Notes</h2>
+    <textarea name="additional_notes" rows="4" cols="50" placeholder="Anything else we should know?"></textarea><br>
+  
+    <button type="submit">Submit Itinerary</button>
+  </form>

@@ -371,3 +371,21 @@ document.addEventListener('click', function (e) {
         }
     }
 });
+
+function openModal() {
+    document.getElementById('form-modal').style.display = 'block';
+}
+  
+function closeModal() {
+    document.getElementById('form-modal').style.display = 'none';
+}
+
+// Optional: close modal on outside click
+window.onclick = function(event) {
+    const modal = document.getElementById('form-modal');
+    if (event.target === modal) {
+    modal.style.display = "none";
+    }
+};
+window.openModal = openModal;
+window.closeModal = closeModal;

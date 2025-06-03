@@ -4,6 +4,7 @@ import math
 from sklearn.neighbors import BallTree
 import numpy as np
 from helpers.RAG import RAGPlatform
+import networkx as nx
 ###########################################################################################################
 # route optimisation function:
 # input: list of place names from CSV.
@@ -189,3 +190,77 @@ def build_distance_matrix_from_balltree(place_names, poi_df, tree):
         dist_matrix[i] = dists[0][:len(indices)] * earth_radius
 
     return pd.DataFrame(dist_matrix, index=place_names, columns=place_names)
+
+
+def build_graph_from_balltree(poi_df, tree, coords_rad, k=5):
+    earth_radius = 6371000  # in meters
+    G = nx.Graph()
+
+    names = poi_df['name'].tolist()
+    for i, name in enumerate(names):
+        G.add_node(name, pos=(poi_df.loc[i, 'longitude'], poi_df.loc[i, 'latitude']))
+
+        # Query k nearest neighbors (excluding self)
+        dist, ind = tree.query([coords_rad[i]], k=k+1)
+        for j, d in zip(ind[0][1:], dist[0][1:]):  # skip self
+            neighbor_name = names[j]
+            distance_m = d * earth_radius
+            G.add_edge(name, neighbor_name, weight=distance_m)
+
+    return G
+
+import matplotlib
+matplotlib.use('Agg')  # Use Anti-Grain Geometry backend for headless rendering
+import matplotlib.pyplot as plt
+
+def plot_graph(G):
+    pos = {node: (data['pos'][0], data['pos'][1]) for node, data in G.nodes(data=True)}
+    plt.figure(figsize=(12, 8))
+    nx.draw(G, pos, with_labels=True, node_size=500, node_color='skyblue', font_size=8)
+    labels = nx.get_edge_attributes(G, 'weight')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels={k: f"{v:.0f}m" for k, v in labels.items()}, font_size=6)
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.title("POI Distance Graph")
+    plt.show()
+
+
+import io
+import base64
+
+def plot_graph_image(G):
+    pos = {node: (data['pos'][0], data['pos'][1]) for node, data in G.nodes(data=True)}
+    fig, ax = plt.subplots(figsize=(12, 8))
+    nx.draw(G, pos, with_labels=True, node_size=500, node_color='skyblue', font_size=8, ax=ax)
+    labels = nx.get_edge_attributes(G, 'weight')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels={k: f"{v:.0f}m" for k, v in labels.items()}, font_size=6, ax=ax)
+    ax.set_title("POI Distance Graph")
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+
+    # Convert plot to PNG image in memory
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    buf.seek(0)
+    plt.close(fig)
+
+    return base64.b64encode(buf.read()).decode('utf-8')
+
+from pyvis.network import Network
+
+def view_graph_pyvis(graph, poi_df, output_file="graph.html"):
+    net = Network(notebook=False, height="600px", width="100%", bgcolor="#222222", font_color="white")
+
+    # Add nodes with labels from poi_df
+    for node in graph.nodes:
+        label = poi_df.loc[node, "name"] if "name" in poi_df.columns else str(node)
+        net.add_node(n_id=node, label=label, title=label)
+
+    # Add edges with optional weights
+    for u, v, data in graph.edges(data=True):
+        weight = data.get("weight", 1)
+        net.add_edge(u, v, value=weight, title=f"{weight:.0f}m")
+
+    net.toggle_physics(True)
+    net.show_buttons(filter_=['physics'])  # Optional: to tune the layout
+    net.show(output_file)

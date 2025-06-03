@@ -1,7 +1,7 @@
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 import uuid
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, List
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import create_engine
@@ -11,6 +11,8 @@ import faiss
 import requests
 import sqlalchemy
 import pymongo
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 '''
 RAGUnit: One unit of RAG platform
@@ -282,6 +284,38 @@ class RAGUnit:
         
         return results
     
+    def filter_by_tags(self, tags: List[str], top_k: int = 5) -> List[dict]:
+        """
+        Filter POIs based on semantic similarity to tags. Assumes 'tags' column contains
+        comma-separated strings or lists. Uses embedding similarity with description embeddings.
+        """
+        if 'tags' not in self.data.columns:
+            raise ValueError("Dataset must contain a 'tags' column.")
+
+        # Create tag embedding
+        tag_query = ", ".join(tags)
+        tag_embedding = self.embedding_model.encode([tag_query], convert_to_numpy=True)
+
+        # Score similarity to each description
+        if self.description_embeddings is None:
+            raise ValueError("Description embeddings not found. Run build_index first.")
+
+        similarities = cosine_similarity(tag_embedding, self.description_embeddings)[0]
+
+        # Get top-k most similar entries
+        top_indices = similarities.argsort()[::-1][:top_k]
+
+        results = []
+        for idx in top_indices:
+            row = self.data.iloc[idx]
+            results.append({
+                'name': row.get('name', ''),
+                'description': row.get('description', ''),
+                'tags': row.get('tags', []),
+                'similarity': float(similarities[idx])
+            })
+        return results
+        
     def get_location_data(self) -> pd.DataFrame:
         """
         Returns a DataFrame with 'name', 'longitude', and 'latitude' columns.
@@ -296,10 +330,7 @@ class RAGUnit:
 
 class RAGPlatform:
     def __init__(self, rag_units: List[RAGUnit] = None):
-        self.units: Dict[str, RAGUnit] = {}
-        if rag_units:
-            for unit in rag_units:
-                self.units[unit.id] = unit
+        self.units: Dict[str, RAGUnit] = {unit.id: unit for unit in rag_units or []}
 
     def add_unit(self, unit: RAGUnit):
         """Add a new RAGUnit instance."""
@@ -407,6 +438,23 @@ class RAGPlatform:
         else:
             return pd.DataFrame()
 
-
+    def query_by_tags(self, tags: List[str], top_k: int = 5) -> List[dict]:
+        all_results = []
+        for unit in self.units.values():
+            try:
+                results = unit.filter_by_tags(tags, top_k=top_k)
+                for r in results:
+                    r['source'] = unit.name
+                    all_results.append(r)
+            except Exception as e:
+                print(f"Error querying unit {unit.name}: {e}")
+        
+        # Sort by similarity score if present
+        sorted_results = sorted(
+            all_results, 
+            key=lambda x: x.get("similarity", 0), 
+            reverse=True
+        )
+        return sorted_results[:top_k]
 ##################################### Other Functions #####################################
 

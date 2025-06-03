@@ -51,6 +51,30 @@
             </li>
         </ul>
     </div>
+    <button class="plan-button" onclick="openModal()">Personlize My Trip</button>
+    <!-- Modal -->
+    <div id="form-modal" class="schema-modal">
+        <div class="schema-modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Plan Your Itinerary</h2>
+        <form id="itinerary-form" method="POST" action="/submit_itinerary">
+            <!-- Add any fields you want, here's a sample -->
+            <label for="trip_title">Trip Title:</label>
+            <input type="text" name="trip_title" required><br><br>
+    
+            <label for="start_date">Start Date:</label>
+            <input type="date" name="start_date" required><br><br>
+    
+            <label for="end_date">End Date:</label>
+            <input type="date" name="end_date" required><br><br>
+    
+            <label for="group_size">Group Size:</label>
+            <input type="number" name="group_size" required><br><br>
+    
+            <button type="submit">Submit</button>
+        </form>
+        </div>
+    </div>
     <div class="weather-widget" id="weather-widget">
         <button class="close-button" id="close-button">&times;</button>
         <div class="weather-column main-forecast" id="day-1">
