@@ -1,0 +1,19 @@
+{
+    "trip_title": "string",
+    "start_date": "YYYY-MM-DD",
+    "end_date": "YYYY-MM-DD",
+  
+    "group_size": "integer",
+    "group_type": ["Family", "Friends", "Couple", "Solo"],
+    "has_children": true,
+  
+    "dining_preference": "string",
+    "daily_budget": "number",
+    "transport": "string",
+  
+    "start_time": "HH:MM",
+    "end_time": "HH:MM",
+  
+    "additional_notes": "string"
+  }
+  

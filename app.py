@@ -616,6 +616,29 @@ def submit_itinerary():
 
     return redirect('/')
 
+@app.route('/submit_itinerary', methods=['POST'])
+def submit_itinerary():
+    data = request.form.to_dict()
+
+    # Convert specific string fields to appropriate types
+    # Convert 'has_children' to boolean
+    if 'has_children' in data:
+        data['has_children'] = data['has_children'].lower() == 'true'
+
+    # Save data to user_schema.json
+    filepath = './static/data/user_schema.json'
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as f:
+            all_data = json.load(f)
+    else:
+        all_data = []
+
+    all_data.append(data)
+
+    with open(filepath, 'w') as f:
+        json.dump(all_data, f, indent=2)
+
+    return redirect('/')
 
 ###########################################################################################################
 if __name__ == '__main__':

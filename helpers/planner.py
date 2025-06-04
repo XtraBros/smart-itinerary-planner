@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 
-def load_schema(schema_path="./static/data/user_schema.json"):
+def load_schema(schema_path="../data/user_schema.json"):
     with open(schema_path, "r") as f:
         return json.load(f)
     
@@ -11,7 +11,7 @@ def generate_skeleton(llm, schema, user_input=None):
     if user_input:
         prompt += f"\nUser input: {user_input}"
     prompt += "\n\nAdditional Constraints:\n" + json.dumps(schema, indent=2)
-    prompt += "\n\nPlease generate a filled-out version of an itinerary. You may use placeholders if user input is insufficient."
+    # prompt += "\n\nPlease generate a filled-out version of an itinerary. You may use placeholders if user input is insufficient."
     response = llm.invoke(prompt)
     return response
 
