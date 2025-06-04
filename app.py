@@ -81,7 +81,6 @@ def ops_router():
     - "poi_data": Information about specific points of interest (e.g., descriptions, opening hours)
     - "poi_location": Data required to help with wayfinding, directions, or location lookup
     - "poi_category": When the user asks for suggestions or recommendations based on categories
-    - "weather_data": If the query relates to weather or planning around weather
     - "event_data": If the user asks about local events
     - "none": If the query can be answered using general knowledge without fetching external data
 
@@ -93,11 +92,11 @@ def ops_router():
     - "itinerary_planning": a boolean indicating whether the user is requesting help with planning an itinerary
 
     Examples:
-    {"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": false}
-    {"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": false}
-    {"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": false}
-    {"data_required": ["poi_category", "weather_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": true}
-    {"data_required": ["none"], "entities": [], "itinerary_planning": false}
+    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": false}}
+    {{"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": false}}
+    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": false}}
+    {{"data_required": ["poi_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": true}}
+    {{"data_required": ["none"], "entities": [], "itinerary_planning": false}}
 
     Respond ONLY with the JSON object.
     """
@@ -119,7 +118,7 @@ def ops_router():
         # Generate skeleton
         skeleton = generate_skeleton(llm, schema, user_input)
         # RAG
-        pois = rag.query_by_tags(extract_tags_from_trip_schema(schema), top_k=5*get_trip_duration_days(schema))
+        pois = rag.query_by_tags(extract_rag_tags(schema), top_k=5*get_trip_duration_days(schema))
         # FIll in skeleton
         itinerary = fill_itinerary_skeleton(llm, skeleton, pois, schema)
         # structure itinerary from json.

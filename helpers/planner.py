@@ -11,73 +11,83 @@ def generate_skeleton(llm, schema, user_input=None):
     if user_input:
         prompt += f"\nUser input: {user_input}"
     prompt += "\n\nAdditional Constraints:\n" + json.dumps(schema, indent=2)
+    prompt += f'''
+    Return the filled itinerary as a JSON object with this structure:
+
+    {{
+    "Day 1 (YYYY-MM-DD)": {{
+        "date": "YYYY-MM-DD",
+        "activities": [ "activity1", "activity2", ... ],
+        "dining": "dining option or empty string",
+        "transport": "transport option or empty string",
+        "notes": "additional notes or empty string"
+    }},
+    "Day 2 (YYYY-MM-DD)": {{
+        ...
+    }},
+    ...
+    }}
+    '''
     # prompt += "\n\nPlease generate a filled-out version of an itinerary. You may use placeholders if user input is insufficient."
     response = llm.invoke(prompt)
     return response
 
-def extract_tags_from_trip_schema(schema: dict) -> list:
+def extract_rag_tags(schema: dict) -> list:
+    """
+    Extracts meaningful tags from the user itinerary schema
+    for use in RAG or vector search.
+    """
     tags = []
 
-    # Basic trip info
+    # Include general trip context
     if schema.get("trip_title"):
         tags.append(schema["trip_title"])
 
-    # Group details
-    if schema.get("group_type"):
-        tags.append(schema["group_type"])
-    if schema.get("has_children"):
-        tags.append("has_children")
-        if schema.get("children_ages"):
-            tags.append("children_" + schema["children_ages"])
-    if schema.get("has_elderly"):
-        tags.append("has_elderly")
-        if schema.get("elderly_needs"):
-            tags.append("elderly_" + schema["elderly_needs"])
-    if schema.get("accessibility_needs"):
-        tags.append("accessibility_" + schema["accessibility_needs"])
+    # Add group-related info
+    group_type = schema.get("group_type")
+    if group_type:
+        tags.append(f"{group_type} group")
+    if schema.get("has_children") is True:
+        tags.append("family-friendly")
+    elif schema.get("has_children") is False:
+        tags.append("no children")
 
-    # Preferences
-    if schema.get("pace_preference"):
-        tags.append(schema["pace_preference"].lower().replace("-", "_"))
-    if schema.get("interests"):
-        tags.extend([interest.strip().lower() for interest in schema["interests"].split(",")])
+    group_size = schema.get("group_size")
+    if group_size:
+        if group_size == 1:
+            tags.append("solo traveler")
+        elif group_size <= 2:
+            tags.append("small group")
+        elif group_size > 4:
+            tags.append("large group")
+
+    # Dining preferences
     if schema.get("dining_preference"):
-        tags.append("dining_" + schema["dining_preference"].lower())
+        tags.append(schema["dining_preference"])
+
+    # Budget level
+    budget = schema.get("daily_budget")
+    if budget is not None:
+        if budget < 50:
+            tags.append("budget travel")
+        elif 50 <= budget <= 150:
+            tags.append("mid-range travel")
+        else:
+            tags.append("luxury travel")
+
+    # Transport
     if schema.get("transport"):
-        tags.append("transport_" + schema["transport"].lower())
+        tags.append(f"prefers {schema['transport']} transport")
 
-    # Time-related preferences
-    if schema.get("break_frequency"):
-        tags.append("breaks_" + schema["break_frequency"].lower().replace(" ", "_"))
-    if schema.get("meal_times"):
-        tags.extend([f"meal_{t.strip()}" for t in schema["meal_times"].split(",") if t.strip()])
-
-    # Constraints
-    for key in ["must_visit", "must_avoid", "prebooked", "excluded_activities"]:
-        if schema.get(key):
-            tags.extend([f"{key}_{item.strip().lower()}" for item in schema[key].split(",")])
-
-    # Weather-related
-    if schema.get("weather_preference"):
-        tags.append("weather_" + schema["weather_preference"].lower())
-    if schema.get("avoid_heat"):
-        tags.append("avoid_heat")
-    if schema.get("backup_plan"):
-        tags.append("has_backup_plan")
+    # Time preferences (optional)
+    if schema.get("start_time") and schema.get("end_time"):
+        tags.append(f"active from {schema['start_time']} to {schema['end_time']}")
 
     # Additional notes
     if schema.get("additional_notes"):
-        tags.extend([note.strip().lower() for note in schema["additional_notes"].split(",") if note.strip()])
+        tags.append(schema["additional_notes"])
 
-    # Flatten and deduplicate
-    flat_tags = set()
-    for tag in tags:
-        if isinstance(tag, list):
-            flat_tags.update(tag)
-        else:
-            flat_tags.add(tag.strip())
-
-    return list(flat_tags)
+    return tags
 
 def get_trip_duration_days(schema: dict) -> int:
     start_date_str = schema.get("start_date")
