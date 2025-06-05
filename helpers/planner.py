@@ -2,15 +2,44 @@ import json
 import os
 from datetime import datetime
 
-def load_schema(schema_path="../data/user_schema.json"):
+def load_schema(schema_path="./data/user_schema.json"):
+    def convert_value(value):
+        # Try to convert to int
+        if isinstance(value, str):
+            value = value.strip()
+            if value.isdigit():
+                return int(value)
+            try:
+                return float(value)
+            except ValueError:
+                pass
+            try:
+                # Try ISO datetime formats
+                return datetime.fromisoformat(value)
+            except ValueError:
+                pass
+        return value
+
+    def convert_structure(obj):
+        if isinstance(obj, dict):
+            return {k: convert_structure(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_structure(i) for i in obj]
+        else:
+            return convert_value(obj)
+
+    if not os.path.exists(schema_path):
+        raise FileNotFoundError(f"Schema file not found at: {schema_path}")
+
     with open(schema_path, "r") as f:
-        return json.load(f)
+        raw = json.load(f)
+        return convert_structure(raw)
     
 def generate_skeleton(llm, schema, user_input=None):
     prompt = "You are an intelligent itinerary planning assistant. Based on the following schema, generate a JSON object to serve as a planning skeleton. "
     if user_input:
         prompt += f"\nUser input: {user_input}"
-    prompt += "\n\nAdditional Constraints:\n" + json.dumps(schema, indent=2)
+    prompt += "\n\nAdditional Constraints:\n" + f"{schema}"
     prompt += f'''
     Return the filled itinerary as a JSON object with this structure:
 
@@ -28,8 +57,13 @@ def generate_skeleton(llm, schema, user_input=None):
     ...
     }}
     '''
+    prompt += "/n/n Ensure the operating hours of the POIs match the allocated time slot, but do not explicitly mention the operating hours or coordinate locations of the POIs. Ensure all information is simple and easily digestable by the user."
     # prompt += "\n\nPlease generate a filled-out version of an itinerary. You may use placeholders if user input is insufficient."
-    response = llm.invoke(prompt)
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_input}
+    ]
+    response = llm.invoke(messages)
     return response
 
 def extract_rag_tags(schema: dict) -> list:
@@ -65,15 +99,20 @@ def extract_rag_tags(schema: dict) -> list:
     if schema.get("dining_preference"):
         tags.append(schema["dining_preference"])
 
-    # Budget level
+    # Budget level — safely handle empty strings and non-numeric
     budget = schema.get("daily_budget")
-    if budget is not None:
-        if budget < 50:
-            tags.append("budget travel")
-        elif 50 <= budget <= 150:
-            tags.append("mid-range travel")
-        else:
-            tags.append("luxury travel")
+    if budget not in (None, ""):
+        try:
+            budget_num = float(budget)
+            if budget_num < 50:
+                tags.append("budget travel")
+            elif 50 <= budget_num <= 150:
+                tags.append("mid-range travel")
+            else:
+                tags.append("luxury travel")
+        except (ValueError, TypeError):
+            # If budget cannot be converted to a number, ignore it
+            pass
 
     # Transport
     if schema.get("transport"):
@@ -90,18 +129,15 @@ def extract_rag_tags(schema: dict) -> list:
     return tags
 
 def get_trip_duration_days(schema: dict) -> int:
-    start_date_str = schema.get("start_date")
-    end_date_str = schema.get("end_date")
-    if not start_date_str or not end_date_str:
+    start_date = schema.get("start_date")
+    end_date = schema.get("end_date")
+    if not start_date or not end_date:
         return 0  # or raise an error if dates are mandatory
-
-    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
 
     duration = (end_date - start_date).days + 1  # +1 to include both start and end dates
     return duration
 
-def fill_itinerary_skeleton(llm, pois, schema, skeleton):
+def fill_itinerary_skeleton(llm, pois, schema, skeleton, user_input=None):
     prompt = f'''
     You are a travel planner assistant.
 
@@ -130,7 +166,6 @@ def fill_itinerary_skeleton(llm, pois, schema, skeleton):
 
     {{
     "Day 1 (YYYY-MM-DD)": {{
-        "date": "YYYY-MM-DD",
         "activities": [ "activity1", "activity2", ... ],
         "dining": "dining option or empty string",
         "transport": "transport option or empty string",
@@ -144,5 +179,45 @@ def fill_itinerary_skeleton(llm, pois, schema, skeleton):
 
     Make sure the JSON is properly formatted and only return the JSON object, nothing else.
     '''
-    response = llm.invoke(prompt)
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_input}
+    ]
+    response = llm.invoke(messages)
     return response
+
+def json_to_itinerary_text(travel_plan):
+    import json
+
+    if isinstance(travel_plan, str):
+        try:
+            travel_plan = json.loads(travel_plan)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON string passed to json_to_itinerary_text.")
+
+    sorted_days = sorted(travel_plan.items(), key=lambda x: x[1]["date"])
+    output = []
+
+    for day_label, day_data in sorted_days:
+        output.append("=" * 40)
+        output.append(f"{day_label}")
+        output.append(f"Date       : {day_data['date']}")
+
+        if day_data.get("activities"):
+            output.append("Activities :")
+            for activity in day_data["activities"]:
+                output.append(f"  - {activity}")
+
+        if day_data.get("dining"):
+            output.append(f"Dining     : {day_data['dining']}")
+
+        if day_data.get("transport"):
+            output.append(f"Transport  : {day_data['transport']}")
+
+        if day_data.get("notes"):
+            output.append(f"Notes      : {day_data['notes']}")
+
+        output.append("=" * 40)
+        output.append("")  # blank line
+
+    return "\n".join(output)

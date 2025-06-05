@@ -1,19 +1,15 @@
 {
-    "trip_title": "string",
-    "start_date": "YYYY-MM-DD",
-    "end_date": "YYYY-MM-DD",
-  
-    "group_size": "integer",
-    "group_type": ["Family", "Friends", "Couple", "Solo"],
-    "has_children": true,
-  
-    "dining_preference": "string",
-    "daily_budget": "number",
-    "transport": "string",
-  
-    "start_time": "HH:MM",
-    "end_time": "HH:MM",
-  
-    "additional_notes": "string"
-  }
-  
+  "trip_title": "test",
+  "start_date": "2025-06-12",
+  "end_date": "2025-06-14",
+  "start_time": "11:08",
+  "end_time": "18:09",
+  "group_size": "4",
+  "group_type": "Family",
+  "has_children": "true",
+  "interests": "Amusement parks, museums, nature",
+  "dining_preference": "",
+  "daily_budget": "",
+  "weather_preference": "",
+  "additional_notes": ""
+}

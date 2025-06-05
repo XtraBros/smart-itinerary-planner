@@ -2,6 +2,17 @@ import re
 from rapidfuzz import process, fuzz
 import json
 import unicodedata
+import math
+
+def sanitize_for_json(obj):
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(item) for item in obj]
+    elif isinstance(obj, float) and math.isnan(obj):
+        return None
+    else:
+        return obj
 
 # Function to handle duplicated GPT output
 def remove_dupes(response_text):

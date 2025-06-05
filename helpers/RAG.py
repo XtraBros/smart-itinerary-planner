@@ -311,10 +311,13 @@ class RAGUnit:
             results.append({
                 'name': row.get('name', ''),
                 'description': row.get('description', ''),
-                'tags': row.get('tags', []),
-                'similarity': float(similarities[idx])
+                'longitude': row.get('longitude', None),
+                'latitude': row.get('latitude', None),
+                'category': row.get('category', ''),
+                'operating_hours': row.get('operating_hours', ''),
             })
         return results
+
         
     def get_location_data(self) -> pd.DataFrame:
         """

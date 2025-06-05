@@ -37,7 +37,7 @@ unit1 = RAGUnit(
     name= "Mandai Zoo CSV"
 )
 unit2= RAGUnit(
-    data_source={"type": "csv", "path": "./sentosa.csv"},
+    data_source={"type": "csv", "path": "./sentosa_with_tags.csv"},
     description="Sentosa POI CSV",
     name= "Sentosa Island CSV"
 )
@@ -86,19 +86,19 @@ def ops_router():
 
     In addition, if the user's query involves **planning a trip, itinerary, or sequence of visits**, set `"itinerary_planning"` to `true`.
 
-    You should return a JSON object with:
+    You should return a Python dictionary object with:
     - "data_required": a list of data types needed (e.g., ["poi_data", "weather_data"])
     - "entities": list of any POIs, categories, or locations mentioned in the query
     - "itinerary_planning": a boolean indicating whether the user is requesting help with planning an itinerary
 
     Examples:
-    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": false}}
-    {{"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": false}}
-    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": false}}
-    {{"data_required": ["poi_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": true}}
-    {{"data_required": ["none"], "entities": [], "itinerary_planning": false}}
+    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": False}}
+    {{"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": False}}
+    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": False}}
+    {{"data_required": ["poi_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": True}}
+    {{"data_required": ["none"], "entities": [], "itinerary_planning": False}}
 
-    Respond ONLY with the JSON object.
+    Respond ONLY with the Python dictionary object.
     """
     messages = [
         {"role": "system", "content": prompt},
@@ -106,13 +106,12 @@ def ops_router():
     ]
     response = llm.invoke(messages)
     parsed = ast.literal_eval(remove_code_blocks(response))
-    print(parsed)
     data_required = parsed["data_required"]
     entities = parsed.get("entities", [])
 
     # Initialize data bundle
     gathered_data = {}
-    if response.get("itinerary_planning") is True:
+    if parsed["itinerary_planning"] is True:
         # get schema
         schema = load_schema()
         # Generate skeleton
@@ -120,9 +119,15 @@ def ops_router():
         # RAG
         pois = rag.query_by_tags(extract_rag_tags(schema), top_k=5*get_trip_duration_days(schema))
         # FIll in skeleton
-        itinerary = fill_itinerary_skeleton(llm, skeleton, pois, schema)
+        itinerary = fill_itinerary_skeleton(llm, skeleton, pois, schema, user_input)
         # structure itinerary from json.
-        pass
+        response = json_to_itinerary_text(itinerary)
+        response = hyperlink_pois_in_response(response, pois)
+        print(response)
+        return jsonify({
+            "response": response,
+            "gatheredData": sanitize_for_json(pois)
+        })
     if "poi_data" in data_required:
         gathered_data["poi_data"] = rag.query(entities)
 
@@ -592,53 +597,18 @@ def show_form():
 
 @app.route('/submit_itinerary', methods=['POST'])
 def submit_itinerary():
-    data = request.form.to_dict()
-    data['group_type'] = request.form.getlist('group_type')  # ensure list values are captured
+    # Get and clean form data
+    form_data = {k: v.strip() if v else "" for k, v in request.form.items()}
 
-    # Convert checkbox inputs to booleans
-    checkbox_fields = ['has_children', 'has_elderly', 'avoid_heat', 'backup_plan']
-    for field in checkbox_fields:
-        data[field] = field in request.form
+    # Ensure the directory exists
+    filepath = './data/user_schema.json'
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-    # Save data to user_schema.json
-    filepath = './static/data/user_schema.json'
-    if os.path.exists(filepath):
-        with open(filepath, 'r') as f:
-            all_data = json.load(f)
-    else:
-        all_data = []
-
-    all_data.append(data)
-
+    # Overwrite the file with the new form data
     with open(filepath, 'w') as f:
-        json.dump(all_data, f, indent=2)
+        json.dump(form_data, f, indent=2)
 
     return redirect('/')
-
-@app.route('/submit_itinerary', methods=['POST'])
-def submit_itinerary():
-    data = request.form.to_dict()
-
-    # Convert specific string fields to appropriate types
-    # Convert 'has_children' to boolean
-    if 'has_children' in data:
-        data['has_children'] = data['has_children'].lower() == 'true'
-
-    # Save data to user_schema.json
-    filepath = './static/data/user_schema.json'
-    if os.path.exists(filepath):
-        with open(filepath, 'r') as f:
-            all_data = json.load(f)
-    else:
-        all_data = []
-
-    all_data.append(data)
-
-    with open(filepath, 'w') as f:
-        json.dump(all_data, f, indent=2)
-
-    return redirect('/')
-
 ###########################################################################################################
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=3106)
