@@ -48,7 +48,6 @@ def generate_skeleton(llm, schema, user_input=None):
         "date": "YYYY-MM-DD",
         "activities": [ "activity1", "activity2", ... ],
         "dining": "dining option or empty string",
-        "transport": "transport option or empty string",
         "notes": "additional notes or empty string"
     }},
     "Day 2 (YYYY-MM-DD)": {{
@@ -57,7 +56,7 @@ def generate_skeleton(llm, schema, user_input=None):
     ...
     }}
     '''
-    prompt += "/n/n Ensure the operating hours of the POIs match the allocated time slot, but do not explicitly mention the operating hours or coordinate locations of the POIs. Ensure all information is simple and easily digestable by the user."
+    prompt += "\n\n Ensure the operating hours of the POIs match the allocated time slot, but do not explicitly mention the operating hours or coordinate locations of the POIs. Ensure all information is simple and easily digestable by the user."
     # prompt += "\n\nPlease generate a filled-out version of an itinerary. You may use placeholders if user input is insufficient."
     messages = [
         {"role": "system", "content": prompt},
@@ -114,10 +113,6 @@ def extract_rag_tags(schema: dict) -> list:
             # If budget cannot be converted to a number, ignore it
             pass
 
-    # Transport
-    if schema.get("transport"):
-        tags.append(f"prefers {schema['transport']} transport")
-
     # Time preferences (optional)
     if schema.get("start_time") and schema.get("end_time"):
         tags.append(f"active from {schema['start_time']} to {schema['end_time']}")
@@ -156,7 +151,6 @@ def fill_itinerary_skeleton(llm, pois, schema, skeleton, user_input=None):
 
     - Suggest activities to do during the day (use the POIs and any relevant activities),
     - Suggest dining options if available,
-    - Suggest transport modes if not already fixed,
     - Add notes, reminders, or special considerations (e.g., breaks, accessibility, weather preferences),
     - Respect the trip dates, available hours, pace preference, and other user constraints,
     - Avoid any must_avoid or excluded_activities mentioned in the schema,
@@ -168,7 +162,6 @@ def fill_itinerary_skeleton(llm, pois, schema, skeleton, user_input=None):
     "Day 1 (YYYY-MM-DD)": {{
         "activities": [ "activity1", "activity2", ... ],
         "dining": "dining option or empty string",
-        "transport": "transport option or empty string",
         "notes": "additional notes or empty string"
     }},
     "Day 2 (YYYY-MM-DD)": {{
@@ -199,7 +192,6 @@ def json_to_itinerary_text(travel_plan):
     output = []
 
     for day_label, day_data in sorted_days:
-        output.append("=" * 40)
         output.append(f"{day_label}")
         output.append(f"Date       : {day_data['date']}")
 
@@ -211,13 +203,10 @@ def json_to_itinerary_text(travel_plan):
         if day_data.get("dining"):
             output.append(f"Dining     : {day_data['dining']}")
 
-        if day_data.get("transport"):
-            output.append(f"Transport  : {day_data['transport']}")
-
         if day_data.get("notes"):
             output.append(f"Notes      : {day_data['notes']}")
 
         output.append("=" * 40)
         output.append("")  # blank line
-
+    output.append("\nWould you like any modifications to this itinerary or details on any place of interest?")
     return "\n".join(output)
