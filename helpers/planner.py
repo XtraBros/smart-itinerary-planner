@@ -146,7 +146,7 @@ def fill_itinerary_skeleton(llm, pois, poi_order, schema, skeleton, user_input=N
     Your task is to fill in the itinerary details for each day. For each day, use the POI data and user schema preferences to:
 
     - Fill in the itinerary with activities, following the order: {poi_order}.
-    - Ensure activities are within the operating hours of the POIs, and each Attraction is given at least 2 hours of time, and each Dining slot is given 1 hour of time.
+    - Ensure activities are within the operating hours of the POIs, and that each time slot is given at least 1 hour. Fit as many POIs as possible into the plan.
     - Fill up all activity slots with valid attractions from the give data, and avoid suggesting generic activities. Always use the POI names as activity names.
     - Add notes, reminders, or special considerations (e.g., breaks, accessibility, weather preferences),
     - Respect the trip dates, available hours, pace preference, and other user constraints,
