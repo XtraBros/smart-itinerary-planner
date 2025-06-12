@@ -76,7 +76,7 @@ def solve_tsp(distance_matrix):
             index = solution.Value(routing.NextVar(index))
         optimal_sequence.append(manager.IndexToNode(index))  # Add the start point to complete the loop
         # sentosa use open routing, use set to remove duplicates.
-        return list(set(optimal_sequence))
+        return optimal_sequence[:-1]
     else:
         return None
     

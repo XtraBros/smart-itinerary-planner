@@ -44,19 +44,15 @@ def generate_skeleton(llm, schema, user_input=None):
     Return the filled itinerary as a JSON object with this structure:
 
     {{
-    "Day 1 (YYYY-MM-DD)": {{
-        "date": "YYYY-MM-DD",
-        "activities": [ "activity1", "activity2", ... ],
-        "dining": "dining option or empty string",
-        "notes": "additional notes or empty string"
-    }},
-    "Day 2 (YYYY-MM-DD)": {{
+    "DD-MM-YYY": {{
+        "HH-MM": "activity1",
+        "HH-MM": "activity2",
         ...
-    }},
-    ...
+        "notes": "additional notes or empty string"
+    }}
     }}
     '''
-    prompt += "\n\n Ensure the operating hours of the POIs match the allocated time slot, but do not explicitly mention the operating hours or coordinate locations of the POIs. Ensure all information is simple and easily digestable by the user."
+    # prompt += "\n\n Ensure the operating hours of the POIs match the allocated time slot, but do not explicitly mention the operating hours or coordinate locations of the POIs. Ensure all information is simple and easily digestable by the user."
     # prompt += "\n\nPlease generate a filled-out version of an itinerary. You may use placeholders if user input is insufficient."
     messages = [
         {"role": "system", "content": prompt},
@@ -132,7 +128,7 @@ def get_trip_duration_days(schema: dict) -> int:
     duration = (end_date - start_date).days + 1  # +1 to include both start and end dates
     return duration
 
-def fill_itinerary_skeleton(llm, pois, schema, skeleton, user_input=None):
+def fill_itinerary_skeleton(llm, pois, poi_order, schema, skeleton, user_input=None):
     prompt = f'''
     You are a travel planner assistant.
 
@@ -149,25 +145,22 @@ def fill_itinerary_skeleton(llm, pois, schema, skeleton, user_input=None):
 
     Your task is to fill in the itinerary details for each day. For each day, use the POI data and user schema preferences to:
 
-    - Suggest activities to do during the day (use the POIs and any relevant activities),
-    - Suggest dining options if available,
+    - Fill in the itinerary with activities, following the order: {poi_order}.
+    - Ensure activities are within the operating hours of the POIs, and each Attraction is given at least 2 hours of time, and each Dining slot is given 1 hour of time.
+    - Fill up all activity slots with valid attractions from the give data, and avoid suggesting generic activities. Always use the POI names as activity names.
     - Add notes, reminders, or special considerations (e.g., breaks, accessibility, weather preferences),
     - Respect the trip dates, available hours, pace preference, and other user constraints,
+    - If the description of the POI shows that it is not suitable for the user, do not include it in the itinerary,
+    - For each activity, provide a brief description of the POI.
     - Avoid any must_avoid or excluded_activities mentioned in the schema,
-    - If some days have no POI data, provide general suggestions or keep empty lists.
-
     Return the filled itinerary as a JSON object with this structure:
-
     {{
-    "Day 1 (YYYY-MM-DD)": {{
-        "activities": [ "activity1", "activity2", ... ],
-        "dining": "dining option or empty string",
-        "notes": "additional notes or empty string"
-    }},
-    "Day 2 (YYYY-MM-DD)": {{
+    "DD-MM-YYY": {{
+        "HH-MM": "activity1",
+        "HH-MM": "activity2",
         ...
-    }},
-    ...
+        "notes": "additional notes or empty string"
+    }}
     }}
 
     Make sure the JSON is properly formatted and only return the JSON object, nothing else.
@@ -182,31 +175,31 @@ def fill_itinerary_skeleton(llm, pois, schema, skeleton, user_input=None):
 def json_to_itinerary_text(travel_plan):
     import json
 
+    # Only attempt to parse if it's a string
     if isinstance(travel_plan, str):
         try:
             travel_plan = json.loads(travel_plan)
         except json.JSONDecodeError:
             raise ValueError("Invalid JSON string passed to json_to_itinerary_text.")
 
-    sorted_days = sorted(travel_plan.items(), key=lambda x: x[1]["date"])
-    output = []
+    # At this point, travel_plan should be a dict
+    if not isinstance(travel_plan, dict):
+        raise ValueError("Input must be a JSON string or a dictionary.")
 
-    for day_label, day_data in sorted_days:
-        output.append(f"{day_label}")
-        output.append(f"Date       : {day_data['date']}")
+    # Sort dates assuming DD-MM-YYYY
+    sorted_days = sorted(travel_plan.items(), key=lambda x: tuple(map(int, x[0].split('-')[::-1])))
 
-        if day_data.get("activities"):
-            output.append("Activities :")
-            for activity in day_data["activities"]:
-                output.append(f"  - {activity}")
+    output = ["Here is my recommended travel itinerary:"]
 
-        if day_data.get("dining"):
-            output.append(f"Dining     : {day_data['dining']}")
+    for date_str, day_data in sorted_days:
+        output.append(f"{date_str}:")
+        time_keys = sorted(k for k in day_data.keys() if k != "notes")
+        for time in time_keys:
+            activity = day_data[time]
+            output.append(f"  {time} - {activity}")
+        notes = day_data.get("notes", "").strip()
+        if notes:
+            output.append(f"  Note: {notes}")
+    output.append('''This plan focuses on introducing places you may be interested in. I have also marked some other attractions you may be interested in on your map!\nFor dining recommendations, let me know where you will be and I can find some nearby options for you. \nLet me know if you would like to further customize the plan!''')
 
-        if day_data.get("notes"):
-            output.append(f"Notes      : {day_data['notes']}")
-
-        output.append("=" * 40)
-        output.append("")  # blank line
-    output.append("\nWould you like any modifications to this itinerary or details on any place of interest?")
     return "\n".join(output)

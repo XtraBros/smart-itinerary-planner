@@ -136,26 +136,32 @@ class RAGUnit:
         print(f"{self.name} Name list size:", len(self.names))
         print(f"{self.name} Description index size:", self.description_index.ntotal)
 
-    def query(self, input_text: str, top_k: int = 3) -> List[dict]:
+    def query(self, input_text: str, top_k: int = 3, attractions_only: bool = False) -> List[dict]:
         if self.description_index is not None:
             # Use vector search
             query_vec = self.embedding_model.encode(input_text, convert_to_numpy=True)
-            distances, indices = self.description_index.search(query_vec, top_k)
+            distances, indices = self.description_index.search(query_vec, top_k * 5)  # fetch more to filter later
             results = []
             for idx in indices[0]:
                 if idx < len(self.data):
                     row = self.data.iloc[idx]
-                    results.append({'name': row['name'], 'description': row['description']})
+                    if not attractions_only or row.get("category") == "Attraction":
+                        results.append({'name': row['name'], 'description': row['description']})
+                    if len(results) >= top_k:
+                        break
             return results
         else:
             # Fallback to text search
             mask = self.data["description"].str.contains(input_text, case=False, na=False)
-            filtered = self.data[mask].head(top_k)
+            filtered = self.data[mask]
+            if attractions_only:
+                filtered = filtered[filtered["category"] == "Attraction"]
+            filtered = filtered.head(top_k)
             return [
                 {"name": row["name"], "description": row["description"]}
                 for _, row in filtered.iterrows()
             ]
-        
+
     def get_data(self):
         if self.data is not None:
             return self.data
@@ -284,30 +290,42 @@ class RAGUnit:
         
         return results
     
-    def filter_by_tags(self, tags: List[str], top_k: int = 5) -> List[dict]:
+    def filter_by_tags(self, tags: List[str], top_k: int = 5, attractions_only: bool = False) -> List[dict]:
         """
         Filter POIs based on semantic similarity to tags. Assumes 'tags' column contains
         comma-separated strings or lists. Uses embedding similarity with description embeddings.
+
+        Parameters:
+            tags (List[str]): Tags to match.
+            top_k (int): Number of top results to return.
+            attractions_only (bool): If True, only include POIs where category == "Attraction".
         """
         if 'tags' not in self.data.columns:
             raise ValueError("Dataset must contain a 'tags' column.")
+        if self.description_embeddings is None:
+            raise ValueError("Description embeddings not found. Run build_index first.")
+
+        # Optionally filter for attractions only
+        data = self.data
+        description_embeddings = self.description_embeddings
+        if attractions_only:
+            mask = data['category'] == "Attraction"
+            data = data[mask].reset_index(drop=True)
+            description_embeddings = description_embeddings[mask.values]
 
         # Create tag embedding
         tag_query = ", ".join(tags)
         tag_embedding = self.embedding_model.encode([tag_query], convert_to_numpy=True)
 
         # Score similarity to each description
-        if self.description_embeddings is None:
-            raise ValueError("Description embeddings not found. Run build_index first.")
-
-        similarities = cosine_similarity(tag_embedding, self.description_embeddings)[0]
+        similarities = cosine_similarity(tag_embedding, description_embeddings)[0]
 
         # Get top-k most similar entries
         top_indices = similarities.argsort()[::-1][:top_k]
 
         results = []
         for idx in top_indices:
-            row = self.data.iloc[idx]
+            row = data.iloc[idx]
             results.append({
                 'name': row.get('name', ''),
                 'description': row.get('description', ''),
@@ -316,7 +334,9 @@ class RAGUnit:
                 'category': row.get('category', ''),
                 'operating_hours': row.get('operating_hours', ''),
             })
+
         return results
+
 
         
     def get_location_data(self) -> pd.DataFrame:
@@ -355,12 +375,12 @@ class RAGPlatform:
             for unit in self.units.values()
         ]
 
-    def query(self, query_text: str) -> List[dict]:
+    def query(self, query_text: str, attractions_only: bool = False,) -> List[dict]:
         """Send query to all units and aggregate non-empty results."""
         results = []
         for unit in self.units.values():
             try:
-                result = unit.query(query_text)
+                result = unit.query(query_text, attractions_only=attractions_only)
                 if result:
                     results.extend(result)
             except Exception as e:
@@ -441,11 +461,11 @@ class RAGPlatform:
         else:
             return pd.DataFrame()
 
-    def query_by_tags(self, tags: List[str], top_k: int = 5) -> List[dict]:
+    def query_by_tags(self, tags: List[str], attractions_only: bool = False, top_k: int = 5) -> List[dict]:
         all_results = []
         for unit in self.units.values():
             try:
-                results = unit.filter_by_tags(tags, top_k=top_k)
+                results = unit.filter_by_tags(tags, attractions_only=attractions_only, top_k=top_k)
                 for r in results:
                     r['source'] = unit.name
                     all_results.append(r)

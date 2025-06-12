@@ -173,3 +173,13 @@ def match_names(names, dataframe, threshold=80):
             if score >= threshold:
                 matched_poiIds.add(dataframe.iloc[index]['poiId'])
     return list(matched_poiIds)
+
+def reorder_and_extract_names(poi_list: list[dict], index_order: list[int]) -> list[str]:
+    """
+    Reorders the POIs based on the index_order and returns a list of names.
+
+    :param poi_list: List of POI dictionaries, each with a "name" key.
+    :param index_order: List of indices representing the desired order.
+    :return: List of POI names in the new order.
+    """
+    return [poi_list[i]["name"] for i in index_order if i < len(poi_list)]

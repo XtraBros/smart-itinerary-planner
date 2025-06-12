@@ -90,13 +90,14 @@ def ops_router():
     - "data_required": a list of data types needed (e.g., ["poi_data", "weather_data"])
     - "entities": list of any POIs, categories, or locations mentioned in the query
     - "itinerary_planning": a boolean indicating whether the user is requesting help with planning an itinerary
+    - "notes": any additional notes or considerations for the response. For itinerary planning, you can include some POI types you think are relevant to the user, like amusement parks, gardens, etc.
 
     Examples:
-    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": False}}
-    {{"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": False}}
-    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": False}}
-    {{"data_required": ["poi_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": True}}
-    {{"data_required": ["none"], "entities": [], "itinerary_planning": False}}
+    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": False, "notes": "User is asking for information about a specific POI."}}
+    {{"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": False, "notes": "User is looking for recommendations in a specific category."}}
+    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": False, "notes": "User is asking about weather and location for a specific place."}}
+    {{"data_required": ["poi_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": True, "notes": "User is planning a trip to Sentosa and wants family-friendly attractions, such as amusement parks, museums or scenic walks."}}
+    {{"data_required": ["none"], "entities": [], "itinerary_planning": False, "notes": "User is asking a general question that does not require specific data."}}
 
     Respond ONLY with the Python dictionary object.
     """
@@ -112,16 +113,19 @@ def ops_router():
     # Initialize data bundle
     gathered_data = {}
     if parsed["itinerary_planning"] is True:
-        # get schema
         schema = load_schema()
-        # Generate skeleton
         skeleton = generate_skeleton(llm, schema, user_input)
-        # RAG
-        pois = rag.query_by_tags(extract_rag_tags(schema), top_k=5*get_trip_duration_days(schema))
-        # FIll in skeleton
-        itinerary = fill_itinerary_skeleton(llm, skeleton, pois, schema, user_input)
-        # structure itinerary from json.
-        response = json_to_itinerary_text(itinerary)
+        pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=8*get_trip_duration_days(schema))
+        if parsed["notes"]:
+            pois1 = rag.query(parsed["notes"], attractions_only=True)
+            pois = pois + pois1
+            pois = list({poi["name"]: poi for poi in pois}.values())
+        print(pois)
+        pois_order = solve_route_with_balltree([poi['name'] for poi in pois], app.poi_df, app.balltree)
+        pois_order = reorder_and_extract_names(pois, pois_order)
+        itinerary = fill_itinerary_skeleton(llm, skeleton, pois, pois_order, schema, user_input)
+        print(itinerary)
+        response = json_to_itinerary_text(remove_code_blocks(itinerary))
         response = hyperlink_pois_in_response(response, pois)
         print(response)
         return jsonify({
