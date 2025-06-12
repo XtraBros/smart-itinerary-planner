@@ -3,7 +3,7 @@ from rapidfuzz import process, fuzz
 import json
 import unicodedata
 import math
-
+from typing import Optional
 def sanitize_for_json(obj):
     if isinstance(obj, dict):
         return {k: sanitize_for_json(v) for k, v in obj.items()}
@@ -183,3 +183,13 @@ def reorder_and_extract_names(poi_list: list[dict], index_order: list[int]) -> l
     :return: List of POI names in the new order.
     """
     return [poi_list[i]["name"] for i in index_order if i < len(poi_list)]
+
+def extract_previous_itinerary_from_history(history: str) -> Optional[str]:
+    """
+    Looks through formatted chat history and returns the last known itinerary text, if present.
+    """
+    # Look for something that resembles an itinerary: a date line followed by times
+    itinerary_match = re.search(r"\d{2}-\d{2}-\d{4}:(?:\n\s*\d{2}:\d{2} - .+)+", history)
+    if itinerary_match:
+        return itinerary_match.group()
+    return None

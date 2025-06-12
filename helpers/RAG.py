@@ -479,5 +479,30 @@ class RAGPlatform:
             reverse=True
         )
         return sorted_results[:top_k]
+    
+    def get_relevant_pois_from_text_blobs(
+        self,
+        itinerary_text: str,
+        user_input: str,
+        top_k: int = 15,
+        distance_threshold: float = 0.4
+    ) -> List[str]:
+        """
+        Use vector search across all RAG units to find POIs related to itinerary and user input.
+        """
+        text_blobs = [itinerary_text, user_input]
+        matched_pois = set()
+
+        for rag_unit in self.rag_units:
+            for blob in text_blobs:
+                matches = rag_unit.match_names_vector(
+                    input_text=blob,
+                    top_k=top_k,
+                    distance_threshold=distance_threshold,
+                    is_facility=False
+                )
+                matched_pois.update(matches)
+
+        return list(matched_pois)
 ##################################### Other Functions #####################################
 

@@ -1,6 +1,8 @@
 import json
 import os
 from datetime import datetime
+from text_processing import remove_code_blocks
+from typing import List, Dict
 
 def load_schema(schema_path="./data/user_schema.json"):
     def convert_value(value):
@@ -203,3 +205,39 @@ def json_to_itinerary_text(travel_plan):
     output.append('''This plan focuses on introducing places you may be interested in. I have also marked some other attractions you may be interested in on your map!\nFor dining recommendations, let me know where you will be and I can find some nearby options for you. \nLet me know if you would like to further customize the plan!''')
 
     return "\n".join(output)
+
+def edit_itinerary(llm, previous_itinerary: str, user_input: str, poi_data: List[Dict]) -> str:
+    """
+    Uses the LLM to edit the itinerary based on user instructions and relevant POI data.
+    Returns the updated itinerary as plain text.
+    """
+    poi_descriptions = "\n".join(
+        f"- {poi['name']}: {poi.get('description', 'No description available.')}"
+        for poi in poi_data
+    )
+
+    prompt = f"""
+    You are a helpful assistant for a travel planning app. A user has an existing itinerary and is asking to make changes.
+    You should carefully follow their instructions while maintaining a realistic and enjoyable travel experience.
+
+    --- Previous Itinerary ---
+    {previous_itinerary}
+
+    --- User Request ---
+    {user_input}
+
+    --- Relevant POI Data ---
+    {poi_descriptions}
+
+    Please revise the itinerary according to the user’s request. Maintain time slots if possible, and keep a similar format to the original.
+
+    Respond only with the updated itinerary in plain text.
+    """
+
+    messages = [
+        {"role": "system", "content": "You are an expert travel assistant that edits itineraries based on user instructions."},
+        {"role": "user", "content": prompt}
+    ]
+
+    response = llm.invoke(messages)
+    return remove_code_blocks(response)

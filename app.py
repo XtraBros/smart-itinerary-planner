@@ -22,7 +22,7 @@ with open(CONFIG_FILE, 'r') as file:
 ######################### LLM INIT #########################
 llm = LLMPipeline(provider='openai', model=config['GPT_MODEL'], api_key=config['OPENAI_API_KEY'])
 # Initialize memory for conversation
-memory = ConversationBufferWindowMemory(k=3, memory_key="history")
+memory = ConversationBufferWindowMemory(k=5, memory_key="history")
 ######################### RAG Data #########################
 # Load POI List from csv file:
 place_info = pd.read_csv("./zoo-info.csv")
@@ -84,23 +84,27 @@ def ops_router():
     - "event_data": If the user asks about local events
     - "none": If the query can be answered using general knowledge without fetching external data
 
-    In addition, if the user's query involves **planning a trip, itinerary, or sequence of visits**, set `"itinerary_planning"` to `true`.
+    Additionally, detect if the user's query involves **planning or editing an itinerary**:
 
-    You should return a Python dictionary object with:
+    - If the user is **planning a trip or requesting a sequence of visits**, set `"itinerary_planning"` to `true`.
+    - If the user wants to **modify an existing itinerary**, set `"itinerary_edit"` to `true`.
+
+    Return a Python dictionary object with:
     - "data_required": a list of data types needed (e.g., ["poi_data", "weather_data"])
     - "entities": list of any POIs, categories, or locations mentioned in the query
-    - "itinerary_planning": a boolean indicating whether the user is requesting help with planning an itinerary
-    - "notes": any additional notes or considerations for the response. For itinerary planning, you can include some POI types you think are relevant to the user, like amusement parks, gardens, etc.
+    - "itinerary_planning": boolean, true if user is planning an itinerary
+    - "itinerary_edit": boolean, true if user wants to edit an itinerary
+    - "notes": any additional notes or considerations
 
     Examples:
-    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": False, "notes": "User is asking for information about a specific POI."}}
-    {{"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": False, "notes": "User is looking for recommendations in a specific category."}}
-    {{"data_required": ["weather_data", "poi_location"], "entities": ["Sentosa Beach"], "itinerary_planning": False, "notes": "User is asking about weather and location for a specific place."}}
-    {{"data_required": ["poi_data"], "entities": ["family attractions", "Sentosa"], "itinerary_planning": True, "notes": "User is planning a trip to Sentosa and wants family-friendly attractions, such as amusement parks, museums or scenic walks."}}
-    {{"data_required": ["none"], "entities": [], "itinerary_planning": False, "notes": "User is asking a general question that does not require specific data."}}
+    {{"data_required": ["poi_data"], "entities": ["S.E.A. Aquarium"], "itinerary_planning": False, "itinerary_edit": False, "notes": "User is asking for information about a specific POI."}}
+    {{"data_required": ["poi_category"], "entities": ["museums"], "itinerary_planning": False, "itinerary_edit": False, "notes": "User is looking for recommendations in a specific category."}}
+    {{"data_required": ["poi_data"], "entities": ["Sentosa"], "itinerary_planning": True, "itinerary_edit": False, "notes": "User is planning a trip to Sentosa."}}
+    {{"data_required": ["none"], "entities": [], "itinerary_planning": False, "itinerary_edit": True, "notes": "User wants to replace a POI in their existing itinerary."}}
 
     Respond ONLY with the Python dictionary object.
     """
+
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": user_input}
@@ -112,7 +116,7 @@ def ops_router():
 
     # Initialize data bundle
     gathered_data = {}
-    if parsed["itinerary_planning"] is True:
+    if parsed.get("itinerary_edit", False) is True:
         schema = load_schema()
         skeleton = generate_skeleton(llm, schema, user_input)
         pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=8*get_trip_duration_days(schema))
@@ -120,23 +124,51 @@ def ops_router():
             pois1 = rag.query(parsed["notes"], attractions_only=True)
             pois = pois + pois1
             pois = list({poi["name"]: poi for poi in pois}.values())
-        print(pois)
         pois_order = solve_route_with_balltree([poi['name'] for poi in pois], app.poi_df, app.balltree)
         pois_order = reorder_and_extract_names(pois, pois_order)
         itinerary = fill_itinerary_skeleton(llm, skeleton, pois, pois_order, schema, user_input)
-        print(itinerary)
         response = json_to_itinerary_text(remove_code_blocks(itinerary))
+        memory.save_context({"input": user_input}, {"output": response})
         response = hyperlink_pois_in_response(response, pois)
-        print(response)
         return jsonify({
             "response": response,
             "gatheredData": sanitize_for_json(pois)
         })
+    
+    if parsed.get("itinerary_edit", False) is True:
+        previous_itinerary = extract_previous_itinerary_from_history(history)
+        if not previous_itinerary:
+        # Fallback: no itinerary in memory, generate a new one
+            schema = load_schema()
+            skeleton = generate_skeleton(llm, schema, user_input)
+            pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=8*get_trip_duration_days(schema))
+            pois_order = solve_route_with_balltree([poi['name'] for poi in pois], app.poi_df, app.balltree)
+            pois_order = reorder_and_extract_names(pois, pois_order)
+            itinerary = fill_itinerary_skeleton(llm, skeleton, pois, pois_order, schema, user_input)
+            response = json_to_itinerary_text(remove_code_blocks(itinerary))
+            response = hyperlink_pois_in_response(response, pois)
+            memory.save_context({"input": user_input}, {"output": response})
+            return jsonify({
+                "response": response,
+                "gatheredData": sanitize_for_json(pois)
+            })
+        else:
+            user_input = request.json["message"]      
+            matched_pois = rag.get_relevant_pois_from_text_blobs(previous_itinerary, user_input)
+            pois = rag.query(matched_pois)
+            response = edit_itinerary(user_input, previous_itinerary, pois).content
+            response = hyperlink_pois_in_response(response, pois)
+            memory.save_context({"input": user_input}, {"output": response})
+            return jsonify({
+                "response": response,
+                "gatheredData": pois  # Optionally include edited data
+            })
+    
     if "poi_data" in data_required:
         gathered_data["poi_data"] = rag.query(entities)
 
-    if "poi_location" in data_required:
-        gathered_data["poi_data"] = rag.location_lookup(entities)
+    # if "poi_location" in data_required:
+    #     gathered_data["poi_data"] = rag.location_lookup(entities)
 
     if "poi_category" in data_required:
         category = entities[0] if entities else "general"
@@ -150,17 +182,20 @@ def ops_router():
     #     gathered_data["event_data"] = fetch_event_data(entities)
 
     # Choose appropriate response template
-    if "poi_location" in data_required:
-        response = nav_intro_prompt(user_input, history, gathered_data).content
-        response = hyperlink_pois_in_response(response, gathered_data["poi_data"])
+    # if "poi_location" in data_required:
+    #     response = nav_intro_prompt(user_input, history, gathered_data).content
+    #     memory.save_context({"input": user_input}, {"output": response})
+    #     response = hyperlink_pois_in_response(response, gathered_data["poi_data"])
     elif "poi_data" in data_required:
         response = intro_prompt(user_input, history, gathered_data["poi_data"]).content
+        memory.save_context({"input": user_input}, {"output": response})
         response = hyperlink_pois_in_response(response, gathered_data["poi_data"])
 
     # elif "poi_location" in data_required:
     #     response = wayfind_prompt(user_input, history, gathered_data["poi_data"]).content
     elif "poi_category" in data_required:
         response = rec_prompt(user_input, history, gathered_data["poi_data"]).content 
+        memory.save_context({"input": user_input}, {"output": response})
         response = hyperlink_pois_in_response(response, gathered_data["poi_data"])
     # elif "weather_data" in data_required:
     #     response = weather_prompt(user_input, history, gathered_data["weather_data"]).content
@@ -168,6 +203,7 @@ def ops_router():
     #     response = event_prompt(user_input, history, gathered_data["event_data"]).content
     else:
         response = basic_prompt(user_input, history).content
+        memory.save_context({"input": user_input}, {"output": response})
     return jsonify({
         "response": response,
         "gatheredData": gathered_data["poi_data"]
