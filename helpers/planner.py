@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from text_processing import remove_code_blocks
+from helpers.text_processing import remove_code_blocks
 from typing import List, Dict
 
 def load_schema(schema_path="./data/user_schema.json"):
