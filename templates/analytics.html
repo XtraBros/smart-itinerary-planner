@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Tour Guide Analytics Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 400px !important;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tour Guide Analytics Dashboard</h1>
+
+    <div class="dashboard-container">
+        <div class="card">
+            <h2>POI Popularity Heatmap</h2>
+            <div id="poiHeatmap" style="height: 400px;"></div>
+        </div>
+
+        <div class="card">
+            <h2>User Activity by Hour</h2>
+            <canvas id="userActivityChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h2>POI Click Rate (Pie Chart)</h2>
+            <canvas id="poiPieChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <script>
+        // === User Activity Chart ===
+        const userActivityData = [
+            1, 0, 0, 0, 0, 2, 4, 10, 12, 15, 14, 12,
+            9, 6, 4, 5, 8, 11, 13, 10, 6, 3, 2, 1
+        ];
+        const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+
+        new Chart(document.getElementById("userActivityChart"), {
+            type: 'bar',
+            data: {
+                labels: hourLabels,
+                datasets: [{
+                    label: 'User Activity (by Hour)',
+                    data: userActivityData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Number of Users Per Hour'
+                    },
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // === Fetch POI Data and Render Charts ===
+        fetch('/api/pois')
+            .then(res => res.json())
+            .then(poiData => {
+                // Extract values
+                const labels = poiData.map(p => p.name);
+                const clicks = poiData.map(p => p.clicks ?? Math.floor(Math.random() * 100) + 1); // fallback if clicks missing
+
+                // === PIE CHART ===
+                new Chart(document.getElementById("poiPieChart"), {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: clicks,
+                            backgroundColor: [
+                                "#ff6384", "#36a2eb", "#ffce56", "#4bc0c0",
+                                "#9966ff", "#ff9f40", "#c9cbcf", "#66bb6a",
+                                "#e67e22", "#3498db", "#9b59b6", "#2ecc71"
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Click Share per POI'
+                            }
+                        }
+                    }
+                });
+
+                // === HEATMAP ===
+                const latitudes = poiData.map(p => p.latitude);
+                const longitudes = poiData.map(p => p.longitude);
+                const names = poiData.map(p => p.name);
+
+                const heatmap = [{
+                    type: "densitymapbox",
+                    lat: latitudes,
+                    lon: longitudes,
+                    z: clicks,
+                    radius: 30,
+                    text: names,
+                    hoverinfo: 'text+z',
+                    colorscale: "YlOrRd"
+                }];
+
+                const layout = {
+                    mapbox: {
+                        style: "carto-positron",
+                        center: { lat: 1.30, lon: 103.84 },
+                        zoom: 11
+                    },
+                    margin: { t: 0, b: 0, l: 0, r: 0 },
+                    height: 400
+                };
+
+                Plotly.newPlot('poiHeatmap', heatmap, layout, { responsive: true });
+            })
+            .catch(err => {
+                console.error("Failed to load POI data:", err);
+            });
+    </script>
+</body>
+</html>

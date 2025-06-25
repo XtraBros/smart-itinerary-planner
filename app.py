@@ -24,13 +24,6 @@ llm = LLMPipeline(provider='openai', model=config['GPT_MODEL'], api_key=config['
 # Initialize memory for conversation
 memory = ConversationBufferWindowMemory(k=5, memory_key="history")
 ######################### RAG Data #########################
-# Load POI List from csv file:
-place_info = pd.read_csv("./zoo-info.csv")
-# Table columns: [floor, floorId, icon, location, name, poiId, unit]
-place_info_df = pd.DataFrame(place_info)
-# name_to_poiId = dict(zip(place_info_df["name"], place_info_df["poiId"]))
-# poiId_to_name = dict(zip(place_info_df["poiId"], place_info_df["name"]))
-# categories = place_info_df['category'].unique().tolist()
 unit1 = RAGUnit(
     data_source={"type": "csv", "path": "./zoo-info.csv"},
     description="Zoo info CSV",
@@ -46,15 +39,17 @@ balltree, poi_df = build_balltree_from_rag_platform(rag)
 graph = build_graph_from_balltree(poi_df, balltree, np.radians(poi_df[['latitude', 'longitude']].values), k=5)
 app.balltree = balltree
 app.poi_df = poi_df
+poi_df['clicks'] = [random.randint(1, 100) for _ in range(len(poi_df))]
+
 ######################### MISC init #########################
 api_url = config['API_URL']
 locale_name = "Sentosa Island"
 # Change place list to poi name list
-locale_place_list = place_info_df['name'].tolist()
+locale_place_list = poi_df['name'].tolist()
 
 @app.route('/')
 def home():
-    return render_template('index.html', places=place_info_df)
+    return render_template('index.html', places=poi_df)
 
 # Helper to load and save config
 def load_config():
@@ -630,6 +625,16 @@ def get_graph_data():
 @app.route("/map_graph")
 def map_graph():
     return render_template("map-graph.html")
+
+@app.route("/analytics")
+def analytics():
+    return render_template("analytics.html")
+
+@app.route('/api/pois')
+def pois():
+    df = poi_df[["name", "longitude", "latitude","clicks"]].copy()
+    return df.to_dict(orient='records')
+
 ############################################# ITINERARY PLANNER ENDPOINTS #####################################################
 @app.route('/plan')
 def show_form():
