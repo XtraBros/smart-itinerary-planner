@@ -5,16 +5,83 @@ const config = {
         content: []
     }]
 };
+let mapboxAccessToken = null;
 
+function fetchMapboxToken() {
+  return fetch('/config')
+    .then(res => res.json())
+    .then(data => {
+      if (data.config && data.config.MAPBOX_ACCESS_TOKEN) {
+        mapboxAccessToken = data.config.MAPBOX_ACCESS_TOKEN;
+        console.log("Mapbox Access Token loaded successfully:");
+      } else {
+        console.warn("Mapbox Access Token not found in config.");
+      }
+    })
+    .catch(err => {
+      console.error("Failed to fetch Mapbox token:", err);
+    });
+}
+
+// Call fetchMapboxToken() when admin.js loads or when you initialize the layout
+fetchMapboxToken();
 const layout = new GoldenLayout(config, document.getElementById('main-area'));
 
 layout.registerComponent('html-component', function(container, state) {
     fetch(`/admin/screen/${state.name}`)
         .then(res => res.text())
         .then(html => {
-            container.getElement().html(`
-                <div class="tab-content-scroll">${html}</div>
-            `);
+            // Remove any inline script tags from the HTML (if any)
+            const htmlWithoutScripts = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gm, '');
+
+            const el = container.getElement()[0];
+            el.innerHTML = htmlWithoutScripts;
+
+            // If this is the rag-manager tab, dynamically load rag-manager.js script
+            if (state.name === 'rag-manager') {
+                // Create a new script element for rag-manager.js
+                const script = document.createElement('script');
+                script.src = '/static/js/rag-manager.js';
+                script.onload = () => {
+                    console.log('rag-manager.js loaded');
+                    // Optionally, call fetchUnits() or any init function from rag-manager.js here if needed
+                    if (typeof fetchUnits === 'function') {
+                        fetchUnits();
+                    }
+                };
+                script.onerror = () => {
+                    console.error('Failed to load rag-manager.js');
+                };
+                document.head.appendChild(script);
+            }
+            else if (state.name === 'llm-manager') {
+                // Create a new script element for rag-manager.js
+                const script = document.createElement('script');
+                script.src = '/static/js/llm-manager.js';
+                script.onload = () => {
+                    console.log('llm-manager.js loaded');
+                };
+                script.onerror = () => {
+                    console.error('Failed to load rag-manager.js');
+                };
+                document.head.appendChild(script);
+            }
+            else if (state.name === 'map-manager') {
+                // Create a new script element for rag-manager.js
+                const script = document.createElement('script');
+                script.src = '/static/js/map-manager.js';
+                script.onload = () => {
+                    console.log('map-manager.js loaded');
+                    // Optionally, call fetchUnits() or any init function from rag-manager.js here if needed
+                    if (typeof fetchMapConfig === 'function') {
+                        fetchMapConfig();
+                    }
+                };
+                script.onerror = () => {
+                    console.error('Failed to load rag-manager.js');
+                };
+                document.head.appendChild(script);
+            }
         });
 });
 
