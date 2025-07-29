@@ -1,0 +1,66 @@
+body {
+    margin: 0;
+    font-family: sans-serif;
+    display: flex;
+}
+.sidebar {
+    width: 200px;
+    background: #1f1f1f;
+    color: white;
+    height: 100vh;
+    padding: 10px;
+}
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+.sidebar li {
+    padding: 10px;
+    cursor: pointer;
+}
+.sidebar li:hover {
+    background-color: #333;
+}
+.main-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: #f3f3f3;
+}
+.window {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    width: 400px;
+    height: 300px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+.title-bar {
+    background: #444;
+    color: white;
+    padding: 5px 10px;
+    cursor: move;
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+}
+.content {
+    padding: 10px;
+}
+.close {
+    cursor: pointer;
+}
+/* Make sure the tab content fills the container */
+.lm_component .lm_content {
+    height: 100% !important; /* Ensure the GoldenLayout content fills */
+}
+
+/* Scrollable wrapper inside each tab */
+.tab-content-scroll {
+    height: 100%;
+    overflow-y: auto; /* vertical scroll */
+    overflow-x: hidden; /* optional: disable horizontal scroll */
+    padding: 10px; /* optional: some padding */
+    box-sizing: border-box;
+}
+

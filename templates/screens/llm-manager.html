@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LLM Manager</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #1f2937;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    main {
+      padding: 2rem;
+    }
+
+    .disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .section {
+      max-width: 600px;
+      margin: 2rem auto;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.3rem;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 0.6rem 1.2rem;
+      background-color: #1f2937;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      background-color: #374151;
+    }
+
+    .status-message {
+      margin-top: 1rem;
+      font-weight: 600;
+    }
+
+    .status-message.success {
+      color: green;
+    }
+
+    .status-message.error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🤖 LLM Pipeline Configuration</h1>
+  </header>
+
+  <main>
+    <div class="section">
+      <form id="model-config-form">
+        <label for="provider">Model Provider:</label>
+        <select id="provider" name="provider" required>
+          <option value="openai">OpenAI</option>
+          <option value="huggingface">HuggingFace</option>
+          <option value="zhipu">Zhipu</option>
+          <option value="google">Google</option>
+          <option value="deepseek">DeepSeek</option>
+        </select>
+
+        <label for="model-name">Model Name:</label>
+        <input type="text" id="model-name" name="model_name" required />
+
+        <label for="api-key">API Key:</label>
+        <input
+          type="text"
+          id="api-key"
+          name="api_key"
+          placeholder="Required unless using HuggingFace"
+          style="width: 100%;"
+        />
+
+        <button type="submit">Update Model Settings</button>
+      </form>
+      <div id="llm-status" class="status-message"></div>
+    </div>
+  </main>
+
+  <script>
+    // LLM config update handler
+    document.getElementById('model-config-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const provider = document.getElementById('provider').value;
+      const model = document.getElementById('model-name').value;
+      const apiKey = document.getElementById('api-key').value;
+      const status = document.getElementById('llm-status');
+      status.textContent = '⏳ Updating...';
+      status.className = "status-message";
+
+      try {
+        const res = await fetch('/admin/update_llm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, model, api_key: apiKey }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          status.textContent = `✅ LLM updated: ${data.message}`;
+          status.className = "status-message success";
+        } else {
+          status.textContent = `❌ Failed to update LLM: ${data.error || 'Unknown error'}`;
+          status.className = "status-message error";
+        }
+      } catch (err) {
+        status.textContent = `❌ Failed to update LLM`;
+        status.className = "status-message error";
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
