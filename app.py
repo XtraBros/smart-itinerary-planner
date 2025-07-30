@@ -339,6 +339,7 @@ def reset_memory():
 @app.route('/api/pois')
 def pois():
     df = poi_df[["name", "longitude", "latitude","clicks"]].copy()
+    print("Returning POIs data")
     return df.to_dict(orient='records')
 ############################################# ITINERARY PLANNER ENDPOINTS #####################################################
 @app.route('/plan')
