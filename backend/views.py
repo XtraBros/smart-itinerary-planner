@@ -19,7 +19,7 @@ def screen_proxy(screen_name):
         "rag-manager": rag_manager,
         "map-manager": map_manager,
         "analytics": analytics,
-        "map-graph": map_graph
+        "graph-viewer": map_graph
     }
     if screen_name not in screen_map:
         return jsonify({"error": "Screen not found"}), 404
@@ -288,7 +288,7 @@ def show_graph():
     output_path = os.path.join("templates", "graph.html")
     net.save_graph(output_path)
 
-    return render_template("graph.html")
+    return render_template("/screens/graph.html")
 
 
 @backend_bp.route("/graph_data")
