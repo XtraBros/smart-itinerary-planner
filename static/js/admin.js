@@ -204,8 +204,22 @@ layout.registerComponent('html-component', function(container, state) {
 });
 
 layout.init();
+function findComponentByName(contentItem, name) {
+    if (contentItem.type === 'component' &&
+        contentItem.config.componentState &&
+        contentItem.config.componentState.name === name) {
+        return contentItem;
+    }
+    if (contentItem.contentItems) {
+        for (const child of contentItem.contentItems) {
+            const found = findComponentByName(child, name);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
 function openComponent(name, title) {
-    // If no root content, create a root row container
     if (!layout.root.contentItems.length) {
         layout.root.addChild({
             type: 'row',
@@ -213,24 +227,15 @@ function openComponent(name, title) {
         });
     }
 
-    const rootRow = layout.root.contentItems[0];
-
-    // Search for an existing tab with the same componentState.name
-    for (const item of rootRow.contentItems) {
-        // Defensive check if item is component and has the right state
-        if (
-            item.type === 'component' &&
-            item.config.componentState &&
-            item.config.componentState.name === name
-        ) {
-            // Activate the found tab and bring it to front
-            rootRow.setActiveContentItem(item);
-            return;  // Stop here, no new tab created
-        }
+    // Search entire layout tree for component
+    const existing = findComponentByName(layout.root, name);
+    if (existing) {
+        existing.parent.setActiveContentItem(existing);  // activate its stack
+        return;
     }
 
-    // No existing tab found, add new one
-    rootRow.addChild({
+    // No existing tab found → add new one
+    layout.root.contentItems[0].addChild({
         type: 'component',
         componentName: 'html-component',
         title: title,
@@ -238,7 +243,6 @@ function openComponent(name, title) {
         width: 60
     });
 }
-
 
 // expose openComponent globally so sidebar can call it
 window.openComponent = openComponent;
