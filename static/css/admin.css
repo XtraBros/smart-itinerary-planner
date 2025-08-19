@@ -21,11 +21,13 @@ body {
 .sidebar li:hover {
     background-color: #333;
 }
-.main-area {
-    flex: 1;
-    position: relative;
+#main-area {
+    position: absolute;
+    top: 0;
+    left: 0; /* adjust if sidebar */
+    right: 0;
+    bottom: 0;
     overflow: hidden;
-    background-color: #f3f3f3;
 }
 .window {
     position: absolute;
@@ -62,5 +64,69 @@ body {
     overflow-x: hidden; /* optional: disable horizontal scroll */
     padding: 10px; /* optional: some padding */
     box-sizing: border-box;
+}
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+.layout-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 200px;
+    background: #2c3e50;
+    color: white;
+    transition: width 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+.sidebar.collapsed {
+    width: 50px;
+}
+
+/* Toggle button */
+.sidebar-toggle {
+    text-align: center;
+    padding: 8px;
+    cursor: pointer;
+    background: #34495e;
+    font-size: 18px;
+}
+
+/* Menu items */
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.sidebar li {
+    padding: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sidebar.collapsed li {
+    font-size: 0; /* hide text */
+}
+.sidebar.collapsed li::before {
+    content: "•";
+    font-size: 16px;
+    margin-right: 0;
+}
+
+/* Main area always fills leftover space */
+#main-area {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    position: relative;
+    background: #f4f6f8;
 }
 

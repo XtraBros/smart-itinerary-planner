@@ -25,8 +25,9 @@ function fetchMapboxToken() {
 
 // Call fetchMapboxToken() when admin.js loads or when you initialize the layout
 fetchMapboxToken();
-const layout = new GoldenLayout(config, document.getElementById('main-area'));
-
+const layout = new GoldenLayout(config, $('#main-area'));
+layout.init();
+layout.updateSize($('#main-area').width(), $('#main-area').height());
 layout.registerComponent('html-component', function(container, state) {
     function loadScript(src) {
         return new Promise((resolve, reject) => {
@@ -45,8 +46,10 @@ layout.registerComponent('html-component', function(container, state) {
             const el = container.getElement()[0];
             el.innerHTML = htmlWithoutScripts;
             el.style.overflowY = "auto";
-            el.style.height = "100%";
-
+            el.style.width = '100%';
+            el.style.height = '100%';
+            el.style.minWidth = '0';
+            el.style.minHeight = '0';
             switch (state.name) {
                 case 'rag-manager': {
                     const script = document.createElement('script');
@@ -203,7 +206,7 @@ layout.registerComponent('html-component', function(container, state) {
         });
 });
 
-layout.init();
+
 function findComponentByName(contentItem, name) {
     if (contentItem.type === 'component' &&
         contentItem.config.componentState &&
@@ -258,4 +261,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+});
+function resizeLayout() {
+    layout.updateSize($('#main-area').width(), $('#main-area').height());
+}
+
+window.addEventListener('resize', resizeLayout);
+
+const toggleBtn = document.getElementById("sidebar-toggle");
+const sidebar = document.querySelector(".sidebar");
+const mainArea = document.getElementById("main-area");
+
+toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+    setTimeout(() => {
+        // Resize GoldenLayout to match main-area
+        layout.updateSize(mainArea.offsetWidth, mainArea.offsetHeight);
+    }, 310); // after sidebar transition
 });
