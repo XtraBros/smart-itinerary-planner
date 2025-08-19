@@ -259,32 +259,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-window.layout = new GoldenLayout(config, $('#main-area')); // <-- jQuery object
-
-const sidebar = document.getElementById("sidebar");
-const toggleBtn = document.getElementById("sidebar-toggle");
-const mainArea = document.getElementById("main-area");
-
-function resizeGoldenLayout() {
-    if (window.layout) {
-        // Clear inline width/height for all GL containers
-        $('.lm_root, .lm_items, .lm_item_container, .lm_content, .lm_item').css({
-            width: '',
-            height: ''
-        });
-        // Tell GoldenLayout to recompute sizes
-        window.layout.updateSize();
-    }
-}
-
-// Sidebar toggle
-toggleBtn.addEventListener("click", () => {
-    sidebar.classList.toggle("collapsed");
-});
-
-// Resize after sidebar transition
-sidebar.addEventListener("transitionend", resizeGoldenLayout);
-
-// Resize on window resize
-window.addEventListener("resize", resizeGoldenLayout);
