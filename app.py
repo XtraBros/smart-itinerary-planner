@@ -114,7 +114,7 @@ def ops_router():
 
     # Initialize data bundle
     gathered_data = {}
-    if parsed.get("itinerary_edit", False) is True:
+    if parsed.get("itinerary_planning", False) is True:
         schema = load_schema()
         skeleton = generate_skeleton(llm, schema, user_input)
         pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=8*get_trip_duration_days(schema))
