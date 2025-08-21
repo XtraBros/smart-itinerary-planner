@@ -135,18 +135,49 @@ class RAGUnit:
         print(f"{self.name} Name index size:", self.name_index.ntotal)
         print(f"{self.name} Name list size:", len(self.names))
         print(f"{self.name} Description index size:", self.description_index.ntotal)
+        if "category" in self.data.columns:
+            dining_mask = self.data["category"].str.lower() == "dining"
+            dining_data = self.data[dining_mask].reset_index(drop=True)
+
+            if not dining_data.empty:
+                dining_desc_texts = dining_data["description"].astype(str).tolist()
+                self.dining_embeddings = self.embedding_model.encode(dining_desc_texts, convert_to_numpy=True)
+
+                self.dining_index = faiss.IndexFlatL2(dim)
+                self.dining_index.add(np.array(self.dining_embeddings, dtype='float32'))
+
+                # Keep reference to dining rows for lookup
+                self.dining_data = dining_data.reset_index(drop=True)
+
+                print(f"{self.name} Dining index size:", self.dining_index.ntotal)
+            else:
+                self.dining_index = None
+                self.dining_data = None
+                print(f"{self.name} has no Dining entries.")
+        else:
+            self.dining_index = None
+            self.dining_data = None
+            print(f"{self.name} has no 'category' column, skipping Dining index.")
 
     def query(self, input_text: str, top_k: int = 3, attractions_only: bool = False) -> List[dict]:
         if self.description_index is not None:
             # Use vector search
             query_vec = self.embedding_model.encode(input_text, convert_to_numpy=True)
+            query_vec = np.atleast_2d(query_vec)
             distances, indices = self.description_index.search(query_vec, top_k * 5)  # fetch more to filter later
             results = []
             for idx in indices[0]:
                 if idx < len(self.data):
                     row = self.data.iloc[idx]
                     if not attractions_only or row.get("category") == "Attraction":
-                        results.append({'name': row['name'], 'description': row['description']})
+                        results.append({
+                            'name': row['name'], 
+                            'description': row['description'],
+                            'longitude': row.get('longitude', None),
+                            'latitude': row.get('latitude', None),
+                            'category': row.get('category', ''),
+                            'operating_hours': row.get('operating_hours', '')
+                        })
                     if len(results) >= top_k:
                         break
             return results
@@ -312,6 +343,8 @@ class RAGUnit:
             mask = data['category'] == "Attraction"
             data = data[mask].reset_index(drop=True)
             description_embeddings = description_embeddings[mask.values]
+            description_embeddings = np.atleast_2d(description_embeddings)
+
 
         # Create tag embedding
         tag_query = ", ".join(tags)
@@ -504,5 +537,57 @@ class RAGPlatform:
                 matched_pois.update(matches)
 
         return list(matched_pois)
+    
+    def itinerary_dining_search(self, schema: dict, top_k: int = 5):
+        preference = schema.get("dining_preference")
+        results = []
+
+        for unit in self.units.values():
+            try:
+                # Only proceed if dining index is available
+                if unit.dining_index is not None and unit.dining_data is not None:
+                    if preference:
+                        # Encode the preference query
+                        query_vec = unit.embedding_model.encode([preference], convert_to_numpy=True)
+                        query_vec = np.atleast_2d(query_vec).astype('float32')
+
+                        # Search in dining-only FAISS index
+                        distances, indices = unit.dining_index.search(query_vec, top_k)
+                        for rank, idx in enumerate(indices[0]):
+                            if idx < len(unit.dining_data):
+                                row = unit.dining_data.iloc[idx]
+                                results.append({
+                                    "name": row["name"],
+                                    "description": row["description"],
+                                    'longitude': row.get('longitude', None),
+                                    'latitude': row.get('latitude', None),
+                                    "category": row["category"],
+                                    "similarity": float(distances[0][rank]),
+                                    "source": unit.name
+                                })
+                    else:
+                        # No preference: return a small sample of dining places
+                        sample = unit.dining_data.head(top_k)
+                        for _, row in sample.iterrows():
+                            results.append({
+                                "name": row["name"],
+                                "description": row["description"],
+                                "category": row["category"],
+                                'longitude': row.get('longitude', None),
+                                'latitude': row.get('latitude', None),
+                                "similarity": None,
+                                "source": unit.name
+                            })
+
+            except Exception as e:
+                print(f"Error querying unit {unit.name}: {e}")
+
+        # Sort results by similarity if available
+        sorted_results = sorted(
+            results, key=lambda x: (x["similarity"] is not None, -x["similarity"] if x["similarity"] is not None else 0)
+        )
+
+        return sorted_results[:top_k]
+
 ##################################### Other Functions #####################################
 

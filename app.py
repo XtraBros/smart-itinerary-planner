@@ -117,7 +117,10 @@ def ops_router():
     if parsed.get("itinerary_planning", False) is True:
         schema = load_schema()
         skeleton = generate_skeleton(llm, schema, user_input)
-        pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=8*get_trip_duration_days(schema))
+        pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=5*get_trip_duration_days(schema))
+        dining = rag.itinerary_dining_search(schema)
+        print(f" Dining RAG =====> {dining}")
+        pois.extend(dining)
         if parsed["notes"]:
             pois1 = rag.query(parsed["notes"], attractions_only=True)
             pois = pois + pois1

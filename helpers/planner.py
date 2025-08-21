@@ -153,7 +153,8 @@ def fill_itinerary_skeleton(llm, pois, poi_order, schema, skeleton, user_input=N
     - Add notes, reminders, or special considerations (e.g., breaks, accessibility, weather preferences),
     - Respect the trip dates, available hours, pace preference, and other user constraints,
     - For each POI, provide a brief description of the POI afgter giving its name as the activity.
-    - Avoid any must_avoid or excluded_activities mentioned in the schema,
+    - Avoid any must_avoid or excluded_activities mentioned in the schema
+    - Only recommend dining options if the timeslot is allocated for meals. All other slots should include activities or attractions. The only exception is for cafes, which can be included in any slot.
     Return the filled itinerary as a JSON object with this structure:
     {{
     "DD-MM-YYY": {{
