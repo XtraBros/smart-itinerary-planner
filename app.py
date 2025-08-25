@@ -115,20 +115,7 @@ def ops_router():
     # Initialize data bundle
     gathered_data = {}
     if parsed.get("itinerary_planning", False) is True:
-        schema = load_schema()
-        skeleton = generate_skeleton(llm, schema, user_input)
-        pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=5*get_trip_duration_days(schema))
-        dining = rag.itinerary_dining_search(schema)
-        print(f" Dining RAG =====> {dining}")
-        pois.extend(dining)
-        if parsed["notes"]:
-            pois1 = rag.query(parsed["notes"], attractions_only=True)
-            pois = pois + pois1
-            pois = list({poi["name"]: poi for poi in pois}.values())
-        pois_order = solve_route_with_balltree([poi['name'] for poi in pois], app.poi_df, app.balltree)
-        pois_order = reorder_and_extract_names(pois, pois_order)
-        itinerary = fill_itinerary_skeleton(llm, skeleton, pois, pois_order, schema, user_input)
-        response = json_to_itinerary_text(remove_code_blocks(itinerary))
+        response = plan_itinerary(app, rag, llm, user_input, parsed, memory)
         memory.save_context({"input": user_input}, {"output": response})
         response = hyperlink_pois_in_response(response, pois)
         return jsonify({
@@ -140,14 +127,7 @@ def ops_router():
         previous_itinerary = extract_previous_itinerary_from_history(history)
         if not previous_itinerary:
         # Fallback: no itinerary in memory, generate a new one
-            schema = load_schema()
-            skeleton = generate_skeleton(llm, schema, user_input)
-            pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=8*get_trip_duration_days(schema))
-            pois_order = solve_route_with_balltree([poi['name'] for poi in pois], app.poi_df, app.balltree)
-            pois_order = reorder_and_extract_names(pois, pois_order)
-            itinerary = fill_itinerary_skeleton(llm, skeleton, pois, pois_order, schema, user_input)
-            response = json_to_itinerary_text(remove_code_blocks(itinerary))
-            response = hyperlink_pois_in_response(response, pois)
+            response = plan_itinerary(app, rag, llm, user_input, parsed, memory)
             memory.save_context({"input": user_input}, {"output": response})
             return jsonify({
                 "response": response,
