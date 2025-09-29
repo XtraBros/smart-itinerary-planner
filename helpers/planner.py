@@ -1,9 +1,8 @@
 import json
 import os
 from datetime import datetime
-from helpers.text_processing import remove_code_blocks
+from helpers.text_processing import remove_code_blocks, reorder_and_extract_names
 from typing import List, Dict
-from helpers.route_solver import solve_route_with_balltree, reorder_and_extract_names
 
 def load_schema(schema_path="./data/user_schema.json"):
     def convert_value(value):
@@ -243,7 +242,8 @@ def edit_itinerary(llm, previous_itinerary: str, user_input: str, poi_data: List
     response = llm.invoke(messages)
     return remove_code_blocks(response)
 
-def plan_itinerary(app, rag, llm, user_input, data):
+def plan_itinerary(app, llm, user_input, data):
+    rag = app.rag
     schema = load_schema()
     skeleton = generate_skeleton(llm, schema, user_input)
     pois = rag.query_by_tags(extract_rag_tags(schema), attractions_only=True, top_k=5*get_trip_duration_days(schema))
@@ -254,7 +254,7 @@ def plan_itinerary(app, rag, llm, user_input, data):
         pois1 = rag.query(data["notes"], attractions_only=True)
         pois = pois + pois1
         pois = list({poi["name"]: poi for poi in pois}.values())
-    pois_order = solve_route_with_balltree([poi['name'] for poi in pois], app.poi_df, app.balltree)
+    pois_order = rag.solve_route([poi['name'] for poi in pois], app.poi_df, app.balltree)
     pois_order = reorder_and_extract_names(pois, pois_order)
     itinerary = fill_itinerary_skeleton(llm, skeleton, pois, pois_order, schema, user_input)
     response = json_to_itinerary_text(remove_code_blocks(itinerary))

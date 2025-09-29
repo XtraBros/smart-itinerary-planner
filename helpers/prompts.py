@@ -15,31 +15,10 @@ with open(config_file_path, 'r') as file:
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
 
-def basic_prompt(user_input,chat_history):
+def generic_prompt(user_input,chat_history, app):
     prompt = f"""
-    You are a helpful assistant. Respond to the user's query as well as possible.
-    Chat history:
-    {chat_history}
-    """
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": user_input}
-    ]
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=messages,
-    )
-    message = response.choices[0].message
-    return message
-
-def wayfind_prompt(user_input, chat_history, poi_data):
-    # fetch poi info
-    prompt = f"""
-    You are a helpful assistant. The user is trying to locate a place of interest. 
-    Refer to the following data related to the POI to most accurately determine the location of the POI. 
-    The user only needs the floor, unit number and current opening status of the store. If the opening status is unavailable, give the operating hours instead. Omit any unavailable information.
-    The user will be provided a button below your response to generate a navigation aid. Inform them to "Click the button to find out how to get there!".
-    POI Data: {poi_data}
+    You are a helpful assistant from {app.locale_name}. Answer all questions pertaining to the locale you are assigned to, and do not answer questions outside of this context.
+    If you are unsure of how to answer, you should ask the user for more information.
     Chat history:
     {chat_history}
     """
@@ -74,7 +53,7 @@ def intro_prompt(user_input, chat_history, poi_data):
     message = response.choices[0].message
     return message
 
-def nav_intro_prompt(user_input, chat_history, poi_data):
+def nav_prompt(user_input, chat_history, poi_data):
     # fetch poi info
     prompt = f"""
     You are a helpful assistant. The user wants to know more about a POI and how to get there. Give the user a brief introduction of the POI and its location. The location will be provided on the user's map UI.

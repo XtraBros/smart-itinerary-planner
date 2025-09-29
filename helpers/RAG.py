@@ -1,593 +1,365 @@
-import pandas as pd
-from sentence_transformers import SentenceTransformer
 import uuid
-from typing import List, Optional, Dict, List
 import pandas as pd
-from sentence_transformers import SentenceTransformer
-from sqlalchemy import create_engine
-from pymongo import MongoClient
 import numpy as np
 import faiss
-import requests
-import sqlalchemy
-import pymongo
+from typing import List, Optional
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from typing import Dict, List, Optional
+from sklearn.neighbors import BallTree
+import networkx as nx
 
-
-'''
-RAGUnit: One unit of RAG platform
-Uses a SINGLE data source for retrieval.
-Supports: CSV, SQL, MongoDB, JSON, and CMS (stub).
-From a SQL database:
-source = {
-    "type": "sql",
-    "url": "sqlite:///my_database.db",  # or "postgresql://user:pass@host:port/db"
-    "query": "SELECT name, description FROM pois"
-}
-From MongoDB:
-source = {
-    "type": "mongo",
-    "uri": "mongodb://localhost:27017",
-    "db": "mydb",
-    "collection": "pois"
-}
-From a CSV
-source = {
-    "type": "csv",
-    "path": "uploaded.csv"
-}
-init: 
-rag = RAGPlatform(data_source=source)
-'''
 class RAGUnit:
     def __init__(
         self,
-        embedding_model: str = 'all-MiniLM-L6-v2',
-        data_source: Optional[dict] = None,
+        data_source: dict,
         id: Optional[str] = None,
         description: str = "",
         name: str = ""
     ):
-        
-        self.id = id or str(uuid.uuid4())  # Auto-generate UUID if not provided
-        self.description = description
-        self.embedding_model = SentenceTransformer(embedding_model)
-        self.data = None
-        self.description_index = None
-        self.name_index = None
-        self.name_embeddings = None
-        self.names = []
+        """
+        A retrieval unit that loads a CSV dataset of POIs, builds vector indices,
+        and supports semantic + categorical queries.
+        """
+        self.id = id or str(uuid.uuid4())
         self.source = data_source
-        self.description_embeddings = None
+        self.description = description
         self.name = name
 
-        if data_source:
-            self.load_data(data_source)
-            self.build_index()
-        else:
-            raise ValueError("A valid data_source must be provided")
+        self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+        self.data = None
 
-    def load_data(self, source: dict):
-        """
-        Dynamically load data based on source type. Supported types:
-        - csv: path to CSV file
-        - sql: dict with 'url' and 'query'
-        - mongo: dict with 'uri', 'db', 'collection'
-        - json: path to JSON file
-        - cms: stub for future API-based loading
-        """
-        source_type = source.get("type")
-        
-        if source_type == "csv":
-            try:
-                self.data = pd.read_csv(source.get("path"), encoding="utf-8")
-            except UnicodeDecodeError:
-                self.data = pd.read_csv(source.get("path"), encoding="ISO-8859-1")
-        elif source_type == "excel":
-            self.data = pd.read_excel(source.get("path"))
-        elif source_type == "sql":
-            self.data = self.load_sql(source.get("url"), source.get("query"))
-        elif source_type == "mongo":
-            self.data = self.load_mongodb(source.get("uri"), source.get("db"), source.get("collection"))
-        elif source_type == "json":
-            self.data = pd.read_json(source.get("path"))
-        elif source_type == "cms":
-            self.data = self.load_cms(source.get("api_url"), source.get("auth"))
-        else:
-            raise ValueError(f"Unsupported source type: {source_type}")
+        # Embedding stores
+        self.name_embeddings = None
+        self.description_embeddings = None
+        self.tag_embeddings = None
 
-    def load_sql(self, url: str, query: str) -> pd.DataFrame:
-        engine = create_engine(url)
-        return pd.read_sql_query(query, engine)
+        # FAISS indices
+        self.name_index = None
+        self.description_index = None
+        self.tag_index = None
+        self.dining_index = None
+        self.dining_data = None
 
-    def load_mongodb(self, uri: str, db_name: str, collection_name: str) -> pd.DataFrame:
-        client = MongoClient(uri)
-        collection = client[db_name][collection_name]
-        docs = list(collection.find())
-        return pd.DataFrame(docs)
+        self.load_data()
+        self.build_indices()
 
-    def load_cms(self, api_url: str, auth: Optional[dict] = None) -> pd.DataFrame:
-        # Stub for API-based CMS ingestion
-        # Example auth: {"token": "abc"} or {"user": "x", "pass": "y"}
-        raise NotImplementedError("CMS data loading not implemented yet")
+    def load_data(self):
+        """Load POI data from CSV."""
+        path = self.source.get("path")
+        if not path:
+            raise ValueError("CSV path must be provided in source.")
 
-    def build_index(self):
+        try:
+            self.data = pd.read_csv(path, encoding="utf-8")
+        except UnicodeDecodeError:
+            self.data = pd.read_csv(path, encoding="ISO-8859-1")
+
+    def build_indices(self):
+        """Build FAISS indices for name, description, and tags."""
         if self.data is None:
-            raise ValueError("Data must be loaded before building the index.")
+            raise ValueError("Data must be loaded before building indices.")
 
-        if 'description' not in self.data.columns or 'name' not in self.data.columns:
-            raise ValueError("Data must include 'name' and 'description' columns.")
+        texts = {
+            "name": self.data["name"].astype(str).tolist() if "name" in self.data else [],
+            "description": self.data["description"].astype(str).tolist() if "description" in self.data else [],
+            "tags": self.data["tags"].astype(str).tolist() if "tags" in self.data else []
+        }
 
-        self.names = self.data["name"].tolist()
-        name_texts = self.data["name"].astype(str).tolist()
-        desc_texts = self.data["description"].astype(str).tolist()
+        for field, values in texts.items():
+            if not values:
+                continue
+            embeddings = self.embedding_model.encode(values, convert_to_numpy=True)
+            dim = embeddings.shape[1]
+            index = faiss.IndexFlatL2(dim)
+            index.add(embeddings.astype("float32"))
+            setattr(self, f"{field}_embeddings", embeddings)
+            setattr(self, f"{field}_index", index)
 
-        self.name_embeddings = self.embedding_model.encode(name_texts, convert_to_numpy=True)
-        self.description_embeddings = self.embedding_model.encode(desc_texts, convert_to_numpy=True)
-
-        # Build FAISS indices
-        dim = self.description_embeddings.shape[1]
-        self.description_index = faiss.IndexFlatL2(dim)
-        self.description_index.add(np.array(self.description_embeddings, dtype='float32'))
-
-        self.name_index = faiss.IndexFlatL2(dim)
-        self.name_index.add(np.array(self.name_embeddings, dtype='float32'))
-        print(f"{self.name} Name index size:", self.name_index.ntotal)
-        print(f"{self.name} Name list size:", len(self.names))
-        print(f"{self.name} Description index size:", self.description_index.ntotal)
+        # Optional dining index
         if "category" in self.data.columns:
             dining_mask = self.data["category"].str.lower() == "dining"
             dining_data = self.data[dining_mask].reset_index(drop=True)
-
             if not dining_data.empty:
-                dining_desc_texts = dining_data["description"].astype(str).tolist()
-                self.dining_embeddings = self.embedding_model.encode(dining_desc_texts, convert_to_numpy=True)
-
+                dining_descs = dining_data["description"].astype(str).tolist()
+                dining_embeddings = self.embedding_model.encode(dining_descs, convert_to_numpy=True)
+                dim = dining_embeddings.shape[1]
                 self.dining_index = faiss.IndexFlatL2(dim)
-                self.dining_index.add(np.array(self.dining_embeddings, dtype='float32'))
+                self.dining_index.add(dining_embeddings.astype("float32"))
+                self.dining_data = dining_data
 
-                # Keep reference to dining rows for lookup
-                self.dining_data = dining_data.reset_index(drop=True)
-
-                print(f"{self.name} Dining index size:", self.dining_index.ntotal)
-            else:
-                self.dining_index = None
-                self.dining_data = None
-                print(f"{self.name} has no Dining entries.")
-        else:
-            self.dining_index = None
-            self.dining_data = None
-            print(f"{self.name} has no 'category' column, skipping Dining index.")
-
-    def query(self, input_text: str, top_k: int = 3, attractions_only: bool = False) -> List[dict]:
-        if self.description_index is not None:
-            # Use vector search
-            query_vec = self.embedding_model.encode(input_text, convert_to_numpy=True)
-            query_vec = np.atleast_2d(query_vec)
-            distances, indices = self.description_index.search(query_vec, top_k * 5)  # fetch more to filter later
-            results = []
-            for idx in indices[0]:
-                if idx < len(self.data):
-                    row = self.data.iloc[idx]
-                    if not attractions_only or row.get("category") == "Attraction":
-                        results.append({
-                            'name': row['name'], 
-                            'description': row['description'],
-                            'longitude': row.get('longitude', None),
-                            'latitude': row.get('latitude', None),
-                            'category': row.get('category', ''),
-                            'operating_hours': row.get('operating_hours', '')
-                        })
-                    if len(results) >= top_k:
-                        break
-            return results
-        else:
-            # Fallback to text search
-            mask = self.data["description"].str.contains(input_text, case=False, na=False)
-            filtered = self.data[mask]
-            if attractions_only:
-                filtered = filtered[filtered["category"] == "Attraction"]
-            filtered = filtered.head(top_k)
-            return [
-                {"name": row["name"], "description": row["description"]}
-                for _, row in filtered.iterrows()
-            ]
-
-    def get_data(self):
-        if self.data is not None:
-            return self.data
-
-        source_type = self.data_source["type"]
-
-        if source_type == "csv":
-            df = pd.read_csv(self.data_source["path"])
-
-        elif source_type == "json":
-            df = pd.read_json(self.data_source["path"])
-
-        elif source_type == "excel":
-            df = pd.read_excel(self.data_source["path"])
-
-        elif source_type == "mongo":
-            uri = self.data_source["uri"]
-            db_name = self.data_source["db"]
-            collection = self.data_source["collection"]
-
-            client = pymongo.MongoClient(uri)
-            db = client[db_name]
-            collection = db[collection]
-            docs = list(collection.find({}, {"_id": 0}))
-            df = pd.DataFrame(docs)
-
-        elif source_type == "sql":
-            user = self.data_source.get("user")
-            password = self.data_source.get("password")
-            host = self.data_source.get("host")
-            port = self.data_source.get("port", 3306)
-            database = self.data_source["database"]
-            query = self.data_source["query"]
-
-            # Compose SQLAlchemy URI
-            if user and password:
-                uri = f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
-            else:
-                uri = f"mysql+pymysql://{host}:{port}/{database}"
-
-            engine = sqlalchemy.create_engine(uri)
-            df = pd.read_sql(query, con=engine)
-
-        elif source_type == "cms":
-            api_url = self.data_source["api_url"]
-            headers = {}
-            if self.data_source.get("auth"):
-                token = self.data_source["auth"].get("token")
-                if token:
-                    headers["Authorization"] = f"Bearer {token}"
-
-            response = requests.get(api_url, headers=headers)
-            if response.status_code != 200:
-                raise Exception(f"Failed to fetch CMS data: {response.text}")
-            data = response.json()
-
-            # Handle cases where CMS returns a list or nested structure
-            if isinstance(data, dict) and "results" in data:
-                data = data["results"]
-            df = pd.DataFrame(data)
-
-        else:
-            raise ValueError(f"Unsupported data source type: {source_type}")
-
-        self.data = df
-        return df
-    
-    def match_names_vector(
-        self, input_text: str, top_k: int = 3, distance_threshold: float = 0.4, is_facility: bool = False
-    ) -> List[str]:
-        if self.name_index is None or len(self.names) == 0:
+    def query_by(self, field: str, input_text: str, top_k: int = 5) -> List[dict]:
+        """Query POIs by semantic similarity on the given field (name, description, tags)."""
+        index = getattr(self, f"{field}_index", None)
+        embeddings = getattr(self, f"{field}_embeddings", None)
+        if index is None or embeddings is None:
             return []
 
-        # Keywords you want to filter out unless is_facility is True
-        unwanted_keywords = ["elevator", "toilet", "restroom", "escalator", "parking"]
-        if isinstance(input_text, str):
-            input_list = [input_text]
-        elif isinstance(input_text, list) and all(isinstance(x, str) for x in input_text):
-            input_list = input_text
-        else:
-            raise ValueError("input_text must be a string or list of strings.")
-        if not input_list:
-            print("Warning: Empty input passed to embedding model.")
+        query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True)
+        query_vec = np.atleast_2d(query_vec).astype("float32")
+        distances, indices = index.search(query_vec, top_k)
+
+        results = []
+        for rank, idx in enumerate(indices[0]):
+            if idx < len(self.data):
+                row = self.data.iloc[idx]
+                results.append({
+                    "name": row.get("name", ""),
+                    "description": row.get("description", ""),
+                    "longitude": row.get("longitude"),
+                    "latitude": row.get("latitude"),
+                    "category": row.get("category", ""),
+                    "operating_hours": row.get("operating_hours", ""),
+                    "tags": row.get("tags", ""),})
+        return results
+
+    def filter_by_categories(self, categories: List[str]) -> List[dict]:
+        """Return all POIs matching any of the given categories."""
+        if self.data is None or "category" not in self.data.columns:
             return []
-        # Run vector search
-        query_vec = self.embedding_model.encode(input_list, convert_to_numpy=True)
-        distances, indices = self.name_index.search(query_vec, top_k)
 
-        matches = []
-        for i, dist in zip(indices[0], distances[0]):
-            if i == -1 or i >= len(self.names):
-                continue
-            if dist <= distance_threshold:
-                name = str(self.names[i])
-                if is_facility:
-                    matches.append(name)
-                elif not any(kw in name.lower() for kw in unwanted_keywords):
-                    matches.append(name)
-        print(matches)
-        return matches
+        mask = self.data["category"].str.lower().isin([c.lower() for c in categories])
+        return self.data[mask].to_dict(orient="records")
 
+    def get_data(self) -> pd.DataFrame:
+        """Return the underlying dataframe."""
+        return self.data
     
-    def filter_by_categories(self, categories: List[str], top_k: int = 5) -> List[dict]:
-        if 'category' not in self.data.columns:
-            raise ValueError("CSV must contain a 'category' column to use this method.")
-        
-        # Normalize the category column to lowercase for case-insensitive matching
-        data_copy = self.data.copy()
-        data_copy['category_lower'] = data_copy['category'].str.lower()
-        
-        # Lowercase all input categories
-        categories = [cat.lower() for cat in categories]
-        
-        # Filter where category matches any of the given categories
-        filtered = data_copy[data_copy['category_lower'].apply(
-            lambda x: any(cat in x for cat in categories)
-        )]
-
-        results = []
-        for _, row in filtered.head(top_k).iterrows():
-            results.append({
-                'name': row['name'],
-                'description': row['description'],
-                'category': row['category']
-            })
-        
-        return results
-    
-    def filter_by_tags(self, tags: List[str], top_k: int = 5, attractions_only: bool = False) -> List[dict]:
-        """
-        Filter POIs based on semantic similarity to tags. Assumes 'tags' column contains
-        comma-separated strings or lists. Uses embedding similarity with description embeddings.
-
-        Parameters:
-            tags (List[str]): Tags to match.
-            top_k (int): Number of top results to return.
-            attractions_only (bool): If True, only include POIs where category == "Attraction".
-        """
-        if 'tags' not in self.data.columns:
-            raise ValueError("Dataset must contain a 'tags' column.")
-        if self.description_embeddings is None:
-            raise ValueError("Description embeddings not found. Run build_index first.")
-
-        # Optionally filter for attractions only
-        data = self.data
-        description_embeddings = self.description_embeddings
-        if attractions_only:
-            mask = data['category'] == "Attraction"
-            data = data[mask].reset_index(drop=True)
-            description_embeddings = description_embeddings[mask.values]
-            description_embeddings = np.atleast_2d(description_embeddings)
-
-
-        # Create tag embedding
-        tag_query = ", ".join(tags)
-        tag_embedding = self.embedding_model.encode([tag_query], convert_to_numpy=True)
-
-        # Score similarity to each description
-        similarities = cosine_similarity(tag_embedding, description_embeddings)[0]
-
-        # Get top-k most similar entries
-        top_indices = similarities.argsort()[::-1][:top_k]
-
-        results = []
-        for idx in top_indices:
-            row = data.iloc[idx]
-            results.append({
-                'name': row.get('name', ''),
-                'description': row.get('description', ''),
-                'longitude': row.get('longitude', None),
-                'latitude': row.get('latitude', None),
-                'category': row.get('category', ''),
-                'operating_hours': row.get('operating_hours', ''),
-            })
-
-        return results
-
-
-        
     def get_location_data(self) -> pd.DataFrame:
-        """
-        Returns a DataFrame with 'name', 'longitude', and 'latitude' columns.
-        Should return an empty DataFrame if not applicable.
-        """
-        if hasattr(self, "data") and isinstance(self.data, pd.DataFrame):
-            required = {'name', 'longitude', 'latitude'}
+        """Return a DataFrame with (name, longitude, latitude) for map use."""
+        if self.data is not None:
+            required = {"name", "longitude", "latitude"}
             if required.issubset(self.data.columns):
                 return self.data[list(required)].dropna()
-        # fallback or raise warning if not available
-        return pd.DataFrame(columns=['name', 'longitude', 'latitude'])
+        return pd.DataFrame(columns=["name", "longitude", "latitude"])
+
 
 class RAGPlatform:
     def __init__(self, rag_units: List[RAGUnit] = None):
         self.units: Dict[str, RAGUnit] = {unit.id: unit for unit in rag_units or []}
 
     def add_unit(self, unit: RAGUnit):
-        """Add a new RAGUnit instance."""
         self.units[unit.id] = unit
 
-    def remove_unit_by_id(self, unit_id: str):
-        """Remove an existing RAGUnit by its ID."""
-        if unit_id in self.units:
-            del self.units[unit_id]
+    def query_by_name(self, query_text: str, top_k: int = 5) -> List[dict]:
+        return self._aggregate_query("name", query_text, top_k)
 
+    def query_by_description(self, query_text: str, top_k: int = 5) -> List[dict]:
+        return self._aggregate_query("description", query_text, top_k)
+
+    def query_by_tags(self, tags: List[str], top_k: int = 5) -> List[dict]:
+        query_text = ", ".join(tags)
+        return self._aggregate_query("tags", query_text, top_k)
+
+    def _aggregate_query(self, field: str, query_text: str, top_k: int) -> List[dict]:
+        results = []
+        for unit in self.units.values():
+            try:
+                unit_results = unit.query_by(field, query_text, top_k)
+                for r in unit_results:
+                    r["source"] = unit.name
+                    results.append(r)
+            except Exception as e:
+                print(f"[{unit.id}] Error during {field} query: {e}")
+        return sorted(results, key=lambda x: x.get("similarity", 0), reverse=True)[:top_k]
+    
+    def hybrid_query(self, query_text: str, top_k: int = 5, alpha: float = 0.5) -> List[dict]:
+        """
+        Hybrid retrieval between tags and descriptions using weighted score fusion.
+        alpha = weight for description score (0-1).
+        """
+        desc_results = self.query_by("description", query_text, top_k * 2)
+        tag_results = self.query_by("tags", query_text, top_k * 2)
+
+        # Build lookup tables for merging
+        merged = {}
+        for r in desc_results:
+            merged[r["name"]] = {
+                **r,
+                "desc_score": 1.0 / (1.0 + r["similarity"]),  # invert distance to similarity
+                "tag_score": 0.0
+            }
+
+        for r in tag_results:
+            if r["name"] in merged:
+                merged[r["name"]]["tag_score"] = 1.0 / (1.0 + r["similarity"])
+            else:
+                merged[r["name"]] = {
+                    **r,
+                    "desc_score": 0.0,
+                    "tag_score": 1.0 / (1.0 + r["similarity"])
+                }
+
+        # Hybrid score = α * desc_score + (1-α) * tag_score
+        for v in merged.values():
+            v["hybrid_score"] = alpha * v["desc_score"] + (1 - alpha) * v["tag_score"]
+
+        # Sort and return top-k
+        results = sorted(merged.values(), key=lambda x: x["hybrid_score"], reverse=True)
+        return results[:top_k]
+    
+    def build_balltree(self):
+        """Build BallTree from all units' POI data and store internally."""
+        all_pois = []
+        for unit in self.units.values():
+            try:
+                df = unit.get_location_data()
+                if not df.empty:
+                    all_pois.append(df)
+            except Exception as e:
+                print(f"[{unit.id}] Failed to fetch location data: {e}")
+
+        if not all_pois:
+            raise ValueError("No POIs with valid coordinates found.")
+
+        combined_df = pd.concat(all_pois, ignore_index=True)
+        coords_rad = np.radians(combined_df[['latitude', 'longitude']].values)
+        tree = BallTree(coords_rad, metric='haversine')
+
+        self.balltree_df = combined_df
+        self.balltree = tree
+        return tree, combined_df
+
+    def update_balltree(self, poi_df):
+        """Rebuild BallTree from a given POI dataframe."""
+        coordinates_rad = np.radians(poi_df[['latitude', 'longitude']].values)
+        ball_tree = BallTree(coordinates_rad, metric='haversine')
+        self.balltree_df = poi_df
+        self.balltree = ball_tree
+        return ball_tree
+
+    def build_graph(self, k=5):
+        """Build a k-NN graph from the current BallTree + POIs."""
+        if self.balltree is None or self.balltree_df is None:
+            raise ValueError("BallTree not initialized. Run build_balltree() first.")
+
+        earth_radius = 6371000  # meters
+        coords_rad = np.radians(self.balltree_df[['latitude', 'longitude']].values)
+        names = self.balltree_df['name'].tolist()
+
+        G = nx.Graph()
+        for i, name in enumerate(names):
+            row = self.balltree_df.iloc[i]
+            G.add_node(name, pos=(row['longitude'], row['latitude']))
+
+            # Query k nearest neighbors (excluding self)
+            dist, ind = self.balltree.query([coords_rad[i]], k=k+1)
+            for j, d in zip(ind[0][1:], dist[0][1:]):  # skip self
+                neighbor_name = names[j]
+                distance_m = d * earth_radius
+                G.add_edge(name, neighbor_name, weight=distance_m)
+
+        self.graph = G
+        return G
+
+    def build_distance_matrix(self, place_names):
+        """Compute distance matrix between selected POIs."""
+        if self.balltree is None or self.balltree_df is None:
+            raise ValueError("BallTree not initialized. Run build_balltree() first.")
+
+        name_to_index = {name: idx for idx, name in enumerate(self.balltree_df['name'])}
+        indices = [name_to_index[name] for name in place_names]
+        coords_subset = np.radians(self.balltree_df.iloc[indices][['latitude', 'longitude']].to_numpy())
+
+        earth_radius = 6371000  # meters
+        dist_matrix = np.zeros((len(indices), len(indices)))
+
+        for i, coord in enumerate(coords_subset):
+            dists, _ = self.balltree.query([coord], k=len(coords_subset))
+            dist_matrix[i] = dists[0][:len(indices)] * earth_radius
+
+        return pd.DataFrame(dist_matrix, index=place_names, columns=place_names)
+
+    def solve_route(self, place_names, tsp_solver):
+        """Solve route between given POIs using TSP solver and BallTree distances."""
+        dist_df = self.build_distance_matrix(place_names)
+        permutation = tsp_solver(dist_df)
+        return permutation
+    
+    def spatial_query(self, lat: float, lon: float, k: int = 5, radius_km: float = None):
+        """
+        Query the BallTree for nearest neighbors by location.
+        Args:
+            lat (float): latitude in degrees
+            lon (float): longitude in degrees
+            k (int): number of neighbors to return
+            radius_km (float, optional): filter results within this radius in km
+
+        Returns:
+            List[dict]: POIs with distance (km)
+        """
+        if not hasattr(self, "balltree"):
+            raise ValueError("BallTree not built. Call build_balltree() first.")
+
+        query_point = np.radians([[lat, lon]])
+        distances, indices = self.balltree.query(query_point, k=k)
+
+        results = []
+        for dist, idx in zip(distances[0], indices[0]):
+            row = self.balltree_df.iloc[idx].to_dict()
+            row["distance_km"] = dist * 6371  # haversine distance in km
+            if radius_km is None or row["distance_km"] <= radius_km:
+                results.append(row)
+
+        return results
+    
     def list_units(self) -> List[dict]:
         """List all tracked RAGUnits with metadata."""
         return [
             {
                 "id": unit.id,
+                "name": unit.name,
                 "description": unit.description,
                 "source_type": unit.source.get("type", "unknown")
             }
             for unit in self.units.values()
         ]
-
-    def query(self, query_text: str, attractions_only: bool = False,) -> List[dict]:
-        """Send query to all units and aggregate non-empty results."""
-        results = []
-        for unit in self.units.values():
-            try:
-                result = unit.query(query_text, attractions_only=attractions_only)
-                if result:
-                    results.extend(result)
-            except Exception as e:
-                print(f"[{unit.id}] Error during query: {e}")
-        return results
     
-    def search_by_field(self, field_name, field_value):
+    def get_coordinates(self, poi_name):
         """
-        Search all RAG units for entries where field_name equals field_value.
-        Returns a list of dicts containing matched entries.
+        Return (longitude, latitude) tuple for the given POI name.
+        
+        Args:
+            poi_name (str): The name of the POI to look up.
+        
+        Returns:
+            tuple: (longitude, latitude) if found, else None.
         """
-        results = []
-
-        for unit in self.units.values():
-            try:
-                data = unit.get_data()
-
-                # Ensure field exists
-                if field_name not in data.columns:
-                    continue
-
-                # Filter by field using pandas
-                filtered = data[data[field_name] == field_value]
-
-                # Convert to list of dicts
-                matches = filtered.to_dict(orient='records')
-                results.extend(matches)
-
-            except Exception as e:
-                print(f"Error during filtering: {e}")
-
-        return results
+        if self.balltree_df is None:
+            raise ValueError("BallTree dataframe not initialized. Run build_balltree() first.")
+        
+        row = self.balltree_df.loc[self.balltree_df['name'] == poi_name]
+        if row.empty:
+            return None  # or raise an error if you prefer
+        
+        lon, lat = row.iloc[0]['longitude'], row.iloc[0]['latitude']
+        return (lon, lat)
     
-    def location_lookup(self, name_list: List[str], top_k: int = 1) -> List[dict]:
+    def get_poi_details(self, poi_names):
         """
-        Finds the most relevant POIs based on a list of names.
+        Return details (name, longitude, latitude, description) for a list of POI names.
 
-        Parameters:
-            name_list (List[str]): List of POI names to look up.
-            top_k (int): Number of top matches to return per name and unit.
+        Args:
+            poi_names (list[str]): List of POI names.
 
         Returns:
-            List[dict]: List of matched POIs with name, description, and optional location data.
+            list[dict]: Each dict contains {name, longitude, latitude, description}.
         """
-        matched_pois = []
-        seen_names = set()  # To avoid duplicate POIs
+        if self.balltree_df is None:
+            raise ValueError("BallTree dataframe not initialized. Run build_balltree() first.")
 
-        for name_query in name_list:
-            for unit in self.units.values():
-                try:
-                    matched_names = unit.match_names_vector(name_query, top_k=top_k)
-                    if matched_names:
-                        for name in matched_names:
-                            if name in seen_names:
-                                continue
-                            poi_row = unit.data[unit.data['name'] == name].iloc[0]
-                            result = {
-                                'name': poi_row['name'],
-                                'description': poi_row['description']
-                            }
-                            if 'longitude' in poi_row and 'latitude' in poi_row:
-                                result['longitude'] = poi_row['longitude']
-                                result['latitude'] = poi_row['latitude']
-                            matched_pois.append(result)
-                            seen_names.add(name)
-                except Exception as e:
-                    print(f"[{unit.name}] Location lookup error: {e}")
+        details = []
+        for name in poi_names:
+            row = self.balltree_df.loc[self.balltree_df['name'] == name]
+            if row.empty:
+                continue  # skip missing names (or raise if strict required)
 
-        return matched_pois
-    
-    def get_all_pois_as_dataframe(self):
-        all_dfs = []
-        for unit in self.units.values():
-            df = unit.get_data()
-            all_dfs.append(df)
-        if all_dfs:
-            return pd.concat(all_dfs, ignore_index=True)
-        else:
-            return pd.DataFrame()
+            r = row.iloc[0]
+            details.append({
+                "name": r["name"],
+                "longitude": r["longitude"],
+                "latitude": r["latitude"],
+                "description": r.get("description", "")
+            })
 
-    def query_by_tags(self, tags: List[str], attractions_only: bool = False, top_k: int = 5) -> List[dict]:
-        all_results = []
-        for unit in self.units.values():
-            try:
-                results = unit.filter_by_tags(tags, attractions_only=attractions_only, top_k=top_k)
-                for r in results:
-                    r['source'] = unit.name
-                    all_results.append(r)
-            except Exception as e:
-                print(f"Error querying unit {unit.name}: {e}")
-        
-        # Sort by similarity score if present
-        sorted_results = sorted(
-            all_results, 
-            key=lambda x: x.get("similarity", 0), 
-            reverse=True
-        )
-        return sorted_results[:top_k]
-    
-    def get_relevant_pois_from_text_blobs(
-        self,
-        itinerary_text: str,
-        user_input: str,
-        top_k: int = 15,
-        distance_threshold: float = 0.4
-    ) -> List[str]:
-        """
-        Use vector search across all RAG units to find POIs related to itinerary and user input.
-        """
-        text_blobs = [itinerary_text, user_input]
-        matched_pois = set()
-
-        for rag_unit in self.rag_units:
-            for blob in text_blobs:
-                matches = rag_unit.match_names_vector(
-                    input_text=blob,
-                    top_k=top_k,
-                    distance_threshold=distance_threshold,
-                    is_facility=False
-                )
-                matched_pois.update(matches)
-
-        return list(matched_pois)
-    
-    def itinerary_dining_search(self, schema: dict, top_k: int = 5):
-        preference = schema.get("dining_preference")
-        results = []
-
-        for unit in self.units.values():
-            try:
-                # Only proceed if dining index is available
-                if unit.dining_index is not None and unit.dining_data is not None:
-                    if preference:
-                        # Encode the preference query
-                        query_vec = unit.embedding_model.encode([preference], convert_to_numpy=True)
-                        query_vec = np.atleast_2d(query_vec).astype('float32')
-
-                        # Search in dining-only FAISS index
-                        distances, indices = unit.dining_index.search(query_vec, top_k)
-                        for rank, idx in enumerate(indices[0]):
-                            if idx < len(unit.dining_data):
-                                row = unit.dining_data.iloc[idx]
-                                results.append({
-                                    "name": row["name"],
-                                    "description": row["description"],
-                                    'longitude': row.get('longitude', None),
-                                    'latitude': row.get('latitude', None),
-                                    "category": row["category"],
-                                    "similarity": float(distances[0][rank]),
-                                    "source": unit.name
-                                })
-                    else:
-                        # No preference: return a small sample of dining places
-                        sample = unit.dining_data.head(top_k)
-                        for _, row in sample.iterrows():
-                            results.append({
-                                "name": row["name"],
-                                "description": row["description"],
-                                "category": row["category"],
-                                'longitude': row.get('longitude', None),
-                                'latitude': row.get('latitude', None),
-                                "similarity": None,
-                                "source": unit.name
-                            })
-
-            except Exception as e:
-                print(f"Error querying unit {unit.name}: {e}")
-
-        # Sort results by similarity if available
-        sorted_results = sorted(
-            results, key=lambda x: (x["similarity"] is not None, -x["similarity"] if x["similarity"] is not None else 0)
-        )
-
-        return sorted_results[:top_k]
-
-##################################### Other Functions #####################################
-
+        return details

@@ -61,8 +61,9 @@ export async function postMessage(message, chatMessages) {
         }
 
         let data = await response.json();
-        if (data.gatheredData) {
-            let gatheredData = data.gatheredData;
+        console.log("Response from server:", data);
+        if (data.poiData) {
+            let gatheredData = data.poiData;
 
             // Extract names and coordinates
             let placeNames = gatheredData.map(poi => poi.name);

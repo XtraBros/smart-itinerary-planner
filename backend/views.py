@@ -5,7 +5,6 @@ import os
 from pyvis.network import Network
 import json
 from werkzeug.utils import secure_filename
-from helpers.route_solver import update_ball_tree
 from helpers.model import LLMPipeline
 
 @backend_bp.route('/')
@@ -107,7 +106,7 @@ def remove_rag_unit():
 
         # === HERE: Update app.poi_df and balltree ===
         app.poi_df = rag.get_all_pois_as_dataframe()
-        app.balltree = update_ball_tree(app.poi_df)
+        app.balltree = rag.update_ball_tree(app.poi_df)
         app.rag = rag
         return jsonify({"message": f"RAG Unit {unit_id} removed."}), 200
     return jsonify({"error": f"RAG Unit {unit_id} not found."}), 404

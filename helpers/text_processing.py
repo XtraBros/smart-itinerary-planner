@@ -116,6 +116,10 @@ def format_paragraphs(text):
     return formatted_text
 
 def process_formatted_history(history):
+    if isinstance(history, dict) and "history" in history:
+        history = history["history"]
+    if not isinstance(history, str):
+        raise ValueError("Expected history to be a string or dict containing 'history'")
     lines = history.strip().split("\n")
     processed_history = []
     
@@ -193,3 +197,18 @@ def extract_previous_itinerary_from_history(history: str) -> Optional[str]:
     if itinerary_match:
         return itinerary_match.group()
     return None
+
+def clean_and_filter_response(response_text, poi_data):
+    # Step 1: Replace NaN with None in poiData
+    for poi in poi_data:
+        for key, value in poi.items():
+            if isinstance(value, float) and math.isnan(value):
+                poi[key] = None
+
+    # Step 2: Extract POI names mentioned in the response HTML
+    mentioned_pois = set(re.findall(r'>([^<]+)</a>', response_text))
+
+    # Step 3: Filter POIs to only keep those mentioned
+    filtered_pois = [poi for poi in poi_data if poi["name"] in mentioned_pois]
+
+    return response_text, filtered_pois

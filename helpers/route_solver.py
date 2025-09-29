@@ -144,67 +144,32 @@ def find_nearby_with_tree(ball_tree, poi_df, user_location, radius_m=100):
 
     return results.sort_values('distance_m')[['name', 'latitude', 'longitude', 'distance_m']].to_dict(orient='records')
 
-def build_balltree_from_rag_platform(rag_platform: RAGPlatform):
-    all_pois = []
+def get_distance_from_poi(poi_location, user_location):
+    def haversine(coord1, coord2):
+        # Coordinates in decimal degrees (e.g. (lng, lat))
+        lon1, lat1 = coord1
+        lon2, lat2 = coord2
+        
+        # Radius of Earth in meters
+        R = 6371000  
+        
+        # Convert decimal degrees to radians
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        
+        delta_phi = math.radians(lat2 - lat1)
+        delta_lambda = math.radians(lon2 - lon1)
+        
+        # Haversine formula
+        a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+        # Distance in meters
+        distance = R * c
+        
+        return distance
 
-    for unit in rag_platform.units.values():
-        try:
-            df = unit.get_location_data()
-            if not df.empty:
-                all_pois.append(df)
-        except Exception as e:
-            print(f"[{unit.id}] Failed to fetch location data: {e}")
-
-    if not all_pois:
-        raise ValueError("No POIs with valid coordinates found.")
-
-    combined_df = pd.concat(all_pois, ignore_index=True)
-    coords_rad = np.radians(combined_df[['latitude', 'longitude']].values)
-    tree = BallTree(coords_rad, metric='haversine')
-
-    return tree, combined_df
-
-def update_ball_tree(poi_df):
-    coordinates_rad = np.radians(poi_df[['latitude', 'longitude']].values)
-    ball_tree = BallTree(coordinates_rad, metric='haversine')
-    return ball_tree
-
-def solve_route_with_balltree(place_names, poi_df, tree):
-    dist_df = build_distance_matrix_from_balltree(place_names, poi_df, tree)
-    permutation = solve_tsp(dist_df)
-    return permutation
-
-def build_distance_matrix_from_balltree(place_names, poi_df, tree):
-    # Get indices and coordinates for selected POIs
-    name_to_index = {name: idx for idx, name in enumerate(poi_df['name'])}
-    indices = [name_to_index[name] for name in place_names]
-    coords_subset = np.radians(poi_df.iloc[indices][['latitude', 'longitude']].to_numpy())
-    
-    # Use haversine distance (returns in radians, multiply by Earth's radius to get meters)
-    earth_radius = 6371000  # in meters
-    dist_matrix = np.zeros((len(indices), len(indices)))
-    
-    for i, coord in enumerate(coords_subset):
-        # BallTree returns distance to all points (including itself)
-        dists, _ = tree.query([coord], k=len(coords_subset))
-        dist_matrix[i] = dists[0][:len(indices)] * earth_radius
-
-    return pd.DataFrame(dist_matrix, index=place_names, columns=place_names)
-
-
-def build_graph_from_balltree(poi_df, tree, coords_rad, k=5):
-    earth_radius = 6371000  # in meters
-    G = nx.Graph()
-
-    names = poi_df['name'].tolist()
-    for i, name in enumerate(names):
-        G.add_node(name, pos=(poi_df.loc[i, 'longitude'], poi_df.loc[i, 'latitude']))
-
-        # Query k nearest neighbors (excluding self)
-        dist, ind = tree.query([coords_rad[i]], k=k+1)
-        for j, d in zip(ind[0][1:], dist[0][1:]):  # skip self
-            neighbor_name = names[j]
-            distance_m = d * earth_radius
-            G.add_edge(name, neighbor_name, weight=distance_m)
-
-    return G
+    # Calculate the distance using the Haversine formula
+    distance = haversine(poi_location, user_location)
+    print(f"== Distance from POI == {distance}")
+    return distance
