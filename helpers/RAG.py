@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import Dict, List, Optional
 from sklearn.neighbors import BallTree
 import networkx as nx
-
+from helpers.text_processing import normalize_name
 class RAGUnit:
     def __init__(
         self,
@@ -35,9 +35,6 @@ class RAGUnit:
         self.tag_embeddings = None
 
         # FAISS indices
-        self.name_index = None
-        self.description_index = None
-        self.tag_index = None
         self.dining_index = None
         self.dining_data = None
 
@@ -75,6 +72,10 @@ class RAGUnit:
             index.add(embeddings.astype("float32"))
             setattr(self, f"{field}_embeddings", embeddings)
             setattr(self, f"{field}_index", index)
+        self.name_to_idx = {
+            normalize_name(name): i
+            for i, name in enumerate(self.data["name"].astype(str).tolist())
+        }
 
         # Optional dining index
         if "category" in self.data.columns:
@@ -110,6 +111,7 @@ class RAGUnit:
                     "latitude": row.get("latitude"),
                     "category": row.get("category", ""),
                     "operating_hours": row.get("operating_hours", ""),
+                    "similarity": float(distances[0][rank]),
                     "tags": row.get("tags", ""),})
         return results
 
@@ -132,14 +134,58 @@ class RAGUnit:
             if required.issubset(self.data.columns):
                 return self.data[list(required)].dropna()
         return pd.DataFrame(columns=["name", "longitude", "latitude"])
+    
+    def get_vector(self, poi_name: str, field: str = "description") -> Optional[np.ndarray]:
+        """
+        Return the embedding vector for a POI by name.
+        """
+        if field != "description":
+            raise NotImplementedError("Currently only supports description vectors")
+        
+        if not hasattr(self, "name_to_idx") or self.description_embeddings is None:
+            return None
 
+        idx = self.name_to_idx.get(normalize_name(poi_name))
+        if idx is None:
+            return None
+        return self.description_embeddings[idx]
+                
 
 class RAGPlatform:
     def __init__(self, rag_units: List[RAGUnit] = None):
         self.units: Dict[str, RAGUnit] = {unit.id: unit for unit in rag_units or []}
 
+    def has_units(self) -> bool:
+        return len(self.units) > 0
+
     def add_unit(self, unit: RAGUnit):
         self.units[unit.id] = unit
+    
+    def remove_unit_by_id(self, unit_id: str) -> bool:
+        """
+        Remove a RAGUnit from the platform by ID and refresh BallTree + dataframe.
+
+        Args:
+            unit_id (str): The ID of the unit to remove.
+
+        Returns:
+            bool: True if the unit was removed, False if not found.
+        """
+        if unit_id not in self.units:
+            return False
+
+        # Remove the unit
+        del self.units[unit_id]
+
+        # Refresh poi_df and balltree
+        if self.has_units():
+            self.balltree, self.balltree_df = self.build_balltree()
+        else:
+            # Reset if no units left
+            self.balltree_df = None
+            self.balltree = None
+
+        return True
 
     def query_by_name(self, query_text: str, top_k: int = 5) -> List[dict]:
         return self._aggregate_query("name", query_text, top_k)
@@ -168,8 +214,8 @@ class RAGPlatform:
         Hybrid retrieval between tags and descriptions using weighted score fusion.
         alpha = weight for description score (0-1).
         """
-        desc_results = self.query_by("description", query_text, top_k * 2)
-        tag_results = self.query_by("tags", query_text, top_k * 2)
+        desc_results = self.query_by_description(query_text, top_k * 2)
+        tag_results = self.query_by_tags(query_text, top_k * 2)
 
         # Build lookup tables for merging
         merged = {}
@@ -203,7 +249,9 @@ class RAGPlatform:
         all_pois = []
         for unit in self.units.values():
             try:
-                df = unit.get_location_data()
+                df = unit.get_data()  # <-- full dataframe with all columns
+                # Make sure to drop rows with missing coordinates
+                df = df.dropna(subset=["latitude", "longitude"])
                 if not df.empty:
                     all_pois.append(df)
             except Exception as e:
@@ -216,9 +264,10 @@ class RAGPlatform:
         coords_rad = np.radians(combined_df[['latitude', 'longitude']].values)
         tree = BallTree(coords_rad, metric='haversine')
 
-        self.balltree_df = combined_df
+        self.balltree_df = combined_df  # now contains all POI columns
         self.balltree = tree
         return tree, combined_df
+
 
     def update_balltree(self, poi_df):
         """Rebuild BallTree from a given POI dataframe."""
@@ -363,3 +412,10 @@ class RAGPlatform:
             })
 
         return details
+    
+    def get_poi_vector(self, poi_name: str, field: str = "description") -> Optional[np.ndarray]:
+        for unit in self.units.values():
+            vec = unit.get_vector(poi_name, field)
+            if vec is not None:
+                return vec
+        return None

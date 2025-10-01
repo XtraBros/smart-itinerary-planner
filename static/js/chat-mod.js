@@ -53,7 +53,7 @@ export async function postMessage(message, chatMessages) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message: message, userLocation: sharedState.userLocation })
+            body: JSON.stringify({ message: message, user_location: sharedState.userLocation })
         });
 
         if (!response.ok) {
@@ -76,7 +76,7 @@ export async function postMessage(message, chatMessages) {
             appendMessage({
                 text: data.response ? data.response.replace(/\*/g, "") : '',
                 chatMessages,
-                type: 'location',
+                type: data.task,
                 placeNames: placeNames,
                 longAndlat: coordinates,
             });
@@ -115,7 +115,7 @@ export function appendMessage({ text, className, chatMessages, type, suggestion,
                 bloaDox.remove();
             }
         }
-        if ((type === 'route' || type === 'location') && !(placeNames && placeNames.length > 1)) {
+        if ((type === 'navigation' || type === 'introduction') && !(placeNames && placeNames.length > 1)) {
             chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
             <div class='guideText'>

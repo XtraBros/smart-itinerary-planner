@@ -1,67 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <title>RAG Manager</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!DOCTYPE html><html lang="en"> <head> <meta charset="UTF-8" /> <title>RAG Manager</title> <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Your CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f9f9f9;
-            margin: 0;
-            padding: 0;
-        }
+<!-- Your CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f9f9f9;
+        margin: 0;
+        padding: 0;
+    }
 
-        header {
-            background-color: #1f2937;
-            color: white;
-            padding: 1rem;
-            text-align: center;
-        }
+    header {
+        background-color: #1f2937;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+    }
 
-        main {
-            padding: 2rem;
-        }
+    main {
+        padding: 2rem;
+    }
 
-        .disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
+    .disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
 
-        /* Your inline styles */
-        .unit-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 16px;
-            padding: 20px;
-        }
-        .unit-box {
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            padding: 12px;
-            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-        }
-        .unit-box h3 {
-            margin-top: 0;
-        }
-        .unit-box button {
-            margin-top: 10px;
-            padding: 5px 10px;
-            background-color: #e57373;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .unit-box button:hover {
-            background-color: #c62828;
-        }
-    </style>
+    .unit-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 16px;
+        padding: 20px;
+    }
+    .unit-box {
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    }
+    .unit-box h3 {
+        margin-top: 0;
+    }
+    .unit-box button {
+        margin-top: 10px;
+        padding: 5px 10px;
+        background-color: #e57373;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .unit-box button:hover {
+        background-color: #c62828;
+    }
+</style>
 </head>
-
 <body>
     <header>
         <h1>RAG Unit Manager</h1>
@@ -69,9 +62,9 @@
 
     <main>
         <div id="unit-container" class="unit-grid"></div>
-
+    
         <button class="add-btn" onclick="openAddModal()">Add New Unit</button>
-
+    
         <div
             id="loadingModal"
             style="display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); color: white; align-items: center; justify-content: center; text-align: center;"
@@ -80,7 +73,7 @@
                 <h2 id="loadingText">Loading...</h2>
             </div>
         </div>
-
+    
         <!-- Add Unit Modal -->
         <div
             id="addModal"
@@ -98,58 +91,18 @@
                     <label>Description:</label>
                     <input type="text" id="unitDescription" style="width:100%" /><br /><br />
                 </div>
-                <label>Source Type:</label>
-                <select id="sourceType" name="sourceType" onchange="updateSourceFields()">
-                    <option value="">-- Select Source --</option>
-                    <option value="csv">CSV</option>
-                    <option value="index">Index</option>
-                    <option value="mongodb">MongoDB</option>
-                    <option value="sql">SQL</option>
-                    <option value="json">JSON</option>
-                </select>
-
-                <div id="csv-fields" style="display:none;">
+    
+                <div>
                     <label>Upload CSV File:</label>
                     <input type="file" id="csvFile" />
                 </div>
-                <div id="json-fields" style="display:none;">
-                    <label>Upload JSON File:</label>
-                    <input type="file" id="jsonFile" />
-                </div>
-
-                <div id="index-fields" style="display:none;">
-                    <label>Upload Index File (.pkl or .index):</label>
-                    <input type="file" id="indexFile" />
-                </div>
-
-                <div id="mongodb-fields" style="display:none;">
-                    <label>Mongo URI:</label>
-                    <input type="text" id="mongoUrl" /><br />
-                    <label>Database:</label>
-                    <input type="text" id="mongoDb" /><br />
-                    <label>Collection:</label>
-                    <input type="text" id="mongoCollection" /><br />
-                </div>
-
-                <div id="sql-fields" style="display:none;">
-                    <label>SQL Host:</label>
-                    <input type="text" id="host" /><br />
-                    <label>Port:</label>
-                    <input type="text" id="port" /><br />
-                    <label>User:</label>
-                    <input type="text" id="user" /><br />
-                    <label>Database:</label>
-                    <input type="text" id="database" /><br />
-                    <label>Query:</label>
-                    <textarea name="query"></textarea
-                    ><br />
-                </div>
+    
                 <br />
                 <button onclick="submitAddUnit()">Submit</button>
                 <button onclick="closeAddModal()">Cancel</button>
             </div>
         </div>
     </main>
-    <script src="{{ url_for('static', filename='js/rag-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/rag-manager.js') }}"></script>    
 </body>
 </html>

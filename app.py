@@ -6,6 +6,7 @@ from langchain.memory import ConversationBufferWindowMemory
 from helpers.RAG import RAGUnit, RAGPlatform
 from helpers.model import LLMPipeline
 from helpers.route_solver import get_distance_from_poi
+from helpers.rpm import RetrievalPolicyManager
 from backend.views import backend_bp
 from api.routes import routes_bp
 
@@ -36,6 +37,8 @@ unit = RAGUnit(
     name="Sentosa Island"
 )
 app.rag = RAGPlatform([unit])
+print("RAG loaded with units:", app.rag.list_units())
+app.rpm = RetrievalPolicyManager(app.rag)
 app.balltree, app.poi_df = app.rag.build_balltree()
 app.graph = app.rag.build_graph()
 

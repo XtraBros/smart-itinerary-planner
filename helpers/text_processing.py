@@ -212,3 +212,31 @@ def clean_and_filter_response(response_text, poi_data):
     filtered_pois = [poi for poi in poi_data if poi["name"] in mentioned_pois]
 
     return response_text, filtered_pois
+
+
+def detect_nearby_intent(query: str, threshold: int = 80) -> bool:
+    q = query.lower()
+    NEARBY_KEYWORDS = ["nearby", "closest", "around me", "near me", "near by"]
+    # split into words/phrases
+    tokens = q.split()
+    for token in tokens:
+        for kw in NEARBY_KEYWORDS:
+            score = fuzz.ratio(token, kw)  # 0-100
+            if score >= threshold:
+                return True
+    # also check multi-word patterns
+    for kw in NEARBY_KEYWORDS:
+        score = fuzz.ratio(q, kw)
+        if score >= threshold:
+            return True
+    return False
+
+def normalize_name(name: str) -> str:
+    if not name:
+        return ""
+    name = name.strip().lower()
+    # Remove punctuation except spaces and letters/numbers
+    name = re.sub(r"[^\w\s]", "", name)
+    # Collapse multiple spaces
+    name = re.sub(r"\s+", " ", name)
+    return name

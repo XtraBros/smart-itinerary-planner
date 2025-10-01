@@ -5,6 +5,7 @@ from helpers.prompts import *
 from helpers.route_solver import *
 from helpers.planner import *
 from helpers.tasks import TASK_HANDLERS, classify_task
+import ast
 
 routes_bp = Blueprint("routes", __name__)
 
@@ -12,27 +13,28 @@ routes_bp = Blueprint("routes", __name__)
 def ops_router():
     data = request.get_json()
     query = data.get("message", "")
-    user_location = data.get("user_location", "unknown")
+    user_location = data.get("user_location", {})
+    print(user_location)
     if not query:
         return jsonify({"error": "Query is required"}), 400
 
     # Step 1: classify
-    task_type = classify_task(query)
-
+    task_type, spatial_type = classify_task(query)
+    print(f"=========> Ops Router Classification: {task_type, spatial_type}")
     # Step 2: route to handler
     handler = TASK_HANDLERS.get(task_type)
     if not handler:
         return jsonify({"error": f"No handler found for task {task_type}"}), 500
 
     # Step 3: execute and get results
-    result = handler(current_app, query, user_location)
+    result = handler(current_app, query, user_location, spatial_type)
     response_text = result.get('response', '')
     poi_data = result.get('poi_data', [])
     # Step 4: Post-processing to insert links and other features
     response, poi_data = clean_and_filter_response(hyperlink_pois_in_response(response_text, poi_data), poi_data)
     print({"response": response, "poiData": poi_data})
     current_app.memory.save_context({"input": query}, {"output": response})
-    return jsonify({"response": response, "poiData": poi_data}), 200
+    return jsonify({"response": response, "poiData": poi_data, "task": task_type}), 200
 
 
 @routes_bp.route('/find_nearby_pois', methods=['POST'])
@@ -50,7 +52,7 @@ def find_nearby_pois():
         indices = current_app.balltree.query_radius(user_coords_rad, r=radius_rad)[0]
         nearby_poi_names = current_app.poi_df.iloc[indices]["name"].tolist()
 
-        return jsonify(nearby_poi_names)
+        return jsonify(nearby_poi_names), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
