@@ -5,6 +5,7 @@ export function systemQuestionFunc(e) {
     const chatMessages = document.getElementById("chatbot-messages");
     postMessage(e.target.innerText, chatMessages);
 }
+window.systemQuestionFunc = systemQuestionFunc;
 
 export function submitChat(event) {
     if (event.key === "Enter") {

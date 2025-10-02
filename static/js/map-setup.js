@@ -658,13 +658,13 @@ export function addMarkers(placeNames) {
             const parser = new DOMParser();
 
             placeNames.forEach((placeName, index) => {
-                const placeInfo = placesData.find(p => p.name === placeName);
+                const placeInfo = placesData[placeName];
                 if (!placeInfo) {
                     console.error(`Place not found in response: ${placeName}`);
                     return;
                 }
 
-                const coord = [placeInfo.longitude, placeInfo.latitude];
+                const coord = placeInfo.location;
                 const description = placeInfo.description || '';
 
                 if (!coord || coord.length !== 2 || isNaN(coord[0]) || isNaN(coord[1])) {
