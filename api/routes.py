@@ -47,12 +47,26 @@ def find_nearby_pois():
         if not user_loc or "latitude" not in user_loc or "longitude" not in user_loc:
             return jsonify({"error": "Missing or invalid location"}), 400
 
-        user_coords_rad = np.radians([[user_loc["latitude"], user_loc["longitude"]]])
-        radius_rad = radius_m / 6371000.0
-        indices = current_app.balltree.query_radius(user_coords_rad, r=radius_rad)[0]
-        nearby_poi_names = current_app.poi_df.iloc[indices]["name"].tolist()
+        # Access the global RAGPlatform instance
+        rag_platform = current_app.rag 
 
-        return jsonify(nearby_poi_names), 200
+        if not rag_platform.balltree or rag_platform.balltree_df is None:
+            return jsonify({"error": "BallTree not built. Please rebuild the index."}), 500
+
+        # Convert user coordinates into radians
+        user_coords_rad = np.radians([[user_loc["latitude"], user_loc["longitude"]]])
+        radius_rad = radius_m / 6371000.0  # meters -> radians on Earth sphere
+
+        # Query the BallTree
+        indices = rag_platform.balltree.query_radius(user_coords_rad, r=radius_rad)[0]
+
+        # Get full POI rows
+        nearby_pois = rag_platform.balltree_df.iloc[indices]
+        nearby_pois = nearby_pois.where(pd.notnull(nearby_pois), None)
+        # Turn into JSON-safe objects (dicts)
+        pois_serializable = nearby_pois.to_dict(orient="records")
+
+        return jsonify(pois_serializable), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

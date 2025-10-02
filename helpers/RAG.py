@@ -392,7 +392,7 @@ class RAGPlatform:
             poi_names (list[str]): List of POI names.
 
         Returns:
-            list[dict]: Each dict contains {name, longitude, latitude, description}.
+            list[dict]: Each dict contains the row of data corresponding to the POI name.
         """
         if self.balltree_df is None:
             raise ValueError("BallTree dataframe not initialized. Run build_balltree() first.")
@@ -404,12 +404,7 @@ class RAGPlatform:
                 continue  # skip missing names (or raise if strict required)
 
             r = row.iloc[0]
-            details.append({
-                "name": r["name"],
-                "longitude": r["longitude"],
-                "latitude": r["latitude"],
-                "description": r.get("description", "")
-            })
+            details.append(r)
 
         return details
     
