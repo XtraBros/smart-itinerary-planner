@@ -30,6 +30,8 @@ class RetrievalPolicyManager:
             return self._hybrid_flow(query_text, lat, lon, top_k, radius_km)
         elif intent == "semantic":
             return self._semantic_flow(query_text, lat, lon, top_k, radius_km)
+        elif intent == "navigation":
+            return self._navigation_flow(query_text, lat, lon, top_k, radius_km)
         else:
             raise ValueError(f"Unknown intent: {intent}")
 
@@ -43,15 +45,8 @@ class RetrievalPolicyManager:
         return spatial_results
 
     def _semantic_flow(self, query_text, lat, lon, top_k, radius_km):
-        # Step 1: Semantic search
+        # Semantic search
         semantic_results = self.rag.hybrid_query(query_text, top_k=top_k*2)
-
-        # Step 2: Filter by distance if user location given
-        if lat and lon and radius_km:
-            semantic_results = [
-                r for r in semantic_results 
-                if r.get("distance_km", float("inf")) <= radius_km
-            ]
         return semantic_results[:top_k]
 
     def _hybrid_flow(self, query_text, lat, lon, top_k, radius_km):

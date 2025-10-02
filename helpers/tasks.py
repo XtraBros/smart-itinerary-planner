@@ -19,11 +19,19 @@ TASK_TYPES = ["generic", "navigation", "introduction", "recommendation", "itiner
 
 CLASSIFIER_PROMPT = """
 You are a task classifier for a travel assistant app.
-Classify the following user query into exactly one of these task types: "{task_types}", and tag if the query requires spatial data (e.g. nearby locations).
-Structure your response as a dictionary with keys "task" and "spatial", where "task" is one of the task types, and "spatial" is a boolean indicating if spatial data is needed.
-Rules:
-- Always return only the task type, nothing else.
-- If unsure, default to "generic".
+Classify the following user query into exactly one of these task types: "{task_types}", 
+and tag if the query requires spatial data (e.g. searching for POIs near the user’s current location).
+
+Structure your response as a dictionary with keys:
+- "task": one of the task types
+- "spatial": a boolean
+
+Rules for spatial:
+- Mark "spatial" as True ONLY if the query explicitly refers to the user’s location or a relative area, 
+  such as "near me", "close by", "around here", "within X metres/miles", "nearby", "in this area".
+- Do NOT mark "spatial" as True if the query asks about a specific named place 
+  (e.g., "Where is the xx Hotel?", "How do I get to Marina Bay Sands?").
+- If unsure, default "spatial" to False.
 
 When to use each task type:
 - "generic": For general questions about the locale, culture, or any non-specific inquiries.
@@ -32,6 +40,10 @@ When to use each task type:
 - "recommendation": For requests for suggestions on places to visit, eat, or activities to do.
 - "itinerary": For requests to plan a trip or create a schedule of activities.
 
+Return ONLY valid JSON in this exact format:
+{{"task": "<one of {task_types}>", "spatial": <true or false>}}
+
+Do not include explanations or extra text.
 User query: "{query}"
 """
 
@@ -114,7 +126,7 @@ def handle_navigation(app, query: str, user_location: str, spatial_type: bool = 
     # Response Generation
     prompt = f"""
     You are a helpful assistant working in {locale_name}. The user wants to know how to get to a given place. Give the user a brief introduction of the POI. The location will be provided on the user's map UI.
-    Refer to the following data related to the POI to most accurately respond to the user's query about the POI, and inform them that the POI has been marked on their map.
+    Refer to the following data related to the POI to most accurately respond to the user's query about the POI, and inform them that the POI has been marked on their map. You do not need to provide the coordinates of the POI.
     User location: {user_location}
     POI Data: {poi_data}
     Chat history:

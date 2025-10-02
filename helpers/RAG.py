@@ -216,6 +216,7 @@ class RAGPlatform:
         """
         desc_results = self.query_by_description(query_text, top_k * 2)
         tag_results = self.query_by_tags(query_text, top_k * 2)
+        name_results = self.query_by_name(query_text, top_k * 2)
 
         # Build lookup tables for merging
         merged = {}
@@ -227,6 +228,15 @@ class RAGPlatform:
             }
 
         for r in tag_results:
+            if r["name"] in merged:
+                merged[r["name"]]["tag_score"] = 1.0 / (1.0 + r["similarity"])
+            else:
+                merged[r["name"]] = {
+                    **r,
+                    "desc_score": 0.0,
+                    "tag_score": 1.0 / (1.0 + r["similarity"])
+                }
+        for r in name_results:
             if r["name"] in merged:
                 merged[r["name"]]["tag_score"] = 1.0 / (1.0 + r["similarity"])
             else:

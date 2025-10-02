@@ -32,7 +32,9 @@ def ops_router():
     poi_data = result.get('poi_data', [])
     # Step 4: Post-processing to insert links and other features
     response, poi_data = clean_and_filter_response(hyperlink_pois_in_response(response_text, poi_data), poi_data)
-    print({"response": response, "poiData": poi_data})
+    if len(poi_data) < 1:
+        task_type = "generic"  # reset to generic if no poi data found
+    # print({"response": response, "poiData": poi_data})
     current_app.memory.save_context({"input": query}, {"output": response})
     return jsonify({"response": response, "poiData": poi_data, "task": task_type}), 200
 
@@ -92,7 +94,15 @@ def get_coordinates():
 def place_info():
     rag = current_app.rag
     places = request.json['places']
-    return jsonify(rag.get_poi_details(places))
+    poi_data = rag.get_poi_details(places)
+    response = {}
+    for i in poi_data:
+        response[i["name"]] = {
+            "description": i['description'],
+            "location": [i['longitude'],i['latitude']]
+        }
+    print(response)
+    return jsonify(response)
 
 
 @routes_bp.route('/calculate_distances', methods=['POST'])
