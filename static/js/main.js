@@ -166,11 +166,20 @@ fetch('/config')
         });
         // variable to allow resizing function
         window.mapboxMap = map;
-        // const bounds = [
-        //     [103.6, 1.2],  // 西南角 (大致在西南海域)
-        //     [104.1, 1.5]   // 东北角 (大致在东北海域)
-        // ];
-        // map.setMaxBounds(bounds);
+        fetch("/get_bounds")
+            .then(res => res.json())
+            .then(data => {
+                if (data.bounds) {
+                sharedState.map.fitBounds(data.bounds, {
+                    padding: 50,
+                    maxZoom: 14,     // prevent zooming in too far
+                    duration: 1000   // smooth animation
+                });
+
+                // Optionally restrict user panning outside this area
+                sharedState.map.setMaxBounds(data.bounds);
+                }
+            });
         const geolocationCogif = {
             positionOptions: {
                 enableHighAccuracy: true,

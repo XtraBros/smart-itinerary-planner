@@ -161,6 +161,15 @@ def fetch_by_category():
         return jsonify({"error": str(e)}), 500
 
 
+@routes_bp.route("/get_bounds")
+def get_bounds():
+    try:
+        rag = current_app.rag
+        bounds = rag.get_bounds_from_balltree()
+        return jsonify({"bounds": bounds})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @routes_bp.route("/reset_memory")
 def reset_memory():
     current_app.memory.clear()

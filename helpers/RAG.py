@@ -440,3 +440,48 @@ class RAGPlatform:
 
         filtered = self.balltree_df[self.balltree_df["category"].str.lower() == category.lower()]
         return filtered.reset_index(drop=True)
+    
+    def get_all_pois_as_dataframe(self):
+        """
+        Combine all POI dataframes from RAGUnits into one large dataframe.
+        """
+        import pandas as pd
+
+        all_dfs = []
+        for unit in self.units.values():
+            try:
+                df = unit.get_location_data()
+                if not df.empty:
+                    all_dfs.append(df)
+            except Exception as e:
+                print(f"[{unit.id}] Failed to fetch POIs: {e}")
+
+        if not all_dfs:
+            return pd.DataFrame(columns=[
+                "id", "name", "category", "longitude", "latitude",
+                "description", "operating_hours", "tags"
+            ])
+
+        return pd.concat(all_dfs, ignore_index=True)
+    
+    def get_bounds_from_balltree(self, padding_ratio: float = 0.02):
+        """
+        Return the geographic bounding box (min_lon, min_lat, max_lon, max_lat)
+        for all POIs in degrees, with optional small padding.
+        """
+        if self.balltree_df is None or self.balltree_df.empty:
+            raise ValueError("No POIs available to compute bounds")
+
+        min_lon = self.balltree_df["longitude"].min()
+        max_lon = self.balltree_df["longitude"].max()
+        min_lat = self.balltree_df["latitude"].min()
+        max_lat = self.balltree_df["latitude"].max()
+
+        # Compute range-based padding (2% of range by default)
+        lon_padding = (max_lon - min_lon) * padding_ratio
+        lat_padding = (max_lat - min_lat) * padding_ratio
+
+        return [
+            [min_lon - lon_padding, min_lat - lat_padding],
+            [max_lon + lon_padding, max_lat + lat_padding]
+        ]
