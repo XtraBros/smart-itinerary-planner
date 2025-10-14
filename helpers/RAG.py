@@ -424,3 +424,19 @@ class RAGPlatform:
             if vec is not None:
                 return vec
         return None
+    
+    def filter_by_category(self, category: str):
+        """
+        Return all POIs from all units that match the given category.
+
+        Args:
+            category (str): Category name to filter by.
+
+        Returns:
+            pd.DataFrame: Filtered POIs with matching category.
+        """
+        if self.balltree_df is None or self.balltree_df.empty:
+            raise ValueError("No POIs available. Make sure BallTree dataframe is built.")
+
+        filtered = self.balltree_df[self.balltree_df["category"].str.lower() == category.lower()]
+        return filtered.reset_index(drop=True)

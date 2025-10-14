@@ -143,15 +143,18 @@ def fetch_by_category():
         if not category:
             return jsonify({"error": "No category provided"}), 400
 
-        results = rag.search_by_field("category", category)
+        results = rag.filter_by_category(category)
+        print(results.columns)
         place_info = {
-            item.get("name"): {
-                "description": item.get("description"),
-                "longitude": item.get("longitude"),
-                "latitude": item.get("latitude")
+            row["name"]: {
+                "description": row.get("description", ""),
+                "longitude": row.get("longitude"),
+                "latitude": row.get("latitude"),
             }
-            for item in results if item.get("name")
+            for _, row in results.iterrows()
+            if row.get("name")
         }
+        print(place_info)
         return jsonify(place_info)
 
     except Exception as e:
