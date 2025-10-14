@@ -166,7 +166,10 @@ def get_bounds():
     try:
         rag = current_app.rag
         bounds = rag.get_bounds_from_balltree()
-        return jsonify({"bounds": bounds})
+        center_lon = (bounds[0][0] + bounds[1][0]) / 2
+        center_lat = (bounds[0][1] + bounds[1][1]) / 2
+        print(f"Bounds: {bounds}, Center: {[center_lon, center_lat]}")
+        return jsonify({"bounds": bounds, "center": [center_lon, center_lat]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

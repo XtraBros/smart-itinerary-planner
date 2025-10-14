@@ -179,6 +179,12 @@ fetch('/config')
                 // Optionally restrict user panning outside this area
                 sharedState.map.setMaxBounds(data.bounds);
                 }
+                if (data.center) {
+                    sharedState.map.setCenter([
+                      data.center[0],
+                      data.center[1]
+                    ]);
+                }
             });
         const geolocationCogif = {
             positionOptions: {
