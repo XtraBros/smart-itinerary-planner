@@ -181,7 +181,9 @@ def reset_memory():
 
 @routes_bp.route('/api/pois')
 def pois():
-    df = current_app.poi_df[["name", "longitude", "latitude", "clicks"]].copy()
+    df = current_app.poi_df[["name", "longitude", "latitude"]].copy()
+    df['clicks'] = [random.randint(1, 100) for _ in range(len(df))]
+
     return df.to_dict(orient='records')
 
 
