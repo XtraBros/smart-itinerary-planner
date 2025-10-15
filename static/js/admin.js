@@ -279,3 +279,40 @@ toggleBtn.addEventListener("click", () => {
         layout.updateSize(mainArea.offsetWidth, mainArea.offsetHeight);
     }, 310); // after sidebar transition
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById("landing-overlay");
+
+    // Landing page buttons
+    document.querySelectorAll('.grid-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const component = btn.dataset.component;
+            const title = btn.dataset.title;
+
+            // Hide overlay
+            overlay.style.display = "none";
+
+            // Open the component in GoldenLayout
+            if (window.openComponent) {
+                window.openComponent(component, title);
+            }
+        });
+    });
+
+    // Function to check if any component tabs exist
+    function hasOpenComponents() {
+        return layout.root.getItemsByType('component').length > 0;
+    }
+
+    // Show overlay if no components remain
+    if (window.layout) {
+        layout.on('itemDestroyed', () => {
+            // Delay slightly to let GoldenLayout update its structure
+            setTimeout(() => {
+                if (!hasOpenComponents()) {
+                    overlay.style.display = "flex";
+                }
+            }, 50);
+        });
+    }
+});
