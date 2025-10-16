@@ -73,16 +73,93 @@ layout.registerComponent('html-component', function(container, state) {
                 }
 
                 case 'map-manager': {
-                    const script = document.createElement('script');
-                    script.src = '/static/js/map-manager.js';
-                    script.onload = () => {
-                        console.log('map-manager.js loaded');
-                        if (typeof fetchMapConfig === 'function') fetchMapConfig();
-                    };
-                    script.onerror = () => console.error('Failed to load map-manager.js');
-                    document.head.appendChild(script);
+                    console.log('Loading Map Manager...');
+                  
+                    // Load Mapbox CSS + JS once
+                    if (!document.querySelector("link[href*='mapbox-gl.css']")) {
+                      const css = document.createElement('link');
+                      css.rel = 'stylesheet';
+                      css.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
+                      document.head.appendChild(css);
+                    }
+                  
+                    function loadMapbox() {
+                      return new Promise((resolve, reject) => {
+                        if (window.mapboxgl) return resolve();
+                        const script = document.createElement('script');
+                        script.src = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js';
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                      });
+                    }
+                  
+                    // Initialize the map directly in this component
+                    async function initMapManager() {
+                      try {
+                        // 1️⃣ Fetch config (token + style)
+                        const res = await fetch('/config');
+                        const data = await res.json();
+                        const cfg = data.config || {};
+                  
+                        if (!cfg.MAPBOX_ACCESS_TOKEN) {
+                          console.error('Missing MAPBOX_ACCESS_TOKEN in config.');
+                          return;
+                        }
+                  
+                        // 2️⃣ Set up Mapbox
+                        await loadMapbox();
+                        mapboxgl.accessToken = cfg.MAPBOX_ACCESS_TOKEN;
+                  
+                        const mapContainer = document.getElementById('mapPreview');
+                        if (!mapContainer) {
+                          console.warn('Map preview container not found in tab content.');
+                          return;
+                        }
+                  
+                        const styleURL = cfg.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v11';
+                        let center = [103.8198, 1.3521];
+                        if (cfg.MAP_CENTRE) {
+                          try {
+                            const parsed = JSON.parse(cfg.MAP_CENTRE);
+                            if (Array.isArray(parsed) && parsed.length === 2) center = parsed;
+                          } catch (e) {
+                            console.warn('Invalid MAP_CENTRE format in config');
+                          }
+                        }
+                  
+                        // 3️⃣ Initialize the Mapbox map inside #mapPreview
+                        const map = new mapboxgl.Map({
+                          container: 'mapPreview',
+                          style: styleURL,
+                          center: center,
+                          zoom: 12
+                        });
+                  
+                        map.on('load', () => {
+                          new mapboxgl.Marker().setLngLat(center).addTo(map);
+                          map.resize();
+                        });
+                  
+                        // 4️⃣ Optionally load map-manager.js for button logic
+                        const script = document.createElement('script');
+                        script.src = '/static/js/map-manager.js';
+                        script.onload = () => {
+                          console.log('map-manager.js loaded — attached to UI controls.');
+                          if (typeof window.attachMapManagerUI === 'function') {
+                            window.attachMapManagerUI(map, cfg);
+                          }
+                        };
+                        document.head.appendChild(script);
+                  
+                      } catch (err) {
+                        console.error('Failed to initialize Map Manager:', err);
+                      }
+                    }
+                  
+                    initMapManager();
                     break;
-                }
+                  }
 
                 case 'analytics': {
                     console.log('Loading analytics dependencies...');
@@ -304,15 +381,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return layout.root.getItemsByType('component').length > 0;
     }
 
-    // Show overlay if no components remain
-    if (window.layout) {
-        layout.on('itemDestroyed', () => {
-            // Delay slightly to let GoldenLayout update its structure
-            setTimeout(() => {
-                if (!hasOpenComponents()) {
-                    overlay.style.display = "flex";
-                }
-            }, 50);
-        });
-    }
+// Show overlay if no components remain
+
+layout.on('itemDestroyed', () => {
+    setTimeout(() => {
+        // Grab the root GoldenLayout container
+        const lmRoot = document.querySelector('.lm_goldenlayout.lm_item.lm_root');
+        
+        if (lmRoot) {
+            console.log("lmRoot children:", lmRoot.children.length); // debug
+            if (lmRoot.children.length === 0) {
+                overlay.style.display = "flex";
+            }
+        } else {
+            console.warn("lm_root container not found!");
+        }
+    }, 50);
+});
 });
