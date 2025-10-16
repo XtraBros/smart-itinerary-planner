@@ -226,7 +226,7 @@ def handle_recommendation(app, query: str, user_location: str, spatial_type: boo
 
 
 
-def handle_itinerary(query: str, context: dict) -> dict:
+def handle_itinerary(app, query: str, user_location: str, spatial_type: bool = False) -> dict:
     """
     Itinerary planning handler.
     Example use case: 'Plan me a 3-day trip in Tokyo'
@@ -236,12 +236,39 @@ def handle_itinerary(query: str, context: dict) -> dict:
     - Assemble day-by-day schedule
     - Optionally support revisions/edits
     """
-    # TODO: integrate itinerary planner workflow
-    return {
-        "task": "itinerary",
-        "response": f"[Itinerary placeholder] for query: {query}",
-        "metadata": {"plan": []}
-    }
+    rpm, locale_name, history = app.rpm, app.locale_names, process_formatted_history(app.memory.load_memory_variables({}))
+    intent = "spatial" if spatial_type else "semantic"
+    poi_data = rpm.decide_retrieval(
+        query_text=query,
+        lat=user_location["lat"],
+        lon=user_location["lng"],
+        top_k=20,
+        intent=intent
+    )
+    poi_data = [
+        {k: (v.item() if isinstance(v, np.generic) else (None if pd.isna(v) else v))
+        for k, v in poi.items()}
+        for poi in poi_data
+    ]
+    prompt = f"""
+    You are a helpful assistant. The user wants you to plan an itinerary for them based on their query. 
+    The following data entails the shortlisted POIs to include in the itinerary: 
+    POI Data: {poi_data}
+    Generate a message to introduce these POIs to the user. For each POI, include a short description about it.
+    Do not include any dining options unless specified by the user.
+    Chat history:
+    {history}
+    """
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": query}
+    ]
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+    )
+    message = response.choices[0].message
+    return {'response' : response, "poi_data": poi_data}
 
 # Registry of task handlers
 TASK_HANDLERS = {

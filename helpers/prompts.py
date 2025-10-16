@@ -92,3 +92,24 @@ def rec_prompt(user_input, chat_history, poi_data):
     )
     message = response.choices[0].message
     return message
+
+def planning_prompt(user_input, chat_history, poi_data):
+    prompt = f"""
+    You are a helpful assistant. The user wants you to plan an itinerary for them based on their query. 
+    The following data entails the shortlisted POIs to include in the itinerary: 
+    POI Data: {poi_data}
+    Generate a message to introduce these POIs to the user. For each POI, include a short description about it.
+    Do not include any dining options unless specified by the user.
+    Chat history:
+    {chat_history}
+    """
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_input}
+    ]
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+    )
+    message = response.choices[0].message
+    return message

@@ -485,3 +485,18 @@ class RAGPlatform:
             [min_lon - lon_padding, min_lat - lat_padding],
             [max_lon + lon_padding, max_lat + lat_padding]
         ]
+    
+    def filter_pois_excluding(self, field: str, exclude_value: str) -> pd.DataFrame:
+        """
+        Return all POIs where the given field value is NOT equal to `exclude_value`.
+        Example: filter_pois_excluding("category", "dining")
+        """
+        import pandas as pd
+
+        df = self.get_all_pois_as_dataframe()
+        if field not in df.columns:
+            raise ValueError(f"Field '{field}' not found in POI data columns: {list(df.columns)}")
+
+        # Handle both string and non-string comparisons robustly
+        filtered_df = df[df[field].astype(str).str.lower() != str(exclude_value).lower()]
+        return filtered_df.reset_index(drop=True)
