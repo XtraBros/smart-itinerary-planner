@@ -9,10 +9,12 @@ from helpers.route_solver import get_distance_from_poi
 from helpers.rpm import RetrievalPolicyManager
 from backend.views import backend_bp
 from api.routes import routes_bp
+import os
 
 CONFIG_FILE = 'config.json'
 
 app = Flask(__name__)
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Register external blueprints
 app.register_blueprint(backend_bp, url_prefix="/admin")

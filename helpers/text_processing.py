@@ -240,3 +240,41 @@ def normalize_name(name: str) -> str:
     # Collapse multiple spaces
     name = re.sub(r"\s+", " ", name)
     return name
+
+def chunk_text(text, max_len=400):
+    """
+    Yield text chunks suitable for streaming.
+    - Keeps paragraph boundaries by splitting on double-newline.
+    - If a paragraph exceeds max_len, split it into contiguous slices.
+    - Preserves whitespace and markdown formatting.
+    """
+    if not text:
+        return
+    paragraphs = text.split("\n\n")  # preserve paragraphs
+
+    for i, p in enumerate(paragraphs):
+        if p == "":
+            # keep explicit blank paragraph
+            yield "\n\n"
+            continue
+
+        # keep original paragraph content (do NOT strip)
+        # but re-add delimiter so downstream renderer gets paragraph breaks
+        paragraph_with_break = p
+        # If paragraph is small enough, emit it with paragraph break (except maybe last)
+        if len(paragraph_with_break) <= max_len:
+            # add the paragraph separator back (so markdown headers/lists are recognized)
+            yield paragraph_with_break + ("\n\n" if i != len(paragraphs) - 1 else "")
+        else:
+            # split long paragraph into sliding slices (preserve order, no trimming)
+            start = 0
+            while start < len(paragraph_with_break):
+                end = min(start + max_len, len(paragraph_with_break))
+                slice_ = paragraph_with_break[start:end]
+                # If not the last slice of the paragraph, don't append the paragraph break.
+                if end < len(paragraph_with_break):
+                    yield slice_
+                else:
+                    # last slice of the paragraph: re-add paragraph break if it's not the final paragraph
+                    yield slice_ + ("\n\n" if i != len(paragraphs) - 1 else "")
+                start = end

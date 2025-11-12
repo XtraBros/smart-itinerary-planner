@@ -47,6 +47,34 @@ Do not include explanations or extra text.
 User query: "{query}"
 """
 
+def normalize_poi_data(poi_data):
+    return [
+        {
+            k: (
+                v.item() if isinstance(v, np.generic)
+                else (None if pd.isna(v) else v)
+            )
+            for k, v in poi.items()
+        }
+        for poi in poi_data
+    ]
+
+async def stream_generator(client, model_name, messages):
+        full_reply = ""
+
+        stream = await client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            stream=True,
+        )
+        async for event in stream:
+            delta = event.choices[0].delta.content
+            if delta:
+                full_reply += delta
+                yield delta
+
+
+
 def classify_task(query: str) -> str:
     messages = [
         {"role": "system", "content": CLASSIFIER_PROMPT.format(query=query, task_types=TASK_TYPES)},
@@ -77,39 +105,57 @@ class SpatialRetrieval(RetrievalStrategy):
             raise ValueError("User location required for spatial query")
         return rag_platform.spatial_query(user_location, query)
 
+def handle_generic(app, query: str, user_location: dict, spatial_type: bool = False):
+    """
+    Generic catch-all Q&A handler (synchronous streaming).
+    Yields chunks as dictionaries for streaming in Flask.
+    """
+    locale_name = app.locale_names
+    history = process_formatted_history(app.memory.load_memory_variables({}))
 
-def handle_generic(app, query: str, user_location: str, spatial_type: bool = False) -> dict:
-    """
-    Generic catch-all Q&A handler.
-    Example use case: free-form questions that don’t fit other categories.
-    """
-    locale_name, history = app.locale_names, process_formatted_history(app.memory.load_memory_variables({}))
-    prompt =f"""
+    prompt = f"""
 You are a helpful assistant from {locale_name}. Answer all questions pertaining to the locale you are assigned to, and do not answer questions outside of this context.
-If you are unsure of how to answer, you should ask the user for more information.
+If you are unsure of how to answer, ask the user for more information.
 Chat history:
 {history}
 User location: {user_location}
-        """
+"""
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": query}
     ]
-    response = client.chat.completions.create(
+    # Synchronous streaming using OpenAI client
+    stream = client.chat.completions.create(
         model=model_name,
         messages=messages,
+        stream=True,  # streaming enabled
     )
-    response = response.choices[0].message.content.strip()
-    return {'response' : response, "poi_data": []}
 
+    # Return POI data (empty for generic)
+    yield {"type": "poi_data", "content": []}
 
-def handle_navigation(app, query: str, user_location: str, spatial_type: bool = False) -> dict:
+    full_reply = ""
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            full_reply += delta
+            yield {"type": "content", "content": delta}
+
+    # Save to memory
+    app.memory.save_context({"input": query}, {"output": full_reply})
+
+    # Signal done
+    yield {"type": "done", "task": "generic"}
+
+def handle_navigation(app, query: str, user_location: dict, spatial_type: bool = False):
     """
-    Navigation handler.
-    Example use case: 'How do I get to xx place?' or 'Where is the nearest yy?'
+    Navigation handler (sync streaming).
     """
-    # Retrieval
-    rpm, locale_name, history = app.rpm, app.locale_names, process_formatted_history(app.memory.load_memory_variables({}))
+    rpm = app.rpm
+    locale_name = app.locale_names
+    history = process_formatted_history(app.memory.load_memory_variables({}))
+
     intent = "spatial" if spatial_type else "semantic"
     poi_data = rpm.decide_retrieval(
         query_text=query,
@@ -118,53 +164,21 @@ def handle_navigation(app, query: str, user_location: str, spatial_type: bool = 
         top_k=10,
         intent=intent
     )
+
+    # normalize numpy/pd types
     poi_data = [
         {k: (v.item() if isinstance(v, np.generic) else (None if pd.isna(v) else v))
-        for k, v in poi.items()}
+         for k, v in poi.items()}
         for poi in poi_data
     ]
-    # Response Generation
+    # Yield POI data
+    yield {"type": "poi_data", "content": poi_data}
+
     prompt = f"""
-    You are a helpful assistant working in {locale_name}. The user wants to know how to get to a given place. Give the user a brief introduction of the POI. The location will be provided on the user's map UI.
-    Refer to the following data related to the POI to most accurately respond to the user's query about the POI, and inform them that the POI has been marked on their map. You do not need to provide the coordinates of the POI.
-    User location: {user_location}
-    POI Data: {poi_data}
-    Chat history:
-    {history}
-    """    
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": query}
-    ]
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=messages,
-    )
-    response = response.choices[0].message.content.strip()
-    return {'response' : response, "poi_data": poi_data}
-
-
-def handle_introduction(app, query: str, user_location: str, spatial_type: bool = False) -> dict:
-    """
-    Introduction of POIs
-    """
-    rpm, locale_name, history = app.rpm, app.locale_names, process_formatted_history(app.memory.load_memory_variables({}))
-    intent = "spatial" if spatial_type else "semantic"
-    poi_data = rpm.decide_retrieval(
-        query_text=query,
-        lat=user_location["lat"],
-        lon=user_location["lng"],
-        top_k=10,
-        intent=intent
-    )
-    poi_data = [
-        {k: (v.item() if isinstance(v, np.generic) else (None if pd.isna(v) else v))
-        for k, v in poi.items()}
-        for poi in poi_data
-    ]
-    prompt =  f"""
-You are a helpful assistant working in {locale_name}. The user wants to know more about a POI. Give the user a brief introduction of the POI, including its name, description, and any other relevant information to a visitor. DO NOT give coordinate locations.
-Refer to the following data related to the POI to most accurately respond to the user's query about the POI.
+You are a helpful assistant working in {locale_name}. The user wants directions to a place.
+Provide a brief introduction of the POI. The location will be provided on the user's map UI.
+Refer to the following POI data to answer accurately, but do not include coordinates.
+User location: {user_location}
 POI Data: {poi_data}
 Chat history:
 {history}
@@ -173,27 +187,35 @@ Chat history:
         {"role": "system", "content": prompt},
         {"role": "user", "content": query}
     ]
-    response = client.chat.completions.create(
+
+    stream = client.chat.completions.create(
         model=model_name,
         messages=messages,
+        stream=True
     )
-    response = response.choices[0].message.content.strip()
-    return {'response' : response, "poi_data": poi_data}
+
+    full_reply = ""
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            full_reply += delta
+            yield {"type": "content", "content": delta}
+
+    # Save to memory
+    app.memory.save_context({"input": query}, {"output": full_reply})
+
+    # Done
+    yield {"type": "done", "task": "navigation"}
 
 
-
-def handle_recommendation(app, query: str, user_location: str, spatial_type: bool = False) -> dict:
-    """
-    Recommendation handler.
-    Example use case: 'Suggest some restaurants near Clarke Quay'
-    Workflow idea:
-    - Extract category/location
-    - Query recommendation engine (LLM or curated DB)
-    - Rank results
-    - Return structured list
-    """
-    rpm, locale_name, history = app.rpm, app.locale_names, process_formatted_history(app.memory.load_memory_variables({}))
+async def handle_introduction(app, query: str, user_location: dict, spatial_type: bool = False):
+    rpm = app.rpm
+    locale_name = app.locale_names
+    history = process_formatted_history(app.memory.load_memory_variables({}))
     intent = "spatial" if spatial_type else "semantic"
+
+    # --- Retrieve POIs ---
     poi_data = rpm.decide_retrieval(
         query_text=query,
         lat=user_location["lat"],
@@ -201,43 +223,106 @@ def handle_recommendation(app, query: str, user_location: str, spatial_type: boo
         top_k=10,
         intent=intent
     )
-    poi_data = [
-        {k: (v.item() if isinstance(v, np.generic) else (None if pd.isna(v) else v))
-        for k, v in poi.items()}
-        for poi in poi_data
-    ]
+    poi_data = normalize_poi_data(poi_data)
+
+    # Yield POI data
+    yield {"type": "poi_data", "content": poi_data}
+
+    # --- Prompt ---
     prompt = f"""
-    You are a helpful assistant working in {locale_name}. The user wants recommendations for places to visit. Provide a list of recommended POIs with brief descriptions for each. DO NOT give coordinate locations.
-    Refer to the following data related to the POI to most accurately respond to the user's query. Do not use any information outside of the provided data. If no data was provided, and the user requested for distance based recommendations, inform them that you are unable to find any suitable recommendations within their vicinity.
-    POI Data: {poi_data}
-    Chat history:
-    {history}
-    """
+You are a helpful assistant from {locale_name}. The user wants an introduction to a POI.
+Describe the POI clearly and concisely. Do NOT mention coordinates.
+
+POI Data: {poi_data}
+
+Chat history:
+{history}
+"""
+
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": query}
     ]
-    response = client.chat.completions.create(
+    stream = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            stream=True
+        )
+
+    full_reply = ""
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            full_reply += delta
+            yield {"type": "content", "content": delta}
+
+    # Save to memory
+    app.memory.save_context({"input": query}, {"output": full_reply})
+
+    # Done
+    yield {"type": "done", "task": "introduction"}
+
+async def handle_recommendation(app, query: str, user_location: dict, spatial_type: bool = False):
+    rpm = app.rpm
+    locale_name = app.locale_names
+    history = process_formatted_history(app.memory.load_memory_variables({}))
+    intent = "spatial" if spatial_type else "semantic"
+
+    poi_data = rpm.decide_retrieval(
+        query_text=query,
+        lat=user_location["lat"],
+        lon=user_location["lng"],
+        top_k=10,
+        intent=intent
+    )
+    poi_data = normalize_poi_data(poi_data)
+    # Yield POI data
+    yield {"type": "poi_data", "content": poi_data}
+    prompt = f"""
+You are a helpful assistant working in {locale_name}. The user wants recommendations
+for places nearby. Provide a short ranked list of POIs with descriptions.
+Do NOT give coordinates.
+
+POI Data: {poi_data}
+
+If no POIs exist and the user requested distance-based results, politely say none were found.
+
+Chat history:
+{history}
+"""
+
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": query}
+    ]
+
+    stream = client.chat.completions.create(
         model=model_name,
         messages=messages,
+        stream=True
     )
-    response = response.choices[0].message.content.strip()
-    return {'response' : response, "poi_data": poi_data}
 
+    full_reply = ""
 
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            full_reply += delta
+            yield {"type": "content", "content": delta}
 
-def handle_itinerary(app, query: str, user_location: str, spatial_type: bool = False) -> dict:
-    """
-    Itinerary planning handler.
-    Example use case: 'Plan me a 3-day trip in Tokyo'
-    Workflow idea:
-    - Parse duration/locations/interests from query
-    - Call itinerary planning engine
-    - Assemble day-by-day schedule
-    - Optionally support revisions/edits
-    """
-    rpm, locale_name, history = app.rpm, app.locale_names, process_formatted_history(app.memory.load_memory_variables({}))
+    # Save to memory
+    app.memory.save_context({"input": query}, {"output": full_reply})
+
+    # Done
+    yield {"type": "done", "task": "recommendation"}
+
+async def handle_itinerary(app, query: str, user_location: dict, spatial_type: bool = False):
+    rpm = app.rpm
+    locale_name = app.locale_names
+    history = process_formatted_history(app.memory.load_memory_variables({}))
     intent = "spatial" if spatial_type else "semantic"
+
     poi_data = rpm.decide_retrieval(
         query_text=query,
         lat=user_location["lat"],
@@ -245,30 +330,45 @@ def handle_itinerary(app, query: str, user_location: str, spatial_type: bool = F
         top_k=20,
         intent=intent
     )
-    poi_data = [
-        {k: (v.item() if isinstance(v, np.generic) else (None if pd.isna(v) else v))
-        for k, v in poi.items()}
-        for poi in poi_data
-    ]
+    poi_data = normalize_poi_data(poi_data)
+    # Yield POI data
+    yield {"type": "poi_data", "content": poi_data}
     prompt = f"""
-    You are a helpful assistant. The user wants you to plan an itinerary for them based on their query. 
-    The following data entails the shortlisted POIs to include in the itinerary: 
-    POI Data: {poi_data}
-    Generate a message to introduce these POIs to the user. For each POI, include a short description about it.
-    Do not include any dining options unless specified by the user.
-    Chat history:
-    {history}
-    """
+You are a helpful assistant. The user wants an itinerary.
+Use the provided POIs to build a structured, clear plan.
+Include short descriptions. Do NOT include dining unless the user asked.
+
+POI Data: {poi_data}
+
+Chat history:
+{history}
+"""
+
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": query}
     ]
-    response = client.chat.completions.create(
+
+    stream = client.chat.completions.create(
         model=model_name,
         messages=messages,
+        stream=True
     )
-    message = response.choices[0].message
-    return {'response' : response, "poi_data": poi_data}
+
+    full_reply = ""
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            full_reply += delta
+            yield {"type": "content", "content": delta}
+
+    # Save to memory
+    app.memory.save_context({"input": query}, {"output": full_reply})
+
+    # Done
+    yield {"type": "done", "task": "itinerary"}
+
 
 # Registry of task handlers
 TASK_HANDLERS = {

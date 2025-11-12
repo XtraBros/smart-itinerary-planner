@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, render_template, redirect, current_app
+from flask import Blueprint, request, jsonify, render_template, redirect, current_app, Response, stream_with_context
 import os, json, ast, numpy as np
 from helpers.text_processing import *
 from helpers.prompts import *
@@ -14,29 +14,84 @@ def ops_router():
     data = request.get_json()
     query = data.get("message", "")
     user_location = data.get("user_location", {})
-    print(user_location)
+
     if not query:
         return jsonify({"error": "Query is required"}), 400
 
-    # Step 1: classify
     task_type, spatial_type = classify_task(query)
-    print(f"=========> Ops Router Classification: {task_type, spatial_type}")
-    # Step 2: route to handler
     handler = TASK_HANDLERS.get(task_type)
-    if not handler:
-        return jsonify({"error": f"No handler found for task {task_type}"}), 500
+    print(f"=========> Ops Router Classification: {task_type, spatial_type}")
 
-    # Step 3: execute and get results
-    result = handler(current_app, query, user_location, spatial_type)
-    response_text = result.get('response', '')
-    poi_data = result.get('poi_data', [])
-    # Step 4: Post-processing to insert links and other features
-    response, poi_data = clean_and_filter_response(hyperlink_pois_in_response(response_text, poi_data), poi_data)
-    if len(poi_data) < 1:
-        task_type = "generic"  # reset to generic if no poi data found
-    # print({"response": response, "poiData": poi_data})
-    current_app.memory.save_context({"input": query}, {"output": response})
-    return jsonify({"response": response, "poiData": poi_data, "task": task_type}), 200
+    if not handler:
+        return jsonify({"error": f"No handler for {task_type}"}), 500
+
+    def stream():
+        full_poi_data = []
+        buffer = ""  # <- accumulated raw text chunks until a full sentence is ready
+
+        try:
+            for event in handler(current_app, query, user_location, spatial_type):
+                if event.get("type") == "poi_data":
+                    full_poi_data.extend(event.get("content", []))
+                    continue
+
+                if event.get("type") == "content":
+                    raw = event["content"]
+                    buffer += raw  # <-- accumulate partial tokens
+
+                    # Detect if we have at least one full sentence or paragraph
+                    # End of sentence markers
+                    sentence_endings = [".", "?", "!", "。", "！", "？"]
+
+                    # If buffer contains a sentence
+                    if any(end in buffer for end in sentence_endings):
+                        # Split into sentences
+                        import re
+                        sentences = re.split(r'(?<=[.!?])\s+', buffer)
+
+                        # Keep the last partial sentence in buffer
+                        buffer = sentences.pop()  
+
+                        # Process all complete sentences and stream them
+                        for sentence in sentences:
+                            final_text, _ = clean_and_filter_response(
+                                hyperlink_pois_in_response(sentence, full_poi_data),
+                                full_poi_data
+                            )
+
+                            yield json.dumps(
+                                {"type": "content", "content": final_text},
+                                ensure_ascii=False
+                            ) + "\n"
+
+            # After handler finishes:
+            # If leftover buffer contains any residual text, process it too
+            if buffer.strip():
+                final_text, _ = clean_and_filter_response(
+                    hyperlink_pois_in_response(buffer, full_poi_data),
+                    full_poi_data
+                )
+                yield json.dumps(
+                    {"type": "content", "content": final_text},
+                    ensure_ascii=False
+                ) + "\n"
+
+            # Emit POI data
+            yield json.dumps(
+                {"type": "poi_data", "content": full_poi_data},
+                ensure_ascii=False
+            ) + "\n"
+
+            yield json.dumps(
+                {"type": "done", "task": task_type},
+                ensure_ascii=False
+            ) + "\n"
+
+        except Exception as e:
+            yield json.dumps({"type": "error", "error": str(e)}, ensure_ascii=False) + "\n"
+
+    return Response(stream_with_context(stream()), mimetype="application/json")
+
 
 
 @routes_bp.route('/find_nearby_pois', methods=['POST'])
