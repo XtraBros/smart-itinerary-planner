@@ -89,7 +89,7 @@ export async function postMessage(message, chatMessages) {
                 switch (data.type) {
                     case 'content':
                         // Streaming: append to AI bubble
-                        appendMessage({ text: data.content, chatMessages, isStreaming: true });
+                        appendMessage({ text: data.content, chatMessages, isStreaming: true, type: data.task });
                         break;
 
                     case 'poi_data':
@@ -98,7 +98,13 @@ export async function postMessage(message, chatMessages) {
                         break;
 
                     case 'done':
-                        // Finished: optionally handle final task type or cleanup
+                        appendMessage({
+                            text: '',               // empty string, not null
+                            chatMessages,
+                            isStreaming: true,
+                            type: data.task,
+                            streamComplete: true    // attach button if needed
+                        });
                         console.log('Streaming done', data);
                         break;
 
@@ -133,7 +139,7 @@ export async function postMessage(message, chatMessages) {
 
 
 // creaate template and styles for each visitor/guide message.
-export function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat, fromUser, isStreaming = false }) {
+export function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat, fromUser, isStreaming = false, streamComplete = false }) {
     let long = '';
     if (longAndlat && Array.isArray(longAndlat) && longAndlat.length && Array.isArray(longAndlat[0])) {
         long = longAndlat[0].join(',');
@@ -141,25 +147,20 @@ export function appendMessage({ text, className, chatMessages, type, suggestion,
 
     const currClass = className || 'guide-message';
 
-    // --- Visitor message: leave as is ---
+    // Visitor messages
     if (className) {
         chatMessages.innerHTML += `<div class='chat-message ${currClass}'>${marked.parse(text)}</div>`;
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return;
     }
 
-    // --- AI message ---
-    // If text is null/empty, show loading indicator
-    if (!text) {
+    // Loading indicator
+    if (text === null) {
         chatMessages.innerHTML += `<div id='loading' class='chat-message ${currClass}'>
-            <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
+            <div class='guideImage'><img src="static/icons/choml.png" alt=""></div>
             <div class='guideText'>
                 <div class='messageStype'>
-                    <div class="dots">
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    </div>
+                    <div class="dots"><div></div><div></div><div></div></div>
                 </div>
             </div>
         </div>`;
@@ -169,50 +170,51 @@ export function appendMessage({ text, className, chatMessages, type, suggestion,
         if (bloaDox) bloaDox.remove();
     }
 
-    // --- Determine if this is a special POI message ---
-    if ((type === 'navigation' || type === 'introduction') && !(placeNames && placeNames.length > 1)) {
+    // Special POI message
+    const isSpecialPOI = (type === 'navigation' || type === 'introduction') && !(placeNames && placeNames.length > 1);
+    const streamingDivId = isSpecialPOI ? 'streaming-poi-message' : 'streaming-message';
+    let streamingDiv = document.getElementById(streamingDivId);
+
+    if (isStreaming) {
+        if (!streamingDiv) {
+            // First chunk: create container without button
+            chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
+                <div class='guideImage'><img src="static/icons/choml.png" alt=""></div>
+                <div class='guideText'>
+                    <div class='messageStype' id='${streamingDivId}'>${text}</div>
+                </div>
+            </div>`;
+            streamingDiv = document.getElementById(streamingDivId);
+        } else {
+            streamingDiv.innerHTML += text;
+        }
+
+        // If streaming is complete, append the button
+        if (streamComplete && isSpecialPOI && streamingDiv) {
+            streamingDiv.innerHTML += `<p style='margin-top: 10px;'>
+                <button id="takeThereBut" onclick="Nav.navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}', '${fromUser}')">
+                    <img src="static/icons/daohang.svg" alt="">
+                    <span>Take me there</span>
+                </button>
+            </p>`;
+        }
+
+    } else {
+        // Normal AI message
         chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
-            <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
+            <div class='guideImage'><img src="static/icons/choml.png" alt=""></div>
             <div class='guideText'>
-                <div class='messageStype' id='streaming-message'>
+                <div class='messageStype'>
                     ${text}
-                    <p style='margin-top: 10px;'>
+                    ${isSpecialPOI ? `<p style='margin-top: 10px;'>
                         <button id="takeThereBut" onclick="Nav.navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}', '${fromUser}')">
-                            <img src="static/icons/daohang.svg" alt="" srcset="">
+                            <img src="static/icons/daohang.svg" alt="">
                             <span>Take me there</span>
                         </button>
-                    </p>
+                    </p>` : ''}
                 </div>
             </div>
         </div>`;
-    } else {
-        // --- Normal AI message with streaming support ---
-        // If streaming, append new text instead of replacing it
-        if (isStreaming) {
-            let streamingDiv = document.getElementById('streaming-message');
-            if (!streamingDiv) {
-                // First chunk: create container
-                chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
-                    <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
-                    <div class='guideText'>
-                        <div class='messageStype' id='streaming-message'>${text}</div>
-                    </div>
-                </div>`;
-            } else {
-                // Subsequent chunks: append
-                streamingDiv.innerHTML += text;
-            }
-        } else {
-            // Normal full AI message
-            chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
-                <div class='guideImage'><img src="static/icons/choml.png" alt="" srcset=""></div>
-                <div class='guideText'>
-                    <div class='messageStype'>
-                        ${text}
-                    </div>
-                </div>
-            </div>`;
-        }
     }
 
     chatMessages.scrollTop = chatMessages.scrollHeight;

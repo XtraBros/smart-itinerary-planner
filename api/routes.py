@@ -61,7 +61,7 @@ def ops_router():
                             )
 
                             yield json.dumps(
-                                {"type": "content", "content": final_text},
+                                {"type": "content", "content": final_text, "task": task_type},
                                 ensure_ascii=False
                             ) + "\n"
                             out_data.extend(filtered)
@@ -69,12 +69,13 @@ def ops_router():
             # After handler finishes:
             # If leftover buffer contains any residual text, process it too
             if buffer.strip():
-                final_text, _ = clean_and_filter_response(
+                final_text, filtered = clean_and_filter_response(
                     hyperlink_pois_in_response(buffer, full_poi_data),
                     full_poi_data
                 )
+                out_data.extend(out_data)
                 yield json.dumps(
-                    {"type": "content", "content": final_text},
+                    {"type": "content", "content": final_text, "task": task_type},
                     ensure_ascii=False
                 ) + "\n"
 
