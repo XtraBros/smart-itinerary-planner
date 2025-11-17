@@ -27,6 +27,7 @@ def ops_router():
 
     def stream():
         full_poi_data = []
+        out_data = []
         buffer = ""  # <- accumulated raw text chunks until a full sentence is ready
 
         try:
@@ -54,7 +55,7 @@ def ops_router():
 
                         # Process all complete sentences and stream them
                         for sentence in sentences:
-                            final_text, _ = clean_and_filter_response(
+                            final_text, filtered = clean_and_filter_response(
                                 hyperlink_pois_in_response(sentence, full_poi_data),
                                 full_poi_data
                             )
@@ -63,6 +64,7 @@ def ops_router():
                                 {"type": "content", "content": final_text},
                                 ensure_ascii=False
                             ) + "\n"
+                            out_data.extend(filtered)
 
             # After handler finishes:
             # If leftover buffer contains any residual text, process it too
@@ -78,7 +80,7 @@ def ops_router():
 
             # Emit POI data
             yield json.dumps(
-                {"type": "poi_data", "content": full_poi_data},
+                {"type": "poi_data", "content": out_data},
                 ensure_ascii=False
             ) + "\n"
 
