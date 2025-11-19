@@ -66,14 +66,13 @@ def ops_router():
                             ) + "\n"
                             out_data.extend(filtered)
 
-            # After handler finishes:
-            # If leftover buffer contains any residual text, process it too
+            # After handler finishes
             if buffer.strip():
                 final_text, filtered = clean_and_filter_response(
                     hyperlink_pois_in_response(buffer, full_poi_data),
                     full_poi_data
                 )
-                out_data.extend(out_data)
+                out_data.extend(filtered)
                 yield json.dumps(
                     {"type": "content", "content": final_text, "task": task_type},
                     ensure_ascii=False
@@ -85,14 +84,26 @@ def ops_router():
                 ensure_ascii=False
             ) + "\n"
 
+            # Prepare POI metadata for the button
+            place_names = [poi["name"] for poi in out_data if "name" in poi]
+            long_and_lat = [[poi["longitude"], poi["latitude"]] for poi in out_data if "longitude" in poi and "latitude" in poi]
+
+            print(f"===> POI names: {place_names}, long_and_lat: {long_and_lat}")
+            # Emit done with full metadata
             yield json.dumps(
-                {"type": "done", "task": task_type},
+                {
+                    "type": "done",
+                    "task": task_type,
+                    "suggestion": "",             # optional, can be populated if you have a suggested action
+                    "placeNames": place_names,
+                    "longAndlat": long_and_lat,
+                    "fromUser": "1"               # or populate based on context
+                },
                 ensure_ascii=False
             ) + "\n"
-
-        except Exception as e:
-            yield json.dumps({"type": "error", "error": str(e)}, ensure_ascii=False) + "\n"
-
+        except Exception as e: 
+            yield json.dumps({"type": "error", "error": str(e)}, ensure_ascii=False) + "\n" 
+        
     return Response(stream_with_context(stream()), mimetype="application/json")
 
 

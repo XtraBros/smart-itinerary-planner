@@ -46,10 +46,7 @@ window.submitChat = function(event) {
 
 // Post message to server and handle streaming response
 export async function postMessage(message, chatMessages) {
-    // 1️⃣ Show user message
     appendMessage({ text: message, className: 'visitor-message', chatMessages });
-
-    // 2️⃣ Show AI loading indicator
     appendMessage({ text: null, chatMessages });
 
     try {
@@ -66,6 +63,10 @@ export async function postMessage(message, chatMessages) {
         let buffer = '';
         let poiData = [];
         let currentStreamingId = null;
+        let currentSuggestion = '';
+        let currentPlaceNames = [];
+        let currentLongAndLat = [];
+        let currentFromUser = '1';
 
         while (true) {
             const { value, done } = await reader.read();
@@ -73,29 +74,29 @@ export async function postMessage(message, chatMessages) {
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop(); // incomplete line stays in buffer
+            buffer = lines.pop();
 
             for (let line of lines) {
                 if (!line.trim()) continue;
                 let data;
-                try {
-                    data = JSON.parse(line);
-                } catch (err) {
-                    console.error('Invalid JSON chunk', line);
-                    continue;
-                }
+                try { data = JSON.parse(line); }
+                catch { console.error('Invalid JSON chunk', line); continue; }
 
                 switch (data.type) {
                     case 'content':
                         if (!currentStreamingId) {
-                            // generate a unique ID for this streaming message
                             currentStreamingId = 'streaming-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
                         }
+
+                        if (data.placeNames) currentPlaceNames = data.placeNames;
+                        if (data.longAndlat) currentLongAndLat = data.longAndlat;
+                        if (data.suggestion) currentSuggestion = data.suggestion;
+                        if (data.fromUser) currentFromUser = data.fromUser;
+
                         appendMessage({
                             text: data.content,
                             chatMessages,
                             isStreaming: true,
-                            type: data.task,
                             streamingId: currentStreamingId
                         });
                         break;
@@ -105,23 +106,39 @@ export async function postMessage(message, chatMessages) {
                         break;
 
                     case 'done':
-                        if (currentStreamingId) {
-                            appendMessage({
-                                text: '', 
-                                chatMessages,
-                                isStreaming: true,
-                                type: data.task,
-                                streamComplete: true,
-                                streamingId: currentStreamingId,
-                                suggestion: data.suggestion,
-                                placeNames: data.placeNames,
-                                longAndlat: data.longAndlat,
-                                fromUser: data.fromUser
+                        console.log('--- DONE chunk received ---');
+                        console.log('task:', data.task);
+                        console.log('currentStreamingId:', currentStreamingId);
+                        console.log('currentSuggestion:', currentSuggestion);
+                        console.log('currentPlaceNames:', currentPlaceNames);
+                        console.log('currentLongAndLat:', currentLongAndLat);
+                        console.log('currentFromUser:', currentFromUser);
+                    
+                        // Get container of last streaming message
+                        const container = document.getElementById(currentStreamingId);
+                        console.log('container element:', container);
+                    
+                        // Only attach POI button for introduction or navigation tasks
+                        if (container && (data.task === 'navigation' || data.task === 'introduction')) {
+                            console.log('Attaching POI button...');
+                            attachPOIButton({
+                                container,
+                                suggestion: data.suggestion || '',
+                                placeNames: data.placeNames || [],
+                                longAndlat: data.longAndlat || [],
+                                fromUser: data.fromUser || '1'
                             });
-                            currentStreamingId = null; // reset for next message
+                        } else {
+                            console.log('POI button not attached (container missing or task not eligible)');
                         }
+                        // Reset for next message
+                        currentStreamingId = null;
+                        currentSuggestion = '';
+                        currentPlaceNames = [];
+                        currentLongAndLat = [];
+                        currentFromUser = '1';
                         break;
-
+                    
                     case 'error':
                         console.log({ text: "Error: " + data.error, chatMessages, className: 'error-message' });
                         break;
@@ -129,12 +146,11 @@ export async function postMessage(message, chatMessages) {
             }
         }
 
-        // leftover buffer
         if (buffer.trim()) {
             try {
                 const data = JSON.parse(buffer);
                 if (data.type === 'content') appendMessage({ text: data.content, chatMessages, isStreaming: true });
-            } catch { /* ignore */ }
+            } catch {}
         }
 
         if (poiData.length > 0) {
@@ -152,12 +168,9 @@ export async function postMessage(message, chatMessages) {
 
 
 // Append message to chat
-export function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat, fromUser, isStreaming = false, streamComplete = false, streamingId = null }) {
-    let long = '';
-    if (longAndlat && Array.isArray(longAndlat) && longAndlat.length && Array.isArray(longAndlat[0])) {
-        long = longAndlat[0].join(',');
-    }
-
+export function appendMessage({ 
+    text, className, chatMessages, isStreaming = false, streamingId = null 
+}) {
     const currClass = className || 'guide-message';
 
     // Visitor messages
@@ -183,9 +196,7 @@ export function appendMessage({ text, className, chatMessages, type, suggestion,
         if (bloaDox) bloaDox.remove();
     }
 
-    const isSpecialPOI = (type === 'navigation' || type === 'introduction') && !(placeNames && placeNames.length > 1);
-
-    // For streaming messages, use unique streamingId
+    // Streaming messages
     const divId = streamingId || ('streaming-' + Date.now() + '-' + Math.floor(Math.random() * 1000));
     let streamingDiv = document.getElementById(divId);
 
@@ -201,32 +212,53 @@ export function appendMessage({ text, className, chatMessages, type, suggestion,
         } else {
             streamingDiv.innerHTML += text;
         }
-
-        if (streamComplete && isSpecialPOI && streamingDiv) {
-            streamingDiv.innerHTML += `<p style='margin-top: 10px;'>
-                <button id="takeThereBut" onclick="Nav.navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}', '${fromUser}')">
-                    <img src="static/icons/daohang.svg" alt="">
-                    <span>Take me there</span>
-                </button>
-            </p>`;
-        }
-
     } else {
         chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt=""></div>
             <div class='guideText'>
-                <div class='messageStype'>
-                    ${text}
-                    ${isSpecialPOI ? `<p style='margin-top: 10px;'>
-                        <button id="takeThereBut" onclick="Nav.navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}', '${fromUser}')">
-                            <img src="static/icons/daohang.svg" alt="">
-                            <span>Take me there</span>
-                        </button>
-                    </p>` : ''}
-                </div>
+                <div class='messageStype'>${text}</div>
             </div>
         </div>`;
     }
 
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// New function: attach a Take Me There button to the last message
+export function attachPOIButton({ container, suggestion = '', placeNames = [], longAndlat = [], fromUser = '0' }) {
+    if (!container || !placeNames || placeNames.length === 0 || !longAndlat || longAndlat.length === 0) return;
+
+    // Normalize coordinates to "lon,lat"
+    let coordStr = '';
+    if (Array.isArray(longAndlat[0])) coordStr = longAndlat[0].join(',');
+    else coordStr = longAndlat.join(',');
+
+    // container should be the inner messageStype div
+    const messageDiv = container; 
+    if (!messageDiv) {
+        console.warn('attachPOIButton: container not found');
+        return;
+    }
+
+    // Create button wrapper
+    const buttonWrapper = document.createElement('p');
+    buttonWrapper.style.marginTop = '10px';
+
+    const button = document.createElement('button');
+    button.id = 'takeThereBut';
+    button.onclick = (e) => Nav.navFunc(e, suggestion, placeNames[0], coordStr, fromUser);
+
+    const img = document.createElement('img');
+    img.src = 'static/icons/daohang.svg';
+    img.alt = '';
+
+    const span = document.createElement('span');
+    span.textContent = 'Take me there';
+
+    button.appendChild(img);
+    button.appendChild(span);
+    buttonWrapper.appendChild(button);
+
+    // Append button directly inside the message bubble
+    messageDiv.appendChild(buttonWrapper);
 }
