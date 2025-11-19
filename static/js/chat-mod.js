@@ -44,6 +44,7 @@ window.submitChat = function(event) {
     }
 }
 
+// Post message to server and handle streaming response
 export async function postMessage(message, chatMessages) {
     // 1️⃣ Show user message
     appendMessage({ text: message, className: 'visitor-message', chatMessages });
@@ -64,14 +65,13 @@ export async function postMessage(message, chatMessages) {
         const decoder = new TextDecoder();
         let buffer = '';
         let poiData = [];
+        let currentStreamingId = null;
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-
-            // Split by newline for JSON chunks
             const lines = buffer.split('\n');
             buffer = lines.pop(); // incomplete line stays in buffer
 
@@ -85,27 +85,41 @@ export async function postMessage(message, chatMessages) {
                     continue;
                 }
 
-                // Handle different chunk types
                 switch (data.type) {
                     case 'content':
-                        // Streaming: append to AI bubble
-                        appendMessage({ text: data.content, chatMessages, isStreaming: true, type: data.task });
+                        if (!currentStreamingId) {
+                            // generate a unique ID for this streaming message
+                            currentStreamingId = 'streaming-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+                        }
+                        appendMessage({
+                            text: data.content,
+                            chatMessages,
+                            isStreaming: true,
+                            type: data.task,
+                            streamingId: currentStreamingId
+                        });
                         break;
 
                     case 'poi_data':
-                        // Collect POI data for later
                         poiData = data.content;
                         break;
 
                     case 'done':
-                        appendMessage({
-                            text: '',               // empty string, not null
-                            chatMessages,
-                            isStreaming: true,
-                            type: data.task,
-                            streamComplete: true    // attach button if needed
-                        });
-                        console.log('Streaming done', data);
+                        if (currentStreamingId) {
+                            appendMessage({
+                                text: '', 
+                                chatMessages,
+                                isStreaming: true,
+                                type: data.task,
+                                streamComplete: true,
+                                streamingId: currentStreamingId,
+                                suggestion: data.suggestion,
+                                placeNames: data.placeNames,
+                                longAndlat: data.longAndlat,
+                                fromUser: data.fromUser
+                            });
+                            currentStreamingId = null; // reset for next message
+                        }
                         break;
 
                     case 'error':
@@ -115,7 +129,7 @@ export async function postMessage(message, chatMessages) {
             }
         }
 
-        // Process leftover buffer
+        // leftover buffer
         if (buffer.trim()) {
             try {
                 const data = JSON.parse(buffer);
@@ -123,7 +137,6 @@ export async function postMessage(message, chatMessages) {
             } catch { /* ignore */ }
         }
 
-        // Once done, handle POI markers if any
         if (poiData.length > 0) {
             const placeNames = poiData.map(poi => poi.name);
             const coordinates = poiData.map(poi => [poi.longitude, poi.latitude]);
@@ -138,8 +151,8 @@ export async function postMessage(message, chatMessages) {
 }
 
 
-// creaate template and styles for each visitor/guide message.
-export function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat, fromUser, isStreaming = false, streamComplete = false }) {
+// Append message to chat
+export function appendMessage({ text, className, chatMessages, type, suggestion, placeNames, longAndlat, fromUser, isStreaming = false, streamComplete = false, streamingId = null }) {
     let long = '';
     if (longAndlat && Array.isArray(longAndlat) && longAndlat.length && Array.isArray(longAndlat[0])) {
         long = longAndlat[0].join(',');
@@ -170,26 +183,25 @@ export function appendMessage({ text, className, chatMessages, type, suggestion,
         if (bloaDox) bloaDox.remove();
     }
 
-    // Special POI message
     const isSpecialPOI = (type === 'navigation' || type === 'introduction') && !(placeNames && placeNames.length > 1);
-    const streamingDivId = isSpecialPOI ? 'streaming-poi-message' : 'streaming-message';
-    let streamingDiv = document.getElementById(streamingDivId);
+
+    // For streaming messages, use unique streamingId
+    const divId = streamingId || ('streaming-' + Date.now() + '-' + Math.floor(Math.random() * 1000));
+    let streamingDiv = document.getElementById(divId);
 
     if (isStreaming) {
         if (!streamingDiv) {
-            // First chunk: create container without button
             chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
                 <div class='guideImage'><img src="static/icons/choml.png" alt=""></div>
                 <div class='guideText'>
-                    <div class='messageStype' id='${streamingDivId}'>${text}</div>
+                    <div class='messageStype' id='${divId}'>${text}</div>
                 </div>
             </div>`;
-            streamingDiv = document.getElementById(streamingDivId);
+            streamingDiv = document.getElementById(divId);
         } else {
             streamingDiv.innerHTML += text;
         }
 
-        // If streaming is complete, append the button
         if (streamComplete && isSpecialPOI && streamingDiv) {
             streamingDiv.innerHTML += `<p style='margin-top: 10px;'>
                 <button id="takeThereBut" onclick="Nav.navFunc(event, '${suggestion}', '${placeNames ? placeNames[0] : ''}', '${long}', '${fromUser}')">
@@ -200,7 +212,6 @@ export function appendMessage({ text, className, chatMessages, type, suggestion,
         }
 
     } else {
-        // Normal AI message
         chatMessages.innerHTML += `<div class='chat-message ${currClass}'>
             <div class='guideImage'><img src="static/icons/choml.png" alt=""></div>
             <div class='guideText'>

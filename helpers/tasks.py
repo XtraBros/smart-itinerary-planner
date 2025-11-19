@@ -177,6 +177,7 @@ def handle_navigation(app, query: str, user_location: dict, spatial_type: bool =
     prompt = f"""
 You are a helpful assistant working in {locale_name}. The user wants directions to a place.
 Provide a brief introduction of the POI. The location will be provided on the user's map UI.
+Do NOT give the user instructions on how to get there, simply redirect them to their map display.
 Refer to the following POI data to answer accurately, but do not include coordinates.
 User location: {user_location}
 POI Data: {poi_data}
