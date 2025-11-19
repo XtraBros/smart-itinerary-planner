@@ -82,14 +82,23 @@ def insert_hyperlinks(message, replacements):
     return final_message
 
 def mark_poi_names(text, poi_names):
-    # Sort longer names first to avoid substring conflicts
+    # Sort longer names first
     sorted_names = sorted(poi_names, key=len, reverse=True)
 
     for name in sorted_names:
-        pattern = r'\b' + re.escape(name) + r'\b'
-        text = re.sub(pattern, f'~{name}~', text)
-    
+        pattern = re.compile(
+            r'\b' + re.escape(name) + r'\b',
+            flags=re.IGNORECASE
+        )
+
+        def replacer(match):
+            # Use the *original* POI name in the marker
+            return f"~{name}~"
+
+        text = pattern.sub(replacer, text)
+
     return text
+
 
 def extract_poi_names_and_coords(poi_data):
     names = []

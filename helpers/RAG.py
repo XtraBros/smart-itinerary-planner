@@ -209,24 +209,36 @@ class RAGPlatform:
                 print(f"[{unit.id}] Error during {field} query: {e}")
         return sorted(results, key=lambda x: x.get("similarity", 0), reverse=True)[:top_k]
     
-    def hybrid_query(self, query_text: str, top_k: int = 5, alpha: float = 0.5) -> List[dict]:
+    def hybrid_query(self, query_text: str, top_k: int = 10, alpha: float = 0.5) -> List[dict]:
         """
-        Hybrid retrieval between tags and descriptions using weighted score fusion.
-        alpha = weight for description score (0-1).
+        Hybrid retrieval combining:
+        - description similarity
+        - tag similarity
+        - name similarity
+        - lexical name matching fallback (very important)
         """
-        desc_results = self.query_by_description(query_text, top_k * 2)
-        tag_results = self.query_by_tags(query_text, top_k * 2)
-        name_results = self.query_by_name(query_text, top_k * 2)
 
-        # Build lookup tables for merging
+        # Normalize query early for lexical checks
+        norm_query = normalize_name(query_text)
+
+        # Get expanded candidate pools
+        desc_results = self.query_by_description(query_text, top_k * 4)
+        tag_results = self.query_by_tags(query_text, top_k * 4)
+        name_results = self.query_by_name(query_text, top_k * 4)
+
         merged = {}
+
+        # --- 1. Insert description results ---
         for r in desc_results:
             merged[r["name"]] = {
                 **r,
-                "desc_score": 1.0 / (1.0 + r["similarity"]),  # invert distance to similarity
-                "tag_score": 0.0
+                "desc_score": 1.0 / (1.0 + r["similarity"]),
+                "tag_score": 0.0,
+                "name_score": 0.0,
+                "lexical_boost": 0.0,
             }
 
+        # --- 2. Insert tag results ---
         for r in tag_results:
             if r["name"] in merged:
                 merged[r["name"]]["tag_score"] = 1.0 / (1.0 + r["similarity"])
@@ -234,25 +246,50 @@ class RAGPlatform:
                 merged[r["name"]] = {
                     **r,
                     "desc_score": 0.0,
-                    "tag_score": 1.0 / (1.0 + r["similarity"])
+                    "tag_score": 1.0 / (1.0 + r["similarity"]),
+                    "name_score": 0.0,
+                    "lexical_boost": 0.0,
                 }
+
+        # --- 3. Insert name embedding similarity results ---
         for r in name_results:
             if r["name"] in merged:
-                merged[r["name"]]["tag_score"] = 1.0 / (1.0 + r["similarity"])
+                merged[r["name"]]["name_score"] = 1.0 / (1.0 + r["similarity"])
             else:
                 merged[r["name"]] = {
                     **r,
                     "desc_score": 0.0,
-                    "tag_score": 1.0 / (1.0 + r["similarity"])
+                    "tag_score": 0.0,
+                    "name_score": 1.0 / (1.0 + r["similarity"]),
+                    "lexical_boost": 0.0,
                 }
 
-        # Hybrid score = α * desc_score + (1-α) * tag_score
-        for v in merged.values():
-            v["hybrid_score"] = alpha * v["desc_score"] + (1 - alpha) * v["tag_score"]
+        # --- 4. Lexical name fallback boost (CRITICAL for USS) ---
+        #
+        # If the query text contains the POI name (case-insensitive,
+        # punctuation-insensitive), massively boost its score so it is always retrieved.
+        #
+        for name, r in merged.items():
+            norm_name = normalize_name(name)
+            if norm_name in norm_query:
+                r["lexical_boost"] = 2.0  # strong boost to guarantee inclusion
 
-        # Sort and return top-k
+        # --- 5. Compute final hybrid score ---
+        for r in merged.values():
+            # Weighted combination
+            semantic_score = (
+                alpha * r["desc_score"]
+                + (1 - alpha) * r["tag_score"]
+                + 0.5 * r["name_score"]  # name similarity gets moderate weight
+            )
+
+            # Apply lexical boost (makes USS unmissable)
+            r["hybrid_score"] = semantic_score + r["lexical_boost"]
+
+        # --- 6. Sort and pick final ---
         results = sorted(merged.values(), key=lambda x: x["hybrid_score"], reverse=True)
         return results[:top_k]
+
     
     def build_balltree(self):
         """Build BallTree from all units' POI data and store internally."""
