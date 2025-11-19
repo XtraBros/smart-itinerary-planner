@@ -1,5 +1,5 @@
 import { sharedState } from "./main.js";
-import { get_coordinates_without_route, addMarkers } from "./map-setup.js";
+import { addMarkers, disminiNav, displayRoute } from "./map-setup.js"
 
 export function systemQuestionFunc(e) {
     const chatMessages = document.getElementById("chatbot-messages");
@@ -224,29 +224,40 @@ export function appendMessage({
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// New function: attach a Take Me There button to the last message
-export function attachPOIButton({ container, suggestion = '', placeNames = [], longAndlat = [], fromUser = '0' }) {
+export function attachPOIButton({ container, placeNames = [], longAndlat = [], fromUser = '1' }) {
     if (!container || !placeNames || placeNames.length === 0 || !longAndlat || longAndlat.length === 0) return;
 
-    // Normalize coordinates to "lon,lat"
-    let coordStr = '';
-    if (Array.isArray(longAndlat[0])) coordStr = longAndlat[0].join(',');
-    else coordStr = longAndlat.join(',');
-
-    // container should be the inner messageStype div
-    const messageDiv = container; 
-    if (!messageDiv) {
-        console.warn('attachPOIButton: container not found');
-        return;
-    }
-
-    // Create button wrapper
+    const coordStr = Array.isArray(longAndlat[0]) ? longAndlat[0].join(',') : longAndlat.join(',');
     const buttonWrapper = document.createElement('p');
     buttonWrapper.style.marginTop = '10px';
 
     const button = document.createElement('button');
     button.id = 'takeThereBut';
-    button.onclick = (e) => Nav.navFunc(e, suggestion, placeNames[0], coordStr, fromUser);
+
+    // Assign click function directly
+    button.onclick = async function (e) {
+        e.preventDefault();
+        
+        disminiNav();
+        const [lonStr, latStr] = coordStr.split(',');
+        const lon = parseFloat(lonStr);
+        const lat = parseFloat(latStr);
+        const popupModal = document.getElementById('popupModal');
+
+        let waypoints = [];
+        if (sharedState.userLocation && sharedState.userLocation.length === 2) {
+            // From user location to POI
+            waypoints = [
+                sharedState.userLocation,
+                [lon, lat]
+            ];
+        } else {
+            waypoints = [[lon, lat]];
+        }
+        popupModal.style.display = "none";
+        await displayRoute(placeNames, waypoints, fromUser === '1');
+
+    };
 
     const img = document.createElement('img');
     img.src = 'static/icons/daohang.svg';
@@ -258,7 +269,5 @@ export function attachPOIButton({ container, suggestion = '', placeNames = [], l
     button.appendChild(img);
     button.appendChild(span);
     buttonWrapper.appendChild(button);
-
-    // Append button directly inside the message bubble
-    messageDiv.appendChild(buttonWrapper);
+    container.appendChild(buttonWrapper);
 }
