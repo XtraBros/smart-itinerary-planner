@@ -209,7 +209,7 @@ Chat history:
     yield {"type": "done", "task": "navigation"}
 
 
-async def handle_introduction(app, query: str, user_location: dict, spatial_type: bool = False):
+def handle_introduction(app, query: str, user_location: dict, spatial_type: bool = False):
     rpm = app.rpm
     locale_name = app.locale_names
     history = process_formatted_history(app.memory.load_memory_variables({}))
@@ -263,7 +263,7 @@ Chat history:
     # Done
     yield {"type": "done", "task": "introduction"}
 
-async def handle_recommendation(app, query: str, user_location: dict, spatial_type: bool = False):
+def handle_recommendation(app, query: str, user_location: dict, spatial_type: bool = False):
     rpm = app.rpm
     locale_name = app.locale_names
     history = process_formatted_history(app.memory.load_memory_variables({}))
@@ -317,7 +317,7 @@ Chat history:
     # Done
     yield {"type": "done", "task": "recommendation"}
 
-async def handle_itinerary(app, query: str, user_location: dict, spatial_type: bool = False):
+def handle_itinerary(app, query: str, user_location: dict, spatial_type: bool = False):
     rpm = app.rpm
     locale_name = app.locale_names
     history = process_formatted_history(app.memory.load_memory_variables({}))

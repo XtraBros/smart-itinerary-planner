@@ -109,7 +109,7 @@ export async function postMessage(message, chatMessages) {
                         break;
 
                     case 'error':
-                        appendMessage({ text: "Error: " + data.error, chatMessages, className: 'error-message' });
+                        console.log({ text: "Error: " + data.error, chatMessages, className: 'error-message' });
                         break;
                 }
             }
@@ -133,7 +133,7 @@ export async function postMessage(message, chatMessages) {
 
     } catch (error) {
         console.error('Streaming error:', error.message || error);
-        appendMessage({ text: "Error: " + error.message, chatMessages, className: 'error-message' });
+        console.log({ text: "Error: " + error.message, chatMessages, className: 'error-message' });
     }
 }
 
