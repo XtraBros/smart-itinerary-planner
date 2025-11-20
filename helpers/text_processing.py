@@ -57,6 +57,18 @@ def url_to_hyperlink(text):
     
     return text
 
+def fix_broken_initialisms(text):
+    """
+    Fix cases like:
+        S.E.A.\nAquarium  →  S.E.A. Aquarium
+        U.S.A. <br> Pavilion  →  U.S.A. Pavilion
+    """
+    return re.sub(
+        r'([A-Z](?:\.[A-Z])+\.)(?:\s*|\s*<br\s*/?>\s*|\n+)(?=[A-Z][a-z])',
+        r'\1 ',
+        text
+    )
+
 # Function to create hyperlinks for places
 def create_hyperlinks(place_list, coordinates):
     hyperlinks = {}
@@ -109,10 +121,21 @@ def extract_poi_names_and_coords(poi_data):
     return names, coordinates
 
 def hyperlink_pois_in_response(response_text, poi_data):
+    # 1. Fix initialisms BEFORE processing anything
+    cleaned_text = fix_broken_initialisms(response_text)
+
+    # 2. Extract names + coords
     names, coords = extract_poi_names_and_coords(poi_data)
+
+    # 3. Build hyperlink dictionary
     hyperlinks = create_hyperlinks(names, coords)
-    marked_text = mark_poi_names(response_text, names)
+
+    # 4. Mark POI names
+    marked_text = mark_poi_names(cleaned_text, names)
+
+    # 5. Replace marked POIs with hyperlinks and format output
     hyperlinked_response = insert_hyperlinks(marked_text, hyperlinks)
+
     return hyperlinked_response
 
 def format_paragraphs(text):

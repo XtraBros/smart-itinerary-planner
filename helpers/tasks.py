@@ -337,7 +337,8 @@ def handle_itinerary(app, query: str, user_location: dict, spatial_type: bool = 
     yield {"type": "poi_data", "content": poi_data}
     prompt = f"""
 You are a helpful assistant. The user wants an itinerary.
-Use the provided POIs to build a structured, clear plan.
+Use the provided POIs to build a structured, clear plan. Do NOT include entrances or exits. 
+Structure your response with html formatting, but do not include ```html tags or braces. The largest font used should only be up to h2. Do NOT use bullet points.
 Include short descriptions. Do NOT include dining unless the user asked.
 
 POI Data: {poi_data}
