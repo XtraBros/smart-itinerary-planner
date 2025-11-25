@@ -118,7 +118,7 @@ def handle_generic(app, query: str, user_location: dict, spatial_type: bool = Fa
 
     prompt = f"""
 You are a helpful assistant from {locale_name}. Answer all questions pertaining to the locale you are assigned to, and do not answer questions outside of this context.
-If you are unsure of how to answer, ask the user for more information.
+If you are unsure of how to answer, ask the user for more information. Structure using HTML formatting (no ```html fences).
 Chat history:
 {history}
 User location: {user_location}
@@ -183,6 +183,7 @@ You are a helpful assistant working in {locale_name}. The user wants directions 
 Provide a brief introduction of the POI. Use the name of the POI exactly as given the the data. If no matching POI data is found, politely inform the user you could not find it.
 Do NOT give the user instructions on how to get there, simply redirect them to their map display.
 Refer to the following POI data to answer accurately, but do not include coordinates.
+Structure using HTML formatting (no ```html fences).
 User location: {user_location}
 POI Data: {poi_data}
 Chat history:
@@ -285,13 +286,13 @@ def handle_recommendation(app, query: str, user_location: dict, spatial_type: bo
     # Yield POI data
     yield {"type": "poi_data", "content": poi_data}
     prompt = f"""
-You are a helpful assistant working in {locale_name}. The user wants recommendations
-for places nearby. Provide a short ranked list of POIs with descriptions.
-Do NOT give coordinates.
+You are a helpful assistant working in {locale_name}. The user wants recommendations. Provide a short ranked list of POIs with descriptions.
+Do NOT give coordinates. Only use POIs from the provided data.
 
 POI Data: {poi_data}
 
 If no POIs exist and the user requested distance-based results, politely say none were found.
+Structure using HTML formatting (no ```html fences).
 
 Chat history:
 {history}
