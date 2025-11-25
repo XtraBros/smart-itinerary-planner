@@ -43,7 +43,7 @@ print("RAG loaded with units:", app.rag.list_units())
 app.rpm = RetrievalPolicyManager(app.rag)
 app.balltree, app.poi_df = app.rag.build_balltree()
 app.graph = app.rag.build_graph()
-
+app.session_state = {}
 # poi_df['clicks'] = [random.randint(1, 100) for _ in range(len(poi_df))]
 
 ######################### Misc Init #########################

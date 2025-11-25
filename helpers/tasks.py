@@ -5,6 +5,9 @@ import json
 import numpy as np
 import pandas as pd
 import os
+from langchain.memory import ConversationBufferWindowMemory
+from langchain.schema import BaseMessage
+
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -20,22 +23,25 @@ TASK_TYPES = ["generic", "navigation", "introduction", "recommendation", "itiner
 
 CLASSIFIER_PROMPT = """
 You are a task classifier for a travel assistant app.
-Classify the following user query into exactly one of these task types: "{task_types}", 
-and tag if the query requires spatial data (e.g. searching for POIs near the user’s current location).
+
+Important: The **first user message** determines the main task of the conversation. Subsequent messages may provide details or preferences, but do NOT override the initial intent.
+
+Decide which of the following task types best describe the conversation. Use exactly one of these task types: "{task_types}", 
+and tag if the query requires spatial data (e.g. searching for POIs near the user's current location).
 
 Structure your response as a dictionary with keys:
 - "task": one of the task types
 - "spatial": a boolean
 
 Rules for spatial:
-- Mark "spatial" as True ONLY if the query explicitly refers to the user’s location or a relative area, 
+- Mark "spatial" as True ONLY if the query explicitly refers to the user's location or a relative area, 
   such as "near me", "close by", "around here", "within X metres/miles", "nearby", "in this area".
 - Do NOT mark "spatial" as True if the query asks about a specific named place 
   (e.g., "Where is the xx Hotel?", "How do I get to Marina Bay Sands?").
 - If unsure, default "spatial" to False.
 
 When to use each task type:
-- "generic": For general questions about the locale, culture, or any non-specific inquiries.
+- "generic": For general questions about the locale, culture, or any non-POI-specific inquiries.
 - "navigation": For questions about directions, locations, or how to get to a specific place.
 - "introduction": For questions seeking information about a specific point of interest (POI).
 - "recommendation": For requests for suggestions on places to visit, eat, or activities to do.
@@ -44,9 +50,14 @@ When to use each task type:
 Return ONLY valid JSON in this exact format:
 {{"task": "<one of {task_types}>", "spatial": <true or false>}}
 
-Do not include explanations or extra text.
-User query: "{query}"
-Conversation history: {chat_history}
+User's first message:
+"{first_user_message}"
+
+Latest user message:
+"{latest_user_message}"
+
+Conversation history (other prior messages):
+{chat_history}
 """
 
 def normalize_poi_data(poi_data):
@@ -60,6 +71,18 @@ def normalize_poi_data(poi_data):
         }
         for poi in poi_data
     ]
+
+def get_first_user_message(memory) -> str:
+    """
+    Extract the first user message from a LangChain ConversationBufferWindowMemory object.
+    """
+    # Try structured messages first
+    try:
+        messages = memory.buffer_as_messages
+        return messages[0].content
+    except Exception as e:
+        print("======>> No user message found in memory.")
+        return ""
 
 async def stream_generator(client, model_name, messages):
         full_reply = ""
@@ -76,22 +99,36 @@ async def stream_generator(client, model_name, messages):
                 yield delta
 
 
-
-def classify_task(app, query: str) -> str:
+def classify_task(app, query: str):
+    # Get full history for context
     history = process_formatted_history(app.memory.load_memory_variables({}))
+
+    # Extract first user message
+    first_user_msg = get_first_user_message(app.memory)
+    if not first_user_msg:
+        first_user_msg = query  # fallback
+
     messages = [
-        {"role": "system", "content": CLASSIFIER_PROMPT.format(query=query, task_types=TASK_TYPES, chat_history=history)},
-        {"role": "user", "content": query}
+        {"role": "system", "content": CLASSIFIER_PROMPT.format(
+            first_user_message=first_user_msg,
+            latest_user_message=query,
+            task_types=TASK_TYPES,
+            chat_history=history
+        )},
+        {"role": "user", "content": query}  # latest user message
     ]
+
     response = client.chat.completions.create(
-        model=model_name,
+        model= model_name,
         messages=messages,
     )
+
     response_text = response.choices[0].message.content.strip()
-    message = json.loads(response_text)  # Keep the original casing
-    task = message["task"].lower()  # lowercase only the task string
+    message = json.loads(response_text)
+    task = message["task"].lower()
     spatial = message["spatial"]
     return task, spatial
+
 
 class RetrievalStrategy:
     def fetch(self, rag_platform, query, context):
@@ -117,8 +154,8 @@ def handle_generic(app, query: str, user_location: dict, spatial_type: bool = Fa
     history = process_formatted_history(app.memory.load_memory_variables({}))
 
     prompt = f"""
-You are a helpful assistant from {locale_name}. Answer all questions pertaining to the locale you are assigned to, and do not answer questions outside of this context.
-If you are unsure of how to answer, ask the user for more information. Structure using HTML formatting (no ```html fences).
+You are a helpful assistant from {locale_name}. Answer all questions pertaining to the locale you are assigned to, and do not answer questions outside of this context. Do not provide any information that is not supported by data. Do NOT provide any POI information in this response.
+If you are unsure of how to answer, ask the user for more information. Structure using HTML formatting (no ```html fences), but do not use bullet points.
 Chat history:
 {history}
 User location: {user_location}
@@ -183,7 +220,7 @@ You are a helpful assistant working in {locale_name}. The user wants directions 
 Provide a brief introduction of the POI. Use the name of the POI exactly as given the the data. If no matching POI data is found, politely inform the user you could not find it.
 Do NOT give the user instructions on how to get there, simply redirect them to their map display.
 Refer to the following POI data to answer accurately, but do not include coordinates.
-Structure using HTML formatting (no ```html fences).
+Structure using HTML formatting (no ```html fences), but do not use bullet points..
 User location: {user_location}
 POI Data: {poi_data}
 Chat history:
@@ -286,13 +323,13 @@ def handle_recommendation(app, query: str, user_location: dict, spatial_type: bo
     # Yield POI data
     yield {"type": "poi_data", "content": poi_data}
     prompt = f"""
-You are a helpful assistant working in {locale_name}. The user wants recommendations. Provide a short ranked list of POIs with descriptions.
-Do NOT give coordinates. Only use POIs from the provided data.
+You are a helpful assistant working in {locale_name}. The user wants recommendations. Reply the user with a friendly tone, and provide a short ranked list of POIs with descriptions.
+Do NOT give coordinates. Only use POIs from the provided data. Prioritize POIs with active experiences instead of dining, accomodationor shopping unless explicitly requested by the user.
 
 POI Data: {poi_data}
 
 If no POIs exist and the user requested distance-based results, politely say none were found.
-Structure using HTML formatting (no ```html fences).
+Structure using HTML formatting (no ```html fences), but do not use bullet points..
 
 Chat history:
 {history}
@@ -357,6 +394,13 @@ def handle_itinerary(app, query: str, user_location: dict, spatial_type: bool = 
             "content": clarification_message,
             "partial_preferences": preferences
         }
+
+        # Memory save
+        app.memory.save_context(
+            {"input": query},
+            {"output": clarification_message}
+        )
+        # finish
         yield {"type": "done", "task": "generic"}
         return
 
@@ -394,7 +438,7 @@ User Preferences (extracted and structured):
 Use ONLY the provided POIs to build a structured, clear itinerary.
 Rules:
 - Do NOT include entrances, exits, or ticketing details.
-- Structure using HTML formatting (no ```html fences).
+- Structure using HTML formatting (no ```html fences), but do not use bullet points..
 - Maximum heading level allowed is <h2>.
 - Do NOT use bullet points.
 - Include short descriptions (1–2 sentences each).
@@ -414,8 +458,8 @@ Chat history:
         {"role": "user", "content": query}
     ]
 
-    stream = app.client.chat.completions.create(
-        model=app.model_name,
+    stream = client.chat.completions.create(
+        model=model_name,
         messages=messages,
         stream=True
     )
