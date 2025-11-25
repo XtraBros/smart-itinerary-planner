@@ -3,7 +3,6 @@ import os, json, ast, numpy as np
 from helpers.text_processing import *
 from helpers.prompts import *
 from helpers.route_solver import *
-from helpers.planner import *
 from helpers.tasks import TASK_HANDLERS, classify_task
 import ast
 
@@ -18,7 +17,7 @@ def ops_router():
     if not query:
         return jsonify({"error": "Query is required"}), 400
 
-    task_type, spatial_type = classify_task(query)
+    task_type, spatial_type = classify_task(current_app,query)
     handler = TASK_HANDLERS.get(task_type)
     print(f"=========> Ops Router Classification: {task_type, spatial_type}")
 
@@ -287,25 +286,3 @@ def fetch_required_data(rag, df, routing_info: dict) -> dict:
     # placeholder for future expansion (events, weather, etc.)
     return gathered
 
-def handle_itinerary_planning(app, rag, llm, memory, user_input, routing_info):
-    pois = rag.query(routing_info.get("entities", []))
-    response = plan_itinerary(app, rag, llm, user_input, routing_info, memory)
-    response = hyperlink_pois_in_response(response, pois)
-    memory.save_context({"input": user_input}, {"output": response})
-    return jsonify({"response": response, "gatheredData": sanitize_for_json(pois)})
-
-
-def handle_itinerary_edit(app, rag, llm, memory, user_input, routing_info):
-    conversation_history = memory.load_memory_variables({})
-    history = process_formatted_history(conversation_history.get('history', ''))
-    previous_itinerary = extract_previous_itinerary_from_history(history)
-
-    if not previous_itinerary:
-        return handle_itinerary_planning(app, rag, llm, memory, user_input, routing_info)
-
-    matched_pois = rag.get_relevant_pois_from_text_blobs(previous_itinerary, user_input)
-    pois = rag.query(matched_pois)
-    response = edit_itinerary(user_input, previous_itinerary, pois).content
-    response = hyperlink_pois_in_response(response, pois)
-    memory.save_context({"input": user_input}, {"output": response})
-    return jsonify({"response": response, "gatheredData": pois})

@@ -1,5 +1,6 @@
 from openai import OpenAI
 from helpers.text_processing import process_formatted_history, detect_nearby_intent
+from helpers.pref import get_user_preferences
 import json
 import numpy as np
 import pandas as pd
@@ -45,6 +46,7 @@ Return ONLY valid JSON in this exact format:
 
 Do not include explanations or extra text.
 User query: "{query}"
+Conversation history: {chat_history}
 """
 
 def normalize_poi_data(poi_data):
@@ -75,9 +77,10 @@ async def stream_generator(client, model_name, messages):
 
 
 
-def classify_task(query: str) -> str:
+def classify_task(app, query: str) -> str:
+    history = process_formatted_history(app.memory.load_memory_variables({}))
     messages = [
-        {"role": "system", "content": CLASSIFIER_PROMPT.format(query=query, task_types=TASK_TYPES)},
+        {"role": "system", "content": CLASSIFIER_PROMPT.format(query=query, task_types=TASK_TYPES, chat_history=history)},
         {"role": "user", "content": query}
     ]
     response = client.chat.completions.create(
@@ -319,41 +322,99 @@ Chat history:
     # Done
     yield {"type": "done", "task": "recommendation"}
 
+
 def handle_itinerary(app, query: str, user_location: dict, spatial_type: bool = False):
+
     rpm = app.rpm
     locale_name = app.locale_names
     history = process_formatted_history(app.memory.load_memory_variables({}))
     intent = "spatial" if spatial_type else "semantic"
 
+    # ----------------------------------------------------------------------
+    # 1. PREFERENCE EXTRACTION (single prompt)
+    # ----------------------------------------------------------------------
+
+    pref_result = get_user_preferences(
+        llm_client=client,
+        model_name=model_name,
+        query=query,
+        chat_history=history
+    )
+
+    status = pref_result["status"]
+    preferences = pref_result["preferences"]
+    retrieval_query = pref_result.get("retrieval_query")
+    clarification_message = pref_result.get("clarification_message")
+
+    # ----------------------------------------------------------------------
+    # 1B. Need user clarification
+    # ----------------------------------------------------------------------
+    if status == "need_clarification":
+
+        yield {
+            "type": "content",
+            "content": clarification_message,
+            "partial_preferences": preferences
+        }
+        yield {"type": "done", "task": "generic"}
+        return
+
+    # Save prefs
+    app.session_state["preferences"] = preferences
+
+    # ----------------------------------------------------------------------
+    # 2. RETRIEVAL
+    # ----------------------------------------------------------------------
+
+    effective_query = retrieval_query if retrieval_query else query
+
     poi_data = rpm.decide_retrieval(
-        query_text=query,
+        query_text=effective_query,
         lat=user_location["lat"],
         lon=user_location["lng"],
-        top_k=20,
         intent=intent
     )
-    poi_data = normalize_poi_data(poi_data)
-    # Yield POI data
-    yield {"type": "poi_data", "content": poi_data}
-    prompt = f"""
-You are a helpful assistant. The user wants an itinerary.
-Use the provided POIs to build a structured, clear plan. Do NOT include entrances or exits. 
-Structure your response with html formatting, but do not include ```html tags or braces. The largest font used should only be up to h2. Do NOT use bullet points.
-Include short descriptions. Do NOT include dining unless the user asked.
 
-POI Data: {poi_data}
+    poi_data = normalize_poi_data(poi_data)
+
+    # Stream POIs to frontend
+    yield {"type": "poi_data", "content": poi_data}
+
+    # ----------------------------------------------------------------------
+    # 3. GENERATE ITINERARY (LLM streaming)
+    # ----------------------------------------------------------------------
+
+    itinerary_prompt = f"""
+You are a helpful assistant. The user wants an itinerary.
+
+User Preferences (extracted and structured):
+{preferences}
+
+Use ONLY the provided POIs to build a structured, clear itinerary.
+Rules:
+- Do NOT include entrances, exits, or ticketing details.
+- Structure using HTML formatting (no ```html fences).
+- Maximum heading level allowed is <h2>.
+- Do NOT use bullet points.
+- Include short descriptions (1–2 sentences each).
+- Do NOT include dining unless the user explicitly asked.
+- Respect user preferences strictly.
+- Prefer natural flow, geographical efficiency, and experience quality.
+
+POI Data:
+{poi_data}
 
 Chat history:
 {history}
 """
 
     messages = [
-        {"role": "system", "content": prompt},
+        {"role": "system", "content": itinerary_prompt},
         {"role": "user", "content": query}
     ]
 
-    stream = client.chat.completions.create(
-        model=model_name,
+    stream = app.client.chat.completions.create(
+        model=app.model_name,
         messages=messages,
         stream=True
     )
@@ -366,11 +427,17 @@ Chat history:
             full_reply += delta
             yield {"type": "content", "content": delta}
 
-    # Save to memory
-    app.memory.save_context({"input": query}, {"output": full_reply})
 
-    # Done
+    # ----------------------------------------------------------------------
+    # 4. MEMORY SAVE
+    # ----------------------------------------------------------------------
+
+    app.memory.save_context(
+        {"input": query},
+        {"output": full_reply}
+    )
     yield {"type": "done", "task": "itinerary"}
+    print("========== HANDLE ITINERARY END ==========\n")
 
 
 # Registry of task handlers
