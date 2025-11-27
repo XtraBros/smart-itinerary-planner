@@ -33,10 +33,12 @@ class RAGUnit:
         self.name_embeddings = None
         self.description_embeddings = None
         self.tag_embeddings = None
+        self.combined_embeddings = None
 
         # FAISS indices
         self.dining_index = None
         self.dining_data = None
+        self.combined_index = None
 
         self.load_data()
         self.build_indices()
@@ -76,6 +78,26 @@ class RAGUnit:
             normalize_name(name): i
             for i, name in enumerate(self.data["name"].astype(str).tolist())
         }
+        # Combined embeddings for all fields + metadata ---
+        combined_texts = []
+        for _, row in self.data.iterrows():
+            parts = [
+                str(row.get("name", "")),
+                str(row.get("description", "")),
+                str(row.get("tags", "")),
+                str(row.get("category", "")),       # optional metadata
+                str(row.get("operating_hours", "")) # optional metadata
+            ]
+            combined_texts.append(" | ".join(parts))
+
+        if combined_texts:
+            combined_embeddings = self.embedding_model.encode(combined_texts, convert_to_numpy=True)
+            dim = combined_embeddings.shape[1]
+            combined_index = faiss.IndexFlatL2(dim)
+            combined_index.add(combined_embeddings.astype("float32"))
+
+            self.combined_embeddings = combined_embeddings
+            self.combined_index = combined_index
 
         # Optional dining index
         if "category" in self.data.columns:
@@ -113,6 +135,33 @@ class RAGUnit:
                     "operating_hours": row.get("operating_hours", ""),
                     "similarity": float(distances[0][rank]),
                     "tags": row.get("tags", ""),})
+        return results
+    
+    def query_combined(self, input_text: str, top_k: int = 5) -> List[dict]:
+        """
+        Query POIs using the combined embeddings (name + description + tags + metadata).
+        """
+        if self.combined_index is None or self.combined_embeddings is None:
+            return []
+
+        query_vec = self.embedding_model.encode([input_text], convert_to_numpy=True)
+        query_vec = np.atleast_2d(query_vec).astype("float32")
+        distances, indices = self.combined_index.search(query_vec, top_k)
+
+        results = []
+        for rank, idx in enumerate(indices[0]):
+            if idx < len(self.data):
+                row = self.data.iloc[idx]
+                results.append({
+                    "name": row.get("name", ""),
+                    "description": row.get("description", ""),
+                    "longitude": row.get("longitude"),
+                    "latitude": row.get("latitude"),
+                    "category": row.get("category", ""),
+                    "operating_hours": row.get("operating_hours", ""),
+                    "similarity": float(distances[0][rank]),
+                    "tags": row.get("tags", ""),
+                })
         return results
 
     def filter_by_categories(self, categories: List[str]) -> List[dict]:
@@ -208,87 +257,101 @@ class RAGPlatform:
             except Exception as e:
                 print(f"[{unit.id}] Error during {field} query: {e}")
         return sorted(results, key=lambda x: x.get("similarity", 0), reverse=True)[:top_k]
-    
+
+    def query_by_combined(self, query_text: str, top_k: int = 5) -> List[dict]:
+        """
+        Query POIs by the combined embedding vector (name + description + tags + metadata).
+        """
+        results = []
+        for unit in self.units.values():
+            try:
+                index = getattr(unit, "combined_index", None)
+                embeddings = getattr(unit, "combined_embeddings", None)
+                if index is None or embeddings is None:
+                    continue
+
+                query_vec = unit.embedding_model.encode([query_text], convert_to_numpy=True)
+                query_vec = np.atleast_2d(query_vec).astype("float32")
+                distances, indices = index.search(query_vec, top_k)
+
+                for rank, idx in enumerate(indices[0]):
+                    if idx < len(unit.data):
+                        row = unit.data.iloc[idx]
+                        results.append({
+                            "name": row.get("name", ""),
+                            "description": row.get("description", ""),
+                            "longitude": row.get("longitude"),
+                            "latitude": row.get("latitude"),
+                            "category": row.get("category", ""),
+                            "tags": row.get("tags", ""),
+                            "similarity": float(distances[0][rank]),
+                            "source": unit.name
+                        })
+            except Exception as e:
+                print(f"[{unit.id}] Error during combined query: {e}")
+        return sorted(results, key=lambda x: x.get("similarity", 0), reverse=True)[:top_k]
+
     def hybrid_query(self, query_text: str, top_k: int = 10, alpha: float = 0.5) -> List[dict]:
         """
         Hybrid retrieval combining:
         - description similarity
         - tag similarity
         - name similarity
-        - lexical name matching fallback (very important)
+        - combined vector similarity
+        - lexical name matching fallback
         """
-
-        # Normalize query early for lexical checks
         norm_query = normalize_name(query_text)
 
-        # Get expanded candidate pools
+        # --- Retrieve candidates ---
         desc_results = self.query_by_description(query_text, top_k * 4)
         tag_results = self.query_by_tags(query_text, top_k * 4)
         name_results = self.query_by_name(query_text, top_k * 4)
+        combined_results = self.query_by_combined(query_text, top_k * 4)
 
         merged = {}
 
-        # --- 1. Insert description results ---
+        # --- Aggregate scores ---
         for r in desc_results:
-            merged[r["name"]] = {
-                **r,
-                "desc_score": 1.0 / (1.0 + r["similarity"]),
-                "tag_score": 0.0,
-                "name_score": 0.0,
-                "lexical_boost": 0.0,
-            }
+            merged[r["name"]] = {**r, "desc_score": 1.0 / (1 + r["similarity"]), "tag_score": 0.0, "name_score": 0.0, "combined_score": 0.0, "lexical_boost": 0.0}
 
-        # --- 2. Insert tag results ---
         for r in tag_results:
             if r["name"] in merged:
-                merged[r["name"]]["tag_score"] = 1.0 / (1.0 + r["similarity"])
+                merged[r["name"]]["tag_score"] = 1.0 / (1 + r["similarity"])
             else:
-                merged[r["name"]] = {
-                    **r,
-                    "desc_score": 0.0,
-                    "tag_score": 1.0 / (1.0 + r["similarity"]),
-                    "name_score": 0.0,
-                    "lexical_boost": 0.0,
-                }
+                merged[r["name"]] = {**r, "desc_score": 0.0, "tag_score": 1.0 / (1 + r["similarity"]), "name_score": 0.0, "combined_score": 0.0, "lexical_boost": 0.0}
 
-        # --- 3. Insert name embedding similarity results ---
         for r in name_results:
             if r["name"] in merged:
-                merged[r["name"]]["name_score"] = 1.0 / (1.0 + r["similarity"])
+                merged[r["name"]]["name_score"] = 1.0 / (1 + r["similarity"])
             else:
-                merged[r["name"]] = {
-                    **r,
-                    "desc_score": 0.0,
-                    "tag_score": 0.0,
-                    "name_score": 1.0 / (1.0 + r["similarity"]),
-                    "lexical_boost": 0.0,
-                }
+                merged[r["name"]] = {**r, "desc_score": 0.0, "tag_score": 0.0, "name_score": 1.0 / (1 + r["similarity"]), "combined_score": 0.0, "lexical_boost": 0.0}
 
-        # --- 4. Lexical name fallback boost (CRITICAL for USS) ---
-        #
-        # If the query text contains the POI name (case-insensitive,
-        # punctuation-insensitive), massively boost its score so it is always retrieved.
-        #
-        for name, r in merged.items():
-            norm_name = normalize_name(name)
-            if norm_name in norm_query:
-                r["lexical_boost"] = 2.0  # strong boost to guarantee inclusion
+        for r in combined_results:
+            if r["name"] in merged:
+                merged[r["name"]]["combined_score"] = 1.0 / (1 + r["similarity"])
+            else:
+                merged[r["name"]] = {**r, "desc_score": 0.0, "tag_score": 0.0, "name_score": 0.0, "combined_score": 1.0 / (1 + r["similarity"]), "lexical_boost": 0.0}
 
-        # --- 5. Compute final hybrid score ---
+        # --- Lexical boost for exact name matches ---
         for r in merged.values():
-            # Weighted combination
-            semantic_score = (
-                alpha * r["desc_score"]
-                + (1 - alpha) * r["tag_score"]
-                + 0.5 * r["name_score"]  # name similarity gets moderate weight
-            )
+            norm_name = normalize_name(r["name"])
+            if norm_name in norm_query:
+                r["lexical_boost"] = 2.0
 
-            # Apply lexical boost (makes USS unmissable)
+        # --- Compute final hybrid score ---
+        for r in merged.values():
+            semantic_score = (
+                alpha * r["desc_score"] +
+                (1 - alpha) * r["tag_score"] +
+                0.5 * r["name_score"] +
+                0.7 * r["combined_score"]  # weight combined score fairly high
+            )
             r["hybrid_score"] = semantic_score + r["lexical_boost"]
 
-        # --- 6. Sort and pick final ---
+        # --- Return top-k ---
         results = sorted(merged.values(), key=lambda x: x["hybrid_score"], reverse=True)
         return results[:top_k]
+
 
     
     def build_balltree(self):
