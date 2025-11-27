@@ -148,31 +148,50 @@ def format_paragraphs(text):
     return formatted_text
 
 def process_formatted_history(history):
+    """
+    Converts LangChain memory history (string or dict) into a clean,
+    LLM-friendly format like:
+
+    [User] ...
+    [Assistant] ...
+    """
+
+    # If history passed as {"history": "..."} unwrap it
     if isinstance(history, dict) and "history" in history:
         history = history["history"]
+
     if not isinstance(history, str):
-        raise ValueError("Expected history to be a string or dict containing 'history'")
+        return ""  # safely fallback
+
     lines = history.strip().split("\n")
-    processed_history = []
-    
+    cleaned = []
+
     for line in lines:
-        # Check if it's an AI response line and attempt to parse it as JSON
+        # Normalize human messages
+        if line.startswith("Human:") or line.startswith("User:"):
+            content = line.split(":", 1)[1].strip()
+            cleaned.append(f"[User] {content}")
+            continue
+
+        # Normalize assistant messages
         if line.startswith("AI:"):
-            # Extract JSON part from the line
-            ai_message_json = line[3:].strip()
+            raw = line[3:].strip()
+
+            # Try to parse {"response": "..."}
             try:
-                # Parse JSON and extract 'response'
-                ai_message = json.loads(ai_message_json)
-                response = ai_message.get("response", "")
-                processed_history.append(f"AI: {response}")
-            except json.JSONDecodeError:
-                # If JSON is invalid, keep line as is
-                processed_history.append(line)
-        else:
-            # For Human lines, keep them as they are
-            processed_history.append(line)
-    
-    return "\n".join(processed_history)
+                data = json.loads(raw)
+                content = data.get("response", raw)
+            except Exception:
+                content = raw
+
+            cleaned.append(f"[Assistant] {content}")
+            continue
+
+        # Other (unexpected) lines → include as-is
+        cleaned.append(line)
+
+    return "\n".join(cleaned)
+
 
 def normalize(text):
     text = unicodedata.normalize('NFKD', text)  # Normalize characters
