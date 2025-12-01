@@ -30,6 +30,7 @@ app.llm = LLMPipeline(
     model=config['GPT_MODEL'],
     api_key=config['OPENAI_API_KEY']
 )
+app.llm_config = {'persona_instructions':"Speak in a Friendly & Helpful tone."}
 app.memory = ConversationBufferWindowMemory(k=5, memory_key="history")
 
 ######################### RAG Data #########################

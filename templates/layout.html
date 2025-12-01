@@ -102,7 +102,8 @@
             <div class="sidebar" id="sidebar">
                 <div id="sidebar-toggle" class="sidebar-toggle">☰</div>
                 <ul id="menu">
-                    <li data-component="llm-manager" data-title="Model Manager">Model Manager</li>
+                    <li data-component="live-panel" data-title="Live Testing Panel">Live Testing Panel</li>
+                    <li data-component="llm-manager" data-title="Model Manager">LLM Manager</li>
                     <li data-component="rag-manager" data-title="RAG Manager">POI Data Manager</li>
                     <li data-component="map-manager" data-title="Map Manager">Map Manager</li>
                     <li data-component="analytics" data-title="Analytics">Analytics</li>
@@ -116,13 +117,19 @@
     <!-- Full-page overlay -->
     <div id="landing-overlay">
         <div class="grid-container">
-            <button class="grid-button" data-component="llm-manager" data-title="Model Manager">Model Manager</button>
+            <button class="grid-button" data-component="live-panel" data-title="Live Testing Panel">Live Testing Panel</button>
+            <button class="grid-button" data-component="llm-manager" data-title="Model Manager">LLM Manager</button>
             <button class="grid-button" data-component="rag-manager" data-title="RAG Manager">POI Data Manager</button>
             <button class="grid-button" data-component="map-manager" data-title="Map Manager">Map Manager</button>
             <button class="grid-button" data-component="analytics" data-title="Analytics">Analytics</button>
             <button class="grid-button" data-component="graph-viewer" data-title="Graph Viewer">Graph Viewer</button>
         </div>
     </div>
+    <div id="container">
+        <div id="map"></div>
+        <div id="hiddenMap"></div>
+    </div>
+
 
     <style>
         /* Overlay styles */

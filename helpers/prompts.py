@@ -1,3 +1,7 @@
+###############################################################
+# This file is defunct. Refer to tasks.py
+###############################################################
+
 from openai import OpenAI
 import json
 import os

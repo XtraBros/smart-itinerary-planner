@@ -31,3 +31,35 @@
       console.error(err);
     }
   });
+  // ----- Persona update handler -----
+document.getElementById('persona-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const customInstructions = document.getElementById('custom-instructions').value.trim();
+  const status = document.getElementById('persona-status');
+
+  status.textContent = '⏳ Updating persona...';
+  status.className = "status-message";
+
+  try {
+    const res = await fetch('/update_llm/persona', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ custom_instructions: customInstructions }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      status.textContent = `✅ Persona updated`;
+      status.className = "status-message success";
+    } else {
+      status.textContent = `❌ Failed to update persona: ${data.error || 'Unknown error'}`;
+      status.className = "status-message error";
+    }
+  } catch (err) {
+    status.textContent = `❌ Failed to update persona`;
+    status.className = "status-message error";
+    console.error(err);
+  }
+});

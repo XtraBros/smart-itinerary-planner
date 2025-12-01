@@ -152,10 +152,11 @@ def handle_generic(app, query: str, user_location: dict, spatial_type: bool = Fa
     """
     locale_name = app.locale_names
     history = process_formatted_history(app.memory.load_memory_variables({}))
-
+    persona = app.llm_config.get("persona_instructions", "")
     prompt = f"""
 You are a helpful assistant from {locale_name}. Answer all questions pertaining to the locale you are assigned to, and do not answer questions outside of this context. Do not provide any information that is not supported by data. Do NOT provide any POI information in this response.
 If you are unsure of how to answer, ask the user for more information. Structure using HTML formatting (no ```html fences), but do not use bullet points.
+Persona instructions: {persona}
 Chat history:
 {history}
 User location: {user_location}
@@ -194,6 +195,7 @@ def handle_navigation(app, query: str, user_location: dict, spatial_type: bool =
     """
     rpm = app.rpm
     locale_name = app.locale_names
+    persona = app.llm_config.get("persona_instructions", "")
     history = process_formatted_history(app.memory.load_memory_variables({}))
 
     intent = "spatial" if spatial_type else "semantic"
@@ -220,7 +222,8 @@ You are a helpful assistant working in {locale_name}. The user wants directions 
 Provide a brief introduction of the POI. Use the name of the POI exactly as given the the data. If no matching POI data is found, politely inform the user you could not find it.
 Do NOT give the user instructions on how to get there, simply redirect them to their map display.
 Refer to the following POI data to answer accurately, but do not include coordinates.
-Structure using HTML formatting (no ```html fences), but do not use bullet points..
+Structure using HTML formatting (no ```html fences), but do not use bullet points.
+Persona instructions: {persona}
 User location: {user_location}
 POI Data: {poi_data}
 Chat history:
@@ -255,6 +258,7 @@ Chat history:
 def handle_introduction(app, query: str, user_location: dict, spatial_type: bool = False):
     rpm = app.rpm
     locale_name = app.locale_names
+    persona = app.llm_config.get("persona_instructions", "")
     history = process_formatted_history(app.memory.load_memory_variables({}))
     intent = "spatial" if spatial_type else "semantic"
 
@@ -275,7 +279,7 @@ def handle_introduction(app, query: str, user_location: dict, spatial_type: bool
     prompt = f"""
 You are a helpful assistant from {locale_name}. The user wants an introduction to a POI.
 Describe the POI clearly and concisely. Do NOT mention coordinates.
-
+Persona instructions: {persona}
 POI Data: {poi_data}
 
 Chat history:
@@ -309,6 +313,7 @@ Chat history:
 def handle_recommendation(app, query: str, user_location: dict, spatial_type: bool = False):
     rpm = app.rpm
     locale_name = app.locale_names
+    persona = app.llm_config.get("persona_instructions", "")
     history = process_formatted_history(app.memory.load_memory_variables({}))
     intent = "spatial" if spatial_type else "semantic"
 
@@ -325,7 +330,7 @@ def handle_recommendation(app, query: str, user_location: dict, spatial_type: bo
     prompt = f"""
 You are a helpful assistant working in {locale_name}. The user wants recommendations. Reply the user with a friendly tone, and provide a short ranked list of POIs with descriptions.
 Do NOT give coordinates. Only use POIs from the provided data. Prioritize POIs with active experiences instead of dining, accomodationor shopping unless explicitly requested by the user.
-
+Persona instructions: {persona}
 POI Data: {poi_data}
 
 If no POIs exist and the user requested distance-based results, politely say none were found.

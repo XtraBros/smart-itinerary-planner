@@ -117,6 +117,25 @@
       </form>
       <div id="llm-status" class="status-message"></div>
     </div>
+    <!-- PERSONA & TONE SETTINGS -->
+    <div class="section">
+      <h2 style="margin-top: 0;">🧩 LLM Persona & Tone Settings</h2>
+
+      <form id="persona-form">
+        <!-- Custom Persona Instructions -->
+        <label for="custom-instructions">Additional Persona Instructions:</label>
+        <textarea
+          id="custom-instructions"
+          name="custom_instructions"
+          rows="4"
+          placeholder="Optional: Add specific behavior guidelines for the assistant..."
+          style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;"
+        ></textarea>
+
+        <button type="submit" style="margin-top: 0.5rem;">Save Persona Settings</button>
+      </form>
+      <div id="persona-status" class="status-message"></div>
+    </div> 
   </main>
 
   <script src="{{ url_for('static', filename='js/llm-manager.js') }}"></script>

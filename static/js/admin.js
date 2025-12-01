@@ -51,6 +51,25 @@ layout.registerComponent('html-component', function(container, state) {
             el.style.minWidth = '0';
             el.style.minHeight = '0';
             switch (state.name) {
+
+                case "live-panel": {
+                    // Load live-panel.html directly into the container
+                    fetch(`/admin/screen/live-panel`)
+                        .then(res => res.text())
+                        .then(html => {
+                            const el = container.getElement()[0];
+                            el.innerHTML = html;
+                
+                            // Optional: make sure container scrolls nicely
+                            el.style.overflowY = "auto";
+                            el.style.width = "100%";
+                            el.style.height = "100%";
+                        })
+                        .catch(err => console.error("Failed to load live-panel.html:", err));
+                    break;
+                }
+                
+                
                 case 'rag-manager': {
                     const script = document.createElement('script');
                     script.src = '/static/js/rag-manager.js';
@@ -275,7 +294,7 @@ layout.registerComponent('html-component', function(container, state) {
                         });
                 
                     break;
-                }                
+                }
 
                 default:
                     console.warn(`No specific handler for ${state.name}`);

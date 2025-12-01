@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Testing Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
+
+    header {
+        padding: 0.5rem;
+        background: #1f2937;
+        color: white;
+        text-align: center;
+    }
+    
+    header h1 {
+        font-size: 1.2rem;  /* smaller than default */
+        margin: 0.2rem 0;
+    }
+
+    #app-frame {
+      width: 100%;
+      height: calc(100vh - 80px);
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🧪 Live Testing Panel</h1>
+  </header>
+
+  <!-- Embed the main app -->
+  <iframe id="app-frame" src="/"></iframe>
+</body>
+</html>

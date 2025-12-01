@@ -29,7 +29,8 @@ def screen_proxy(screen_name):
         "rag-manager": rag_manager,
         "map-manager": map_manager,
         "analytics": analytics,
-        "graph-viewer": map_graph
+        "graph-viewer": map_graph,
+        "live-panel": live_panel
     }
     if screen_name not in screen_map:
         return jsonify({"error": "Screen not found"}), 404
@@ -60,6 +61,9 @@ def map_graph():
 def analytics():
     return render_template("screens/analytics.html")
 
+@backend_bp.route("/live-panel")
+def live_panel():
+    return render_template("screens/live-panel.html")
 
 ############################################ CUSTOMIZATION UI ENDPOINTS #####################################################
 
@@ -140,6 +144,15 @@ def update_llm():
         traceback.print_exc()
         return jsonify(error=f"Failed to initialize LLM: {str(e)}"), 500
 
+@backend_bp.route("/update_llm/persona", methods=["POST"])
+def update_llm_persona():
+    data = request.json
+    custom_instructions = data.get("custom_instructions", "")
+
+    # Save to your global config object
+    app.llm_config["persona_instructions"] = custom_instructions
+
+    return jsonify({"status": "ok"})
 
 @backend_bp.route("/delete_unit", methods=["POST"])
 def remove_rag_unit():
