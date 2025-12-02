@@ -259,6 +259,100 @@ def get_units():
         })
     return jsonify(units=units), 200
 
+
+@backend_bp.route("/rag_unit/<unit_id>/data", methods=["GET"])
+def get_unit_data(unit_id):
+    """
+    Return the raw POI rows for a specific RAG unit so the UI can render a sheet-like editor.
+    """
+    rag: RAGPlatform = getattr(app, "rag", None)
+    if rag is None:
+        return jsonify({"error": "RAG platform not initialized"}), 400
+
+    unit = rag.units.get(unit_id)
+    if unit is None:
+        return jsonify({"error": f"RAG Unit {unit_id} not found"}), 404
+
+    df = unit.get_data()
+    if df is None:
+        return jsonify({"error": "Unit is missing a backing dataframe"}), 400
+
+    payload = {
+        "unit": {
+            "id": unit.id,
+            "name": unit.name,
+            "description": unit.description,
+            "source_path": unit.source.get("path", "")
+        },
+        "columns": df.columns.tolist(),
+        "rows": df.fillna("").to_dict(orient="records")
+    }
+    return jsonify(payload), 200
+
+
+@backend_bp.route("/rag_unit/<unit_id>/data", methods=["PUT"])
+def update_unit_data(unit_id):
+    """
+    Persist edits to a unit's CSV file and refresh in-memory indices/ball-trees.
+    """
+    rag: RAGPlatform = getattr(app, "rag", None)
+    if rag is None:
+        return jsonify({"error": "RAG platform not initialized"}), 400
+
+    unit = rag.units.get(unit_id)
+    if unit is None:
+        return jsonify({"error": f"RAG Unit {unit_id} not found"}), 404
+
+    payload = request.get_json() or {}
+    rows = payload.get("rows")
+    columns = payload.get("columns")
+
+    if rows is None:
+        return jsonify({"error": "rows payload required"}), 400
+
+    df = pd.DataFrame(rows)
+    if columns:
+        # Preserve column order and ensure missing keys exist
+        for col in columns:
+            if col not in df.columns:
+                df[col] = ""
+        df = df[columns]
+    else:
+        columns = df.columns.tolist()
+
+    csv_path = unit.source.get("path")
+    if not csv_path:
+        return jsonify({"error": "Unit does not track a CSV file path"}), 400
+
+    try:
+        df.to_csv(csv_path, index=False)
+    except Exception as exc:
+        return jsonify({"error": f"Failed to write CSV: {exc}"}), 500
+
+    unit.data = df
+    try:
+        unit.build_indices()
+    except Exception as exc:
+        return jsonify({"error": f"Failed to rebuild indices: {exc}"}), 500
+
+    rag.units[unit.id] = unit
+
+    try:
+        balltree, poi_df = rag.build_balltree()
+        app.balltree = balltree
+        app.poi_df = poi_df
+    except Exception as exc:
+        return jsonify({"error": f"POI spatial index refresh failed: {exc}"}), 500
+
+    try:
+        app.graph = rag.build_graph()
+    except Exception:
+        # Graph is optional; keep failure non-fatal but log for debugging.
+        traceback.print_exc()
+
+    app.rag = rag
+    return jsonify({"message": "POI data updated", "columns": columns}), 200
+
 @backend_bp.route('/update_map_style', methods=['POST'])
 def update_map_style():
     def load_config():

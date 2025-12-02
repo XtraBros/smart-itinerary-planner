@@ -1,6 +1,13 @@
+let sheetTable = null;
+let activeUnitId = null;
+let activeColumns = [];
+let activeUnitName = "";
+let tabulatorLoader = null;
+const TABULATOR_SRC = "/static/js/tabulator.min.js";
+
 function openAddModal() {
     document.getElementById("addModal").style.display = "flex";
-    }
+}
 
 function closeAddModal() {
     document.getElementById("addModal").style.display = "none";
@@ -68,26 +75,38 @@ function hideLoadingModal() {
 
 async function fetchUnits() {
     console.log("Fetching RAG units...");
-    const response = await fetch("/admin/get\_units");
-    const data = await response.json();
-    console.log("Fetched units:", data);
-    const container = document.getElementById("unit-container");
-    container.innerHTML = "";
+    try {
+        const response = await fetch("/admin/get_units");
+        const data = await response.json();
+        console.log("Fetched units:", data);
+        const container = document.getElementById("unit-container");
+        container.innerHTML = "";
 
-    data.units.forEach((unit) => {
-        const unitBox = document.createElement("div");
-        unitBox.className = "unit-box";
-        unitBox.style.backgroundColor = "#dce775"; // fixed CSV color
+        data.units.forEach((unit) => {
+            const unitBox = document.createElement("div");
+            unitBox.className = "unit-box";
+            unitBox.style.backgroundColor = "#dce775";
 
-        unitBox.innerHTML = `
-        <h3>${unit.name.toUpperCase()}</h3>
-        <p>Source: CSV</p>
-        <p>Description: ${unit.description}</p>
-        <button onclick="confirmDeleteUnit('${unit.id}')">🗑 Delete</button>
-    `;
+            const title = unit.name ? unit.name.toUpperCase() : "UNNAMED";
+            const description = unit.description || "No description provided.";
+            const source = (unit.source_type || "csv").toUpperCase();
 
-        container.appendChild(unitBox);
-    });
+            unitBox.innerHTML = `
+                <h3>${title}</h3>
+                <p>Source: ${source}</p>
+                <p>Description: ${description}</p>
+                <div class="unit-actions">
+                    <button class="primary" onclick="openSheet('${unit.id}')">📄 Manage Data</button>
+                    <button class="danger" onclick="confirmDeleteUnit('${unit.id}')">🗑 Delete</button>
+                </div>
+            `;
+
+            container.appendChild(unitBox);
+        });
+    } catch (error) {
+        console.error("Failed to fetch units", error);
+        alert("Unable to fetch RAG units.");
+    }
 }
 window.fetchUnits = fetchUnits;
 
@@ -116,6 +135,151 @@ async function deleteUnit(id) {
     }
 }
 window.deleteUnit = deleteUnit;
+
+async function ensureTabulatorLoaded() {
+    if (window.Tabulator) return;
+    if (!tabulatorLoader) {
+        tabulatorLoader = new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = TABULATOR_SRC;
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error("Failed to load the Tabulator bundle. Ensure /static/js/tabulator.min.js is accessible."));
+            document.head.appendChild(script);
+        });
+    }
+    await tabulatorLoader;
+}
+
+async function openSheet(unitId) {
+    try {
+        showLoadingModal("Loading CSV...");
+        const res = await fetch(`/admin/rag_unit/${unitId}/data`);
+        const payload = await res.json();
+        hideLoadingModal();
+        if (!res.ok) {
+            return alert(payload.error || "Failed to load POI data.");
+        }
+        await ensureTabulatorLoaded();
+        activeUnitId = unitId;
+        activeColumns = payload.columns || [];
+        activeUnitName = payload.unit?.name || "POI Sheet";
+        renderSheet(payload);
+    } catch (error) {
+        hideLoadingModal();
+        console.error("Failed to load sheet", error);
+        alert("Unable to load POI sheet.");
+    }
+}
+window.openSheet = openSheet;
+
+function renderSheet(payload) {
+    const panel = document.getElementById("sheetPanel");
+    const title = document.getElementById("sheetTitle");
+    const meta = document.getElementById("sheetMeta");
+    const container = document.getElementById("sheetContainer");
+
+    if (!panel || !title || !meta || !container) return;
+    panel.classList.add("visible");
+    title.textContent = payload.unit?.name || "POI Sheet";
+    const description = payload.unit?.description || "No description";
+    const sourcePath = payload.unit?.source_path || "";
+    meta.textContent = `${description} ${sourcePath ? `• CSV: ${sourcePath}` : ""}`;
+
+    container.innerHTML = "";
+    const columns = (payload.columns || []).map((col) => ({
+        title: col.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        field: col,
+        editor: "input",
+        minWidth: 150,
+        headerSort: false,
+        resizable: true,
+    }));
+
+    sheetTable = new Tabulator(container, {
+        data: payload.rows || [],
+        columns,
+        layout: "fitDataStretch",
+        height: 520,
+        movableColumns: true,
+        resizableRows: true,
+        resizableColumns: true,
+        clipboard: true,
+        placeholder: "No rows in this CSV yet.",
+        selectableRangeMode: "cell",
+        selectableRollingSelection: true,
+        pagination: false,
+        clipboardPasteAction: "replace",
+        rowHeight: 36,
+        reactiveData: false,
+    });
+}
+
+function addSheetRow() {
+    if (!sheetTable || !activeColumns.length) {
+        return alert("Open a POI sheet before adding rows.");
+    }
+    const blankRow = {};
+    activeColumns.forEach((col) => {
+        blankRow[col] = "";
+    });
+    sheetTable.addRow(blankRow, true);
+}
+window.addSheetRow = addSheetRow;
+
+async function saveSheetEdits() {
+    if (!sheetTable || !activeUnitId) {
+        return alert("Open a POI sheet before saving.");
+    }
+    const rows = sheetTable.getData();
+    try {
+        showLoadingModal("Saving CSV...");
+        const res = await fetch(`/admin/rag_unit/${activeUnitId}/data`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ rows, columns: activeColumns }),
+        });
+        hideLoadingModal();
+        if (res.ok) {
+            alert("CSV updated successfully.");
+            await fetchUnits();
+            await openSheet(activeUnitId);
+        } else {
+            const err = await res.json();
+            alert(err.error || "Failed to save CSV.");
+        }
+    } catch (error) {
+        hideLoadingModal();
+        console.error("Failed to save POIs", error);
+        alert("Unable to save POI data.");
+    }
+}
+window.saveSheetEdits = saveSheetEdits;
+
+function closeSheetPanel() {
+    const panel = document.getElementById("sheetPanel");
+    const meta = document.getElementById("sheetMeta");
+    const container = document.getElementById("sheetContainer");
+    if (sheetTable) {
+        sheetTable.destroy();
+        sheetTable = null;
+    }
+    if (container) {
+        container.innerHTML = "";
+    }
+    activeUnitId = null;
+    activeColumns = [];
+    activeUnitName = "";
+    if (panel) {
+        panel.classList.remove("visible");
+    }
+    if (meta) {
+        meta.textContent = "Select a unit to begin editing.";
+    }
+}
+window.closeSheetPanel = closeSheetPanel;
 
 window.onload = async function () {
     hideLoadingModal(); // Hide any old modals
