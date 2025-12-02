@@ -114,7 +114,8 @@
             min-height: 400px;
             overflow: hidden;
         }
-        .sheet-actions button.add-row {
+        .sheet-actions button.add-row,
+        .sheet-actions button.add-column {
             background-color: #2563eb;
             color: #fff;
         }
@@ -130,6 +131,32 @@
         .add-btn:hover {
             background-color: #047857;
         }
+
+        body.sheet-only {
+            background: #fff;
+        }
+
+        body.sheet-only header,
+        body.sheet-only .page-description,
+        body.sheet-only #unit-container,
+        body.sheet-only .add-btn {
+            display: none;
+        }
+
+        body.sheet-only main {
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+
+        body.sheet-only .sheet-panel {
+            display: flex;
+            border-radius: 0;
+            margin: 0;
+            min-height: 100vh;
+            box-shadow: none;
+        }
     </style>
 </head>
 <body>
@@ -138,7 +165,7 @@
     </header>
 
     <main>
-        <p>Load any unit to view and edit its CSV directly within the browser.</p>
+        <p class="page-description">Load any unit to view and edit its CSV directly within the browser.</p>
 
         <div id="unit-container" class="unit-grid"></div>
     
@@ -151,6 +178,7 @@
                     <p id="sheetMeta">Select a unit to begin editing.</p>
                 </div>
                 <div class="sheet-actions">
+                    <button class="add-column" onclick="addSheetColumn()">➕ Add Column</button>
                     <button class="add-row" onclick="addSheetRow()">➕ Add Row</button>
                     <button class="save" onclick="saveSheetEdits()">💾 Save Changes</button>
                     <button class="close" onclick="closeSheetPanel()">Close</button>

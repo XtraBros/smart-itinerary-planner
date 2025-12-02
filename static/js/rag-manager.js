@@ -5,6 +5,18 @@ let activeUnitName = "";
 let tabulatorLoader = null;
 const TABULATOR_SRC = "/static/js/tabulator.min.js";
 
+function enterSheetOnlyMode() {
+    if (document && document.body) {
+        document.body.classList.add("sheet-only");
+    }
+}
+
+function exitSheetOnlyMode() {
+    if (document && document.body) {
+        document.body.classList.remove("sheet-only");
+    }
+}
+
 function openAddModal() {
     document.getElementById("addModal").style.display = "flex";
 }
@@ -164,6 +176,7 @@ async function openSheet(unitId) {
         activeUnitId = unitId;
         activeColumns = payload.columns || [];
         activeUnitName = payload.unit?.name || "POI Sheet";
+        enterSheetOnlyMode();
         renderSheet(payload);
     } catch (error) {
         hideLoadingModal();
@@ -172,6 +185,17 @@ async function openSheet(unitId) {
     }
 }
 window.openSheet = openSheet;
+
+function getColumnDefinition(field) {
+    return {
+        title: field.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        field,
+        editor: "input",
+        minWidth: 150,
+        headerSort: false,
+        resizable: true,
+    };
+}
 
 function renderSheet(payload) {
     const panel = document.getElementById("sheetPanel");
@@ -187,14 +211,7 @@ function renderSheet(payload) {
     meta.textContent = `${description} ${sourcePath ? `• CSV: ${sourcePath}` : ""}`;
 
     container.innerHTML = "";
-    const columns = (payload.columns || []).map((col) => ({
-        title: col.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-        field: col,
-        editor: "input",
-        minWidth: 150,
-        headerSort: false,
-        resizable: true,
-    }));
+    const columns = (payload.columns || []).map((col) => getColumnDefinition(col));
 
     sheetTable = new Tabulator(container, {
         data: payload.rows || [],
@@ -223,9 +240,36 @@ function addSheetRow() {
     activeColumns.forEach((col) => {
         blankRow[col] = "";
     });
-    sheetTable.addRow(blankRow, true);
+    sheetTable.addRow(blankRow);
 }
 window.addSheetRow = addSheetRow;
+
+function addSheetColumn() {
+    if (!sheetTable) {
+        return alert("Open a POI sheet before modifying columns.");
+    }
+
+    const columnName = prompt("New column name:");
+    if (columnName === null) return; // User cancelled
+    const trimmed = columnName.trim();
+    if (!trimmed) {
+        return alert("Column name cannot be empty.");
+    }
+    if (!Array.isArray(activeColumns)) {
+        activeColumns = [];
+    }
+    if (activeColumns.includes(trimmed)) {
+        return alert("That column already exists in this sheet.");
+    }
+
+    activeColumns = [...activeColumns, trimmed];
+    const newColumnDef = getColumnDefinition(trimmed);
+    sheetTable.addColumn(newColumnDef, true, "end").then(() => {
+        const patch = { [trimmed]: "" };
+        sheetTable.getRows().forEach((row) => row.update(patch));
+    });
+}
+window.addSheetColumn = addSheetColumn;
 
 async function saveSheetEdits() {
     if (!sheetTable || !activeUnitId) {
@@ -278,6 +322,7 @@ function closeSheetPanel() {
     if (meta) {
         meta.textContent = "Select a unit to begin editing.";
     }
+    exitSheetOnlyMode();
 }
 window.closeSheetPanel = closeSheetPanel;
 
