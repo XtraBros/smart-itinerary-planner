@@ -1,7 +1,6 @@
 import os
 import uuid
 import json
-import tempfile
 import traceback
 
 from flask import Blueprint, request, jsonify, render_template, current_app as app
@@ -13,8 +12,39 @@ import networkx as nx
 
 from helpers.RAG import RAGPlatform, RAGUnit
 from helpers.model import LLMPipeline
+from helpers.config_store import (
+    load_config,
+    save_config,
+    project_relative_path,
+    PROJECT_ROOT
+)
 
 backend_bp = Blueprint("backend", __name__)
+RAG_UPLOAD_DIR = os.path.join(PROJECT_ROOT, "data", "rag_units")
+os.makedirs(RAG_UPLOAD_DIR, exist_ok=True)
+
+
+def persist_rag_units_config():
+    rag: RAGPlatform = getattr(app, "rag", None)
+    if not rag:
+        return
+    config = load_config()
+    entries = []
+    for unit in rag.units.values():
+        source_path = unit.source.get("path", "")
+        entries.append(
+            {
+                "id": unit.id,
+                "name": unit.name,
+                "description": getattr(unit, "description", ""),
+                "source": {
+                    "type": unit.source.get("type", "csv"),
+                    "path": project_relative_path(source_path),
+                },
+            }
+        )
+    config["RAG_UNITS"] = entries
+    save_config(config)
 
 
 @backend_bp.route('/')
@@ -75,24 +105,20 @@ def init_rag():
     or (optionally) from a provided prebuilt index (not implemented).
     """
     try:
-        # ensure we have a RAGPlatform container on the app
-        existing_rag = getattr(app, "rag", None)
-
         # CSV upload - create a RAGPlatform with one unit
         if 'csv' in request.files:
             csv_file = request.files['csv']
             if csv_file.filename == "":
                 return jsonify(message="CSV file empty"), 400
 
-            # Save the uploaded CSV to a temp file so RAGUnit can read it
-            tmp_dir = tempfile.mkdtemp()
             filename = secure_filename(csv_file.filename)
-            path = os.path.join(tmp_dir, filename)
+            storage_name = f"{uuid.uuid4()}_{filename}"
+            path = os.path.join(RAG_UPLOAD_DIR, storage_name)
             csv_file.save(path)
 
             unit_id = str(uuid.uuid4())
             data_source = {"type": "csv", "path": path}
-            new_unit = RAGUnit(id=unit_id, source=data_source, name=filename, description="Uploaded CSV")
+            new_unit = RAGUnit(id=unit_id, data_source=data_source, name=filename, description="Uploaded CSV")
 
             # Build platform and register
             platform = RAGPlatform(rag_units=[new_unit])
@@ -107,6 +133,7 @@ def init_rag():
                 # Not fatal, but warn
                 traceback.print_exc()
 
+            persist_rag_units_config()
             return jsonify(message="CSV loaded successfully", unit_id=unit_id), 200
 
         # If you want to support index-file initialization later, do it explicitly here
@@ -139,6 +166,18 @@ def update_llm():
     try:
         llm_instance = LLMPipeline(provider=provider, model=model, api_key=api_key)
         app.llm = llm_instance
+        config = load_config()
+        config["LLM_SETTINGS"] = {
+            "provider": provider,
+            "model": model,
+            "api_key": api_key
+        }
+        config["LLM_PROVIDER"] = provider
+        if model:
+            config["GPT_MODEL"] = model
+        if api_key:
+            config["OPENAI_API_KEY"] = api_key
+        save_config(config)
         return jsonify(message="LLM pipeline updated successfully"), 200
     except Exception as e:
         traceback.print_exc()
@@ -151,6 +190,9 @@ def update_llm_persona():
 
     # Save to your global config object
     app.llm_config["persona_instructions"] = custom_instructions
+    config = load_config()
+    config["LLM_PERSONA"] = custom_instructions
+    save_config(config)
 
     return jsonify({"status": "ok"})
 
@@ -180,6 +222,7 @@ def remove_rag_unit():
             app.poi_df = pd.DataFrame()
             app.balltree = None
         app.rag = rag
+        persist_rag_units_config()
         return jsonify({"message": f"RAG Unit {unit_id} removed."}), 200
 
     except Exception as e:
@@ -201,11 +244,9 @@ def add_rag_unit():
         return jsonify({"error": "A valid CSV file is required"}), 400
 
     try:
-        # Save temporarily
-        temp_dir = "/tmp"
-        os.makedirs(temp_dir, exist_ok=True)
         filename = secure_filename(file.filename)
-        file_path = os.path.join(temp_dir, filename)
+        storage_name = f"{uuid.uuid4()}_{filename}"
+        file_path = os.path.join(RAG_UPLOAD_DIR, storage_name)
         file.save(file_path)
 
         # Validate required columns
@@ -225,6 +266,7 @@ def add_rag_unit():
         rag.add_unit(new_unit)
         rag.balltree, app.balltree_df = rag.build_balltree()
         app.rag = rag
+        persist_rag_units_config()
 
         return jsonify({"message": f"CSV Unit '{new_unit.id}' added successfully"}), 200
 
@@ -355,16 +397,6 @@ def update_unit_data(unit_id):
 
 @backend_bp.route('/update_map_style', methods=['POST'])
 def update_map_style():
-    def load_config():
-        config_path = os.path.join(app.root_path, '..', 'config.json')
-        with open(config_path) as f:
-            return json.load(f)
-
-    def save_config(data):
-        config_path = os.path.join(app.root_path, '..', 'config.json')
-        with open(config_path, 'w') as f:
-            json.dump(data, f, indent=2)
-
     data = request.get_json() or {}
     new_style_url = data.get("mapbox_style_url")
     new_map_centre = data.get("map_centre")
@@ -389,7 +421,7 @@ def update_map_style():
         return jsonify({
             "message": "Map settings updated",
             "style_url": config.get("MAPBOX_STYLE_URL"),
-            "map_centre": config.get("MAP_CENTRE")
+            "map_centre": json.loads(config.get("MAP_CENTRE")) if config.get("MAP_CENTRE") else None
         }), 200
 
     except Exception as e:

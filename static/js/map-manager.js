@@ -1,11 +1,11 @@
-window.map = window.map || null;function
+window.map = window.map || null;
 
-fetchMapboxToken() {
+function fetchMapboxToken() {
     return fetch('/config')
       .then(res => res.json())
       .then(data => {
         if (data.config && data.config.MAPBOX_ACCESS_TOKEN) {
-          mapboxgl.accessToken =data.config.MAPBOX_ACCESS_TOKEN;
+          mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
           console.log("Mapbox Access Token loaded successfully:");
         } else {
           console.warn("Mapbox Access Token not found in config.");
@@ -39,12 +39,14 @@ function fetchMapConfig() {
   fetch("/config")
     .then((res) => res.json())
     .then((data) => {
-      const config = data.config;
+      const config = data.config || {};
       let styleURL = config.MAPBOX_STYLE_URL;
       let center = [103.8198, 1.3521]; // default Singapore center
 
       if (styleURL) {
-        document.getElementById("mapStyleInput").placeholder = styleURL;
+        const styleInput = document.getElementById("mapStyleInput");
+        styleInput.placeholder = styleURL;
+        styleInput.value = styleURL;
       }
 
       if (config.MAP_CENTRE) {
@@ -56,8 +58,9 @@ function fetchMapConfig() {
             parsed.every((val) => typeof val === "number")
           ) {
             center = parsed;
-            document.getElementById("mapCenterInput").placeholder =
-              parsed.join(", ");
+            const centerInput = document.getElementById("mapCenterInput");
+            centerInput.placeholder = parsed.join(", ");
+            centerInput.value = parsed.join(", ");
           }
         } catch (e) {
           console.error("Error parsing MAP_CENTRE:", e);
@@ -120,14 +123,35 @@ function submitMapSettings() {
         status.className = "status-message success";
 
         // Update map preview immediately
-        const updatedStyle =
-          data.style_url || document.getElementById("mapStyleInput").placeholder;
-        const updatedCentre =
-          data.map_centre ||
-          document
-            .getElementById("mapCenterInput")
-            .placeholder.split(",")
-            .map(Number);
+        const styleInput = document.getElementById("mapStyleInput");
+        const centerInput = document.getElementById("mapCenterInput");
+
+        if (data.style_url) {
+          styleInput.value = data.style_url;
+          styleInput.placeholder = data.style_url;
+        }
+        if (data.map_centre) {
+          const centreText = Array.isArray(data.map_centre)
+            ? data.map_centre.join(", ")
+            : data.map_centre;
+          centerInput.value = centreText;
+          centerInput.placeholder = centreText;
+        }
+
+        const updatedStyle = styleInput.value || styleInput.placeholder;
+        let updatedCentre = Array.isArray(data.map_centre)
+          ? data.map_centre
+          : centerInput.value.split(",").map((val) => Number(val.trim()));
+
+        if (
+          !Array.isArray(updatedCentre) ||
+          updatedCentre.length !== 2 ||
+          updatedCentre.some((val) => Number.isNaN(Number(val)))
+        ) {
+          updatedCentre = centerInput.placeholder
+            .split(",")
+            .map((val) => Number(val.trim()));
+        }
 
         initializeMap(updatedStyle, updatedCentre);
       }
