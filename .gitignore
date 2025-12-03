@@ -181,3 +181,4 @@ configs
 # IDE & System
 .idea/
 .DS_Store
+*.db
