@@ -8,8 +8,10 @@ CONFIG_PATH = os.path.join(PROJECT_ROOT, "config.json")
 _config_lock = Lock()
 
 
-def load_config():
+def load_config(default=None):
     with _config_lock:
+        if not os.path.exists(CONFIG_PATH):
+            return default or {}
         with open(CONFIG_PATH, "r") as cfg:
             return json.load(cfg)
 

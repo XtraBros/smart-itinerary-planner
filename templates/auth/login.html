@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6fb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .auth-card {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        label {
+            display: block;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.6rem;
+            margin-top: 0.3rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        button {
+            margin-top: 1.2rem;
+            width: 100%;
+            padding: 0.7rem;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        .flash {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .flash.error { background: #fee2e2; color: #b91c1c; }
+        .flash.success { background: #dcfce7; color: #166534; }
+        .auth-footer {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        a { color: #2563eb; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1>Admin Login</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+
+            <button type="submit">Log In</button>
+        </form>
+        <div class="auth-footer">
+            <span>Need an account? <a href="{{ url_for('auth.register') }}">Register</a></span>
+        </div>
+    </div>
+</body>
+</html>

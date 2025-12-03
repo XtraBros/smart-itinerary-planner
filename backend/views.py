@@ -3,7 +3,7 @@ import uuid
 import json
 import traceback
 
-from flask import Blueprint, request, jsonify, render_template, current_app as app
+from flask import Blueprint, request, jsonify, render_template, current_app as app, session, redirect, url_for
 from werkzeug.utils import secure_filename
 from pyvis.network import Network
 
@@ -13,22 +13,36 @@ import networkx as nx
 from helpers.RAG import RAGPlatform, RAGUnit
 from helpers.model import LLMPipeline
 from helpers.config_store import (
-    load_config,
-    save_config,
     project_relative_path,
     PROJECT_ROOT
 )
+from helpers import account_store
 
 backend_bp = Blueprint("backend", __name__)
 RAG_UPLOAD_DIR = os.path.join(PROJECT_ROOT, "data", "rag_units")
 os.makedirs(RAG_UPLOAD_DIR, exist_ok=True)
 
 
+def _current_account_id():
+    return session.get("user_id") or getattr(app, "active_account_id", None)
+
+
+@backend_bp.before_request
+def require_login():
+    if session.get("user_id"):
+        return
+    accept_json = request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html
+    if accept_json:
+        return jsonify({"error": "Unauthorized"}), 401
+    return redirect(url_for("auth.login", next=request.url))
+
+
 def persist_rag_units_config():
     rag: RAGPlatform = getattr(app, "rag", None)
-    if not rag:
+    account_id = _current_account_id()
+    if not rag or not account_id:
         return
-    config = load_config()
+    config = account_store.get_account_config(account_id)
     entries = []
     for unit in rag.units.values():
         source_path = unit.source.get("path", "")
@@ -44,7 +58,9 @@ def persist_rag_units_config():
             }
         )
     config["RAG_UNITS"] = entries
-    save_config(config)
+    account_store.update_account_config(account_id, config)
+    if account_id == getattr(app, "active_account_id", None):
+        app.reload_runtime_for_account(account_id)
 
 
 @backend_bp.route('/')
@@ -166,7 +182,8 @@ def update_llm():
     try:
         llm_instance = LLMPipeline(provider=provider, model=model, api_key=api_key)
         app.llm = llm_instance
-        config = load_config()
+        account_id = _current_account_id()
+        config = account_store.get_account_config(account_id)
         config["LLM_SETTINGS"] = {
             "provider": provider,
             "model": model,
@@ -177,7 +194,9 @@ def update_llm():
             config["GPT_MODEL"] = model
         if api_key:
             config["OPENAI_API_KEY"] = api_key
-        save_config(config)
+        account_store.update_account_config(account_id, config)
+        if account_id == getattr(app, "active_account_id", None):
+            app.reload_runtime_for_account(account_id)
         return jsonify(message="LLM pipeline updated successfully"), 200
     except Exception as e:
         traceback.print_exc()
@@ -190,9 +209,12 @@ def update_llm_persona():
 
     # Save to your global config object
     app.llm_config["persona_instructions"] = custom_instructions
-    config = load_config()
+    account_id = _current_account_id()
+    config = account_store.get_account_config(account_id)
     config["LLM_PERSONA"] = custom_instructions
-    save_config(config)
+    account_store.update_account_config(account_id, config)
+    if account_id == getattr(app, "active_account_id", None):
+        app.reload_runtime_for_account(account_id)
 
     return jsonify({"status": "ok"})
 
@@ -405,7 +427,8 @@ def update_map_style():
         return jsonify({"error": "No data provided for update"}), 400
 
     try:
-        config = load_config()
+        account_id = _current_account_id()
+        config = account_store.get_account_config(account_id)
 
         if new_style_url:
             config["MAPBOX_STYLE_URL"] = new_style_url
@@ -417,7 +440,9 @@ def update_map_style():
             lat = float(new_map_centre[1])
             config["MAP_CENTRE"] = json.dumps([lng, lat])
 
-        save_config(config)
+        account_store.update_account_config(account_id, config)
+        if account_id == getattr(app, "active_account_id", None):
+            app.reload_runtime_for_account(account_id)
         return jsonify({
             "message": "Map settings updated",
             "style_url": config.get("MAPBOX_STYLE_URL"),

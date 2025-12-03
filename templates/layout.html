@@ -69,6 +69,9 @@
             padding: 10px;
             box-sizing: border-box;
             transition: width 0.3s;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         .sidebar.collapsed { width: 50px; }
@@ -77,14 +80,46 @@
 
         .sidebar-toggle { cursor: pointer; margin-bottom: 10px; }
 
-        .sidebar ul { list-style: none; padding: 0; }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+        }
 
         .sidebar ul li { padding: 10px; cursor: pointer; }
         .sidebar ul li:hover { background: #444; }
+
+        .sidebar-footer {
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .sidebar-footer form {
+            margin: 0;
+        }
+
+        .sidebar-footer button {
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #e11d48;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .sidebar-footer button:hover {
+            background: #be123c;
+        }
+
+        .sidebar.collapsed .sidebar-footer {
+            display: none;
+        }
     </style>
 </head>
 <body>
-
     <!-- Landing page -->
     <div id="landing-page">
         <!-- <div class="grid-container">
@@ -109,6 +144,11 @@
                     <li data-component="analytics" data-title="Analytics">Analytics</li>
                     <li data-component="graph-viewer" data-title="Graph Viewer">Graph Viewer</li>
                 </ul>
+                <div class="sidebar-footer">
+                    <form action="{{ url_for('auth.logout') }}" method="post">
+                        <button type="submit">Logout</button>
+                    </form>
+                </div>
             </div>
             <div id="main-area"></div>
         </div>

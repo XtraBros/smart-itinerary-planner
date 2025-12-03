@@ -1,29 +1,26 @@
-from flask import Flask, render_template, jsonify
-import random
-import numpy as np
+from flask import Flask, render_template, jsonify, session
 from langchain.memory import ConversationBufferWindowMemory
 from helpers.RAG import RAGUnit, RAGPlatform
 from helpers.model import LLMPipeline
-from helpers.route_solver import get_distance_from_poi
 from helpers.rpm import RetrievalPolicyManager
 from backend.views import backend_bp
 from api.routes import routes_bp
+from auth.routes import auth_bp
 import os
 from helpers.config_store import (
-    load_config,
-    save_config,
+    load_config as load_file_config,
     resolve_project_path
 )
+from helpers import account_store
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("APP_SECRET_KEY", "dev-secret")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Register external blueprints
 app.register_blueprint(backend_bp, url_prefix="/admin")
 app.register_blueprint(routes_bp)
-
-# Load config
-config = load_config()
+app.register_blueprint(auth_bp, url_prefix="/auth")
 
 
 def _extract_llm_settings(cfg):
@@ -63,42 +60,94 @@ def _build_rag_from_config(cfg):
         )
     return RAGPlatform(rag_units)
 
-######################### LLM INIT #########################
-llm_provider, llm_model, llm_api_key = _extract_llm_settings(config)
-app.llm = LLMPipeline(
-    provider=llm_provider,
-    model=llm_model,
-    api_key=llm_api_key
-)
-app.llm_config = {
-    'persona_instructions': config.get(
-        "LLM_PERSONA",
-        "Speak in a Friendly & Helpful tone."
+
+def _default_seed_config():
+    seed = load_file_config(default={})
+    if seed:
+        return seed
+    return {
+        "GPT_MODEL": "gpt-4o-mini",
+        "LLM_PROVIDER": "openai",
+        "MAPBOX_STYLE_URL": "mapbox://styles/mapbox/streets-v12",
+        "MAP_CENTRE": "[103.8198, 1.3521]",
+        "RAG_UNITS": [
+            {
+                "id": "default",
+                "name": "Sentosa Island",
+                "description": "Sentosa POI CSV",
+                "source": {"type": "csv", "path": "sentosa_with_tags.csv"},
+            }
+        ],
+    }
+
+
+def _initialize_runtime(config):
+    llm_provider, llm_model, llm_api_key = _extract_llm_settings(config)
+    app.llm = LLMPipeline(
+        provider=llm_provider,
+        model=llm_model,
+        api_key=llm_api_key
     )
-}
-app.memory = ConversationBufferWindowMemory(k=5, memory_key="history")
+    app.llm_config = {
+        'persona_instructions': config.get(
+            "LLM_PERSONA",
+            "Speak in a Friendly & Helpful tone."
+        )
+    }
+    if not hasattr(app, "memory"):
+        app.memory = ConversationBufferWindowMemory(k=5, memory_key="history")
 
-######################### RAG Data #########################
-app.rag = _build_rag_from_config(config)
-print("RAG loaded with units:", app.rag.list_units())
-app.rpm = RetrievalPolicyManager(app.rag)
-app.balltree, app.poi_df = app.rag.build_balltree()
-app.graph = app.rag.build_graph()
-app.session_state = {}
-# poi_df['clicks'] = [random.randint(1, 100) for _ in range(len(poi_df))]
+    app.rag = _build_rag_from_config(config)
+    print("RAG loaded with units:", app.rag.list_units())
+    app.rpm = RetrievalPolicyManager(app.rag)
+    app.balltree, app.poi_df = app.rag.build_balltree()
+    app.graph = app.rag.build_graph()
+    app.session_state = {}
+    app.locale_names = [unit["name"] for unit in app.rag.list_units()]
+    app.locale_place_list = app.poi_df['name'].tolist()
+    app.active_config = config
 
-######################### Misc Init #########################
-app.locale_names = [unit["name"] for unit in app.rag.list_units()]
-app.locale_place_list = app.poi_df['name'].tolist()
+
+def _seed_accounts():
+    account_store.init_db()
+    active_account = account_store.get_active_account()
+    if active_account:
+        return active_account
+    seed_config = _default_seed_config()
+    default_username = os.environ.get("ADMIN_USERNAME", "admin")
+    default_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    account_id = account_store.create_account(
+        default_username,
+        default_password,
+        config=seed_config,
+        make_active=True
+    )
+    return account_store.get_account_by_id(account_id)
+
+
+def reload_runtime_for_account(account_id: int):
+    config = account_store.get_account_config(account_id)
+    _initialize_runtime(config or {})
+    app.active_account_id = account_id
+
+
+app.reload_runtime_for_account = reload_runtime_for_account
+
+active_account = _seed_accounts()
+app.active_account_id = active_account["id"]
+_initialize_runtime(active_account.get("config") or {})
+
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
+
 @app.route('/config', methods=['GET'])
 def get_config():
-    config = load_config()
-    return jsonify({'config': config})
+    account_id = session.get("user_id") or getattr(app, "active_account_id", None)
+    config = account_store.get_account_config(account_id) if account_id else app.active_config
+    return jsonify({'config': config or {}})
     
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=3106)
