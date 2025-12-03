@@ -70,6 +70,7 @@ def _default_seed_config():
         "LLM_PROVIDER": "openai",
         "MAPBOX_STYLE_URL": "mapbox://styles/mapbox/streets-v12",
         "MAP_CENTRE": "[103.8198, 1.3521]",
+        "MAP_SPOTLIGHT_POLYGON": None,
         "RAG_UNITS": [
             {
                 "id": "default",

@@ -31,6 +31,74 @@ export const sharedState = {
 export let isFirstOpen = false;
 export let thumbnailURI;
 
+function normalizeRing(ring) {
+    if (!Array.isArray(ring) || ring.length < 3) return null;
+    const normalized = ring.map((coord) => [Number(coord[0]), Number(coord[1])]);
+    const first = normalized[0];
+    const last = normalized[normalized.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) {
+        normalized.push([first[0], first[1]]);
+    }
+    return normalized;
+}
+
+function buildSpotlightMaskFeature(polygon) {
+    if (!polygon || polygon.type !== "Polygon" || !Array.isArray(polygon.coordinates)) {
+        return null;
+    }
+    const worldRing = [
+        [-180, -85],
+        [180, -85],
+        [180, 85],
+        [-180, 85],
+        [-180, -85],
+    ];
+    const holeRings = polygon.coordinates
+        .map((ring) => normalizeRing(ring))
+        .filter((ring) => !!ring);
+    if (!holeRings.length) {
+        return null;
+    }
+    return {
+        type: "Feature",
+        properties: {},
+        geometry: {
+            type: "Polygon",
+            coordinates: [worldRing, ...holeRings],
+        },
+    };
+}
+
+function applySpotlightMask(mapInstance, polygon) {
+    if (!mapInstance) return;
+    const sourceId = "spotlight-mask";
+    const layerId = "spotlight-mask-layer";
+
+    if (mapInstance.getLayer(layerId)) {
+        mapInstance.removeLayer(layerId);
+    }
+    if (mapInstance.getSource(sourceId)) {
+        mapInstance.removeSource(sourceId);
+    }
+
+    const maskFeature = buildSpotlightMaskFeature(polygon);
+    if (!maskFeature) return;
+
+    mapInstance.addSource(sourceId, {
+        type: "geojson",
+        data: maskFeature,
+    });
+    mapInstance.addLayer({
+        id: layerId,
+        type: "fill",
+        source: sourceId,
+        paint: {
+            "fill-color": "#000000",
+            "fill-opacity": 0.55,
+        },
+    });
+}
+
 const pauseAndpaly = document.getElementById('pauseAndpaly');
 const foodBox = document.getElementById('foodBox');
 const idaeBox = document.getElementById('idaeBox');
@@ -145,6 +213,18 @@ fetch('/config')
             console.error("Failed to parse MAP_CENTRE:", err);
             center = [103.8198, 1.3521];  // default fallback center (Singapore)
         }
+        let spotlightPolygon = null;
+        if (data.config.MAP_SPOTLIGHT_POLYGON) {
+            try {
+                spotlightPolygon = JSON.parse(data.config.MAP_SPOTLIGHT_POLYGON);
+                if (!spotlightPolygon || spotlightPolygon.type !== "Polygon") {
+                    spotlightPolygon = null;
+                }
+            } catch (err) {
+                console.error("Failed to parse MAP_SPOTLIGHT_POLYGON:", err);
+                spotlightPolygon = null;
+            }
+        }
         const comfig = {
         style: data.config.MAPBOX_STYLE_URL,
         center,
@@ -238,6 +318,9 @@ fetch('/config')
             sharedState.geolocateControl = new mapboxgl.GeolocateControl({ ...geolocationCogif });
 
             sharedState.map.addControl(sharedState.geolocateControl);
+            if (spotlightPolygon) {
+                applySpotlightMask(sharedState.map, spotlightPolygon);
+            }
             // force mapbox to stop changing map view when geolocating
             sharedState.geolocateControl._updateCamera = () => { }
             sharedState.map.loadImage('static/icons/walked.png', function (err, image) {

@@ -422,9 +422,31 @@ def update_map_style():
     data = request.get_json() or {}
     new_style_url = data.get("mapbox_style_url")
     new_map_centre = data.get("map_centre")
+    has_polygon_payload = "spotlight_polygon" in data
+    new_spotlight_polygon = data.get("spotlight_polygon")
 
-    if not new_style_url and not new_map_centre:
+    if not new_style_url and not new_map_centre and not has_polygon_payload:
         return jsonify({"error": "No data provided for update"}), 400
+
+    def _validate_polygon(polygon_obj):
+        if not isinstance(polygon_obj, dict):
+            return False
+        if polygon_obj.get("type") != "Polygon":
+            return False
+        coords = polygon_obj.get("coordinates")
+        if not isinstance(coords, list) or not coords:
+            return False
+        outer_ring = coords[0]
+        if not isinstance(outer_ring, list) or len(outer_ring) < 3:
+            return False
+        for point in outer_ring:
+            if (
+                not isinstance(point, (list, tuple))
+                or len(point) != 2
+                or any(coord is None for coord in point)
+            ):
+                return False
+        return True
 
     try:
         account_id = _current_account_id()
@@ -440,13 +462,22 @@ def update_map_style():
             lat = float(new_map_centre[1])
             config["MAP_CENTRE"] = json.dumps([lng, lat])
 
+        if has_polygon_payload:
+            if new_spotlight_polygon is None:
+                config.pop("MAP_SPOTLIGHT_POLYGON", None)
+            else:
+                if not _validate_polygon(new_spotlight_polygon):
+                    return jsonify({"error": "Invalid spotlight polygon"}), 400
+                config["MAP_SPOTLIGHT_POLYGON"] = json.dumps(new_spotlight_polygon)
+
         account_store.update_account_config(account_id, config)
         if account_id == getattr(app, "active_account_id", None):
             app.reload_runtime_for_account(account_id)
         return jsonify({
             "message": "Map settings updated",
             "style_url": config.get("MAPBOX_STYLE_URL"),
-            "map_centre": json.loads(config.get("MAP_CENTRE")) if config.get("MAP_CENTRE") else None
+            "map_centre": json.loads(config.get("MAP_CENTRE")) if config.get("MAP_CENTRE") else None,
+            "spotlight_polygon": json.loads(config.get("MAP_SPOTLIGHT_POLYGON")) if config.get("MAP_SPOTLIGHT_POLYGON") else None
         }), 200
 
     except Exception as e:
