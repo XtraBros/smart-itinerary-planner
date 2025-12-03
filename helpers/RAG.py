@@ -98,6 +98,8 @@ class RAGUnit:
 
             self.combined_embeddings = combined_embeddings
             self.combined_index = combined_index
+            self.data["combined_text"] = combined_texts
+
 
         # Optional dining index
         if "category" in self.data.columns:
@@ -134,7 +136,11 @@ class RAGUnit:
                     "category": row.get("category", ""),
                     "operating_hours": row.get("operating_hours", ""),
                     "similarity": float(distances[0][rank]),
-                    "tags": row.get("tags", ""),})
+                    "tags": row.get("tags", ""),
+                    "combined_text": row.get("combined_text", ""),
+                    "rag_unit_id": self.id,
+                    "rag_unit_name": self.name,
+                })
         return results
     
     def query_combined(self, input_text: str, top_k: int = 5) -> List[dict]:
@@ -161,6 +167,9 @@ class RAGUnit:
                     "operating_hours": row.get("operating_hours", ""),
                     "similarity": float(distances[0][rank]),
                     "tags": row.get("tags", ""),
+                    "combined_text": row.get("combined_text", ""),
+                    "rag_unit_id": self.id,
+                    "rag_unit_name": self.name,
                 })
         return results
 
@@ -188,16 +197,24 @@ class RAGUnit:
         """
         Return the embedding vector for a POI by name.
         """
-        if field != "description":
-            raise NotImplementedError("Currently only supports description vectors")
-        
-        if not hasattr(self, "name_to_idx") or self.description_embeddings is None:
+        if not hasattr(self, "name_to_idx"):
             return None
 
         idx = self.name_to_idx.get(normalize_name(poi_name))
         if idx is None:
             return None
-        return self.description_embeddings[idx]
+
+        if field == "description":
+            if self.description_embeddings is None:
+                return None
+            return self.description_embeddings[idx]
+
+        if field == "combined":
+            if self.combined_embeddings is None:
+                return None
+            return self.combined_embeddings[idx]
+
+        raise NotImplementedError("Unsupported vector field requested")
                 
 
 class RAGPlatform:
@@ -256,9 +273,9 @@ class RAGPlatform:
                     results.append(r)
             except Exception as e:
                 print(f"[{unit.id}] Error during {field} query: {e}")
-        return sorted(results, key=lambda x: x.get("similarity", 0), reverse=True)[:top_k]
+        return sorted(results, key=lambda x: x.get("similarity", float("inf")))[:top_k]
 
-    def query_by_combined(self, query_text: str, top_k: int = 5) -> List[dict]:
+    def query_combined(self, query_text: str, top_k: int = 5) -> List[dict]:
         """
         Query POIs by the combined embedding vector (name + description + tags + metadata).
         """
@@ -285,12 +302,15 @@ class RAGPlatform:
                             "category": row.get("category", ""),
                             "tags": row.get("tags", ""),
                             "similarity": float(distances[0][rank]),
-                            "source": unit.name
+                            "source": unit.name,
+                            "rag_unit_id": unit.id,
+                            "rag_unit_name": unit.name,
+                            "combined_text": row.get("combined_text", ""),
                         })
             except Exception as e:
                 print(f"[{unit.id}] Error during combined query: {e}")
-        return sorted(results, key=lambda x: x.get("similarity", 0), reverse=True)[:top_k]
-
+        return sorted(results, key=lambda x: x.get("similarity", float("inf")))[:top_k]
+    
     def hybrid_query(self, query_text: str, top_k: int = 10, alpha: float = 0.5) -> List[dict]:
         """
         Hybrid retrieval combining:
@@ -306,7 +326,7 @@ class RAGPlatform:
         desc_results = self.query_by_description(query_text, top_k * 4)
         tag_results = self.query_by_tags(query_text, top_k * 4)
         name_results = self.query_by_name(query_text, top_k * 4)
-        combined_results = self.query_by_combined(query_text, top_k * 4)
+        combined_results = self.query_combined(query_text, top_k * 4)
 
         merged = {}
 
@@ -359,7 +379,9 @@ class RAGPlatform:
         all_pois = []
         for unit in self.units.values():
             try:
-                df = unit.get_data()  # <-- full dataframe with all columns
+                df = unit.get_data().copy()  # <-- full dataframe with all columns
+                df["rag_unit_id"] = unit.id
+                df["rag_unit_name"] = unit.name
                 # Make sure to drop rows with missing coordinates
                 df = df.dropna(subset=["latitude", "longitude"])
                 if not df.empty:

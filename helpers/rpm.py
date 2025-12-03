@@ -1,92 +1,182 @@
 from typing import List, Dict, Optional
-import numpy as np
 from sentence_transformers import SentenceTransformer
 from numpy import dot
 from numpy.linalg import norm
 
-def cosine_similarity(vec1, vec2):
-    return dot(vec1, vec2) / (norm(vec1) * norm(vec2))
+
+def cosine_similarity(v1, v2):
+    return dot(v1, v2) / (norm(v1) * norm(v2) + 1e-8)
+
 
 class RetrievalPolicyManager:
     def __init__(self, rag_platform):
         self.rag = rag_platform
         self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
+    # ============================================================
+    # Preference → Query Modifier
+    # ============================================================
+    def _make_preference_query(self, query_text: str, preferences: dict) -> str:
+        """
+        Convert user preferences into a modifier for semantic search.
+        Only relevant fields are included.
+        """
+
+        pref_parts = []
+
+        if preferences.get("interests"):
+            pref_parts.append(f"interests: {', '.join(preferences['interests'])}")
+
+        if preferences.get("total_time"):
+            pref_parts.append(f"total_time: {preferences['total_time']}")
+
+        if not pref_parts:
+            return query_text
+
+        pref_text = " | ".join(pref_parts)
+
+        return f"User preferences: {pref_text}. Query: {query_text}"
+
+    # ============================================================
+    # Preference score: categories, tags, metadata
+    # ============================================================
+    def _preference_score(self, poi: Dict, preferences: dict) -> float:
+        """
+        Compute a simple preference match score for reranking.
+        """
+
+        score = 0.0
+
+        # interests → match with metadata/tags/categories
+        interests = preferences.get("interests", [])
+
+        if interests:
+            text_parts = []
+            category = poi.get("category")
+            if category:
+                text_parts.append(str(category))
+
+            tags = poi.get("tags")
+            if tags:
+                if isinstance(tags, (list, tuple, set)):
+                    text_parts.extend(str(tag) for tag in tags)
+                else:
+                    text_parts.append(str(tags))
+
+            description = poi.get("description")
+            if description:
+                text_parts.append(description)
+
+            combined_text = poi.get("combined_text")
+            if combined_text:
+                text_parts.append(str(combined_text))
+
+            text_blob = " ".join(text_parts).lower()
+
+            for interest in interests:
+                if interest.lower() in text_blob:
+                    score += 1.0   # +1 for each match
+
+        # total_time → match optional metadata (optional)
+        if "total_time" in preferences:
+            pass  # You can later map time to POI duration
+
+        return score
+
+    # ============================================================
+    # Main Dispatcher
+    # ============================================================
     def decide_retrieval(
-        self, 
+        self,
         query_text: Optional[str] = None,
-        lat: Optional[float] = None, 
+        lat: Optional[float] = None,
         lon: Optional[float] = None,
+        preferences: Optional[Dict] = None,
         radius_km: Optional[float] = 0.5,
         top_k: int = 5,
-        intent: str = "generic",  # "generic", "spatial", "hybrid"
+        intent: str = "generic",
     ) -> List[Dict]:
-        """
-        Dispatch retrieval strategy based on intent.
-        """
+
+        preferences = preferences or {}
+
+        # modify query with preferences
+        enriched_query = self._make_preference_query(query_text, preferences)
+
         if intent == "spatial":
-            return self._spatial_flow(lat, lon, query_text, top_k, radius_km)
-        elif intent == "hybrid":
-            return self._hybrid_flow(query_text, lat, lon, top_k, radius_km)
+            return self._spatial_flow(lat, lon, enriched_query, top_k, radius_km, preferences)
+
         elif intent == "semantic":
-            return self._semantic_flow(query_text, lat, lon, top_k, radius_km)
-        elif intent == "navigation":
-            return self._navigation_flow(query_text, lat, lon, top_k, radius_km)
+            return self._semantic_flow(enriched_query, top_k, preferences)
+
+        elif intent == "hybrid":
+            return self._hybrid_flow(lat, lon, enriched_query, top_k, radius_km, preferences)
+
+        # elif intent == "navigation":
+        #     return self._navigation_flow(enriched_query)
+
         else:
             raise ValueError(f"Unknown intent: {intent}")
 
-    # ---------------- Flows ---------------- #
-    def _spatial_flow(self, lat, lon, query_text, top_k, radius_km):
-        # Step 1: Spatial prefilter
-        spatial_results = self.rag.spatial_query(lat, lon, k=50, radius_km=radius_km)
-        # Step 2: Rerank if query_text present
-        if query_text:
-            return self._rerank_semantic(spatial_results, query_text, top_k, alpha=0.3)
-        return spatial_results
+    # ============================================================
+    # SPATIAL FLOW
+    # ============================================================
+    def _spatial_flow(self, lat, lon, query_text, top_k, radius_km, preferences):
+        spatial = self.rag.spatial_query(lat, lon, k=50, radius_km=radius_km)
 
-    def _semantic_flow(self, query_text, lat, lon, top_k, radius_km):
-        # Semantic search
-        semantic_results = self.rag.hybrid_query(query_text, top_k=top_k*2)
-        return semantic_results[:top_k]
+        # rerank with semantic + preferences
+        return self._rerank(spatial, query_text, top_k, preferences, use_distance=True)
 
-    def _hybrid_flow(self, query_text, lat, lon, top_k, radius_km):
-        # Step 1: Get spatial candidates
+    # ============================================================
+    # SEMANTIC FLOW
+    # ============================================================
+    def _semantic_flow(self, query_text, top_k, preferences):
+        semantic = self.rag.query_combined(query_text, top_k=top_k*2)
+        return self._rerank(semantic, query_text, top_k, preferences)
+
+    # ============================================================
+    # HYBRID FLOW
+    # ============================================================
+    def _hybrid_flow(self, lat, lon, query_text, top_k, radius_km, preferences):
         spatial = self.rag.spatial_query(lat, lon, k=30, radius_km=radius_km)
-        # Step 2: Get semantic candidates
-        semantic = self.rag.hybrid_query(query_text, top_k=30)
-        # Step 3: Fuse
-        return self._fuse(spatial, semantic, top_k, alpha=0.6)
+        semantic = self.rag.query_combined(query_text, top_k=30)
+        merged = spatial + semantic
+        return self._rerank(merged, query_text, top_k, preferences, use_distance=True)
 
-    # ---------------- Utils ---------------- #
-    def _rerank_semantic(self, candidates, query_text, top_k, alpha=0.3):
-        """
-        Rerank spatial results with semantic similarity.
-        """
-        query_emb = self.embedding_model.encode(query_text)
-        reranked = []
-        for r in candidates:
-            # Run semantic query_by_description for rerank
-            # (or could do lightweight embedding similarity)
-            poi_vector = self.rag.get_poi_vector(r["name"].lower(), field="description")
-            sim = cosine_similarity(query_emb, poi_vector)
-            r["rerank_score"] = alpha * (1/(1+sim)) + (1-alpha) * (1/(1+r["distance_km"]))
-            reranked.append(r)
-        return sorted(reranked, key=lambda x: x["rerank_score"], reverse=True)[:top_k]
+    # ============================================================
+    # Lightweight reranker (semantic + preferences + spatial)
+    # ============================================================
+    def _rerank(self, candidates, query_text, top_k, preferences, use_distance=False):
+        query_vec = self.embedding_model.encode(query_text)
 
-    def _fuse(self, spatial, semantic, top_k, alpha=0.6):
-        """
-        Merge spatial + semantic results with hybrid scoring.
-        """
-        merged = {}
-        for r in spatial:
-            merged[r["name"]] = {**r, "spatial_score": 1/(1+r["distance_km"]), "semantic_score": 0.0}
-        for r in semantic:
-            if r["name"] in merged:
-                merged[r["name"]]["semantic_score"] = 1/(1+r["similarity"])
-            else:
-                merged[r["name"]] = {**r, "spatial_score": 0.0, "semantic_score": 1/(1+r["similarity"])}
+        scored = []
 
-        for v in merged.values():
-            v["final_score"] = alpha * v["semantic_score"] + (1-alpha) * v["spatial_score"]
+        for poi in candidates:
+            poi_vec = poi.get("combined_vector")
+            if poi_vec is None:
+                unit_id = poi.get("rag_unit_id")
+                poi_name = poi.get("name")
+                unit = self.rag.units.get(unit_id) if unit_id else None
+                if unit and poi_name:
+                    poi_vec = unit.get_vector(poi_name, field="combined")
+            if poi_vec is None:
+                continue
 
-        return sorted(merged.values(), key=lambda x: x["final_score"], reverse=True)[:top_k]
+            semantic_sim = cosine_similarity(query_vec, poi_vec)
+
+            pref_score = self._preference_score(poi, preferences)
+
+            spatial_score = 0.0
+            if use_distance and "distance_km" in poi:
+                spatial_score = 1 / (1 + poi["distance_km"])
+
+            final = (0.6 * semantic_sim) + (0.2 * pref_score) + (0.2 * spatial_score)
+
+            scored.append({**poi, "final_score": final})
+
+        return sorted(scored, key=lambda x: x["final_score"], reverse=True)[:top_k]
+
+    # ============================================================
+    # NAVIGATION (incomplete )
+    # ============================================================
+    # def _navigation_flow(self, query_text):
+    #     return {"navigation_query": query_text}

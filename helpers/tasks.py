@@ -136,7 +136,7 @@ class RetrievalStrategy:
 
 class NormalRetrieval(RetrievalStrategy):
     def fetch(self, rag_platform, query, context):
-        return rag_platform.query(query)
+        return rag_platform.query_combined(query)
 
 class SpatialRetrieval(RetrievalStrategy):
     def fetch(self, rag_platform, query, context):
