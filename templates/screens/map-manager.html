@@ -149,11 +149,11 @@
       <div id="mapPreview"></div>
       <div class="map-preview-controls">
         <button
-          id="startDrawBtn"
+          id="traceDrawBtn"
           type="button"
-          onclick="window.startSpotlightDraw && window.startSpotlightDraw()"
+          onclick="window.startTraceMode && window.startTraceMode()"
         >
-          📐 Draw Spotlight
+          ✏️ Trace Outline
         </button>
       </div>
     </div>
@@ -187,8 +187,8 @@
 
     <h3>🔦 Spotlight Area</h3>
     <p class="helper-text">
-      Use the polygon (<strong>⬠</strong>) and trash icons that appear on the map to draw or remove the spotlight area.
-      The highlighted polygon will remain transparent for end users, while the rest of the map is masked.
+      Click "Trace Outline" and drag around the island or locale to capture its boundary.
+      We'll smooth your traced path automatically and use it directly as the spotlight zone once you save.
     </p>
 
     <div class="spotlight-card">

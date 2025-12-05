@@ -2,6 +2,13 @@ const DEFAULT_CENTER = [103.8198, 1.3521];
 const DEFAULT_STYLE = "mapbox://styles/mapbox/streets-v12";
 const DRAW_JS = "https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.js";
 const DRAW_CSS = "https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.css";
+const TURF_JS = "https://unpkg.com/@turf/turf@6.5.0/turf.min.js";
+const SPOTLIGHT_SOURCE_ID = "spotlight-preview";
+const SPOTLIGHT_FILL_LAYER_ID = "spotlight-preview-fill";
+const SPOTLIGHT_LINE_LAYER_ID = "spotlight-preview-line";
+const TRACE_SOURCE_ID = "spotlight-trace-line";
+const TRACE_LAYER_ID = "spotlight-trace-line-layer";
+const TRACE_DISTANCE_THRESHOLD_PX = 3;
 
 let previewMap = null;
 let previewMarker = null;
@@ -9,9 +16,16 @@ let drawControl = null;
 let currentSpotlightPolygon = null;
 let mapManagedExternally = false;
 let drawAssetsPromise = null;
+let turfAssetsPromise = null;
 let uiBound = false;
 let hasBootstrappedConfig = false;
-let drawButtonRef = null;
+let latestSmoothRequestId = 0;
+let pendingSmoothPromise = null;
+let isRehydratingDraw = false;
+let drawLayerStyleListenerAttached = false;
+let tracePrimed = false;
+let traceMoveHandler = null;
+let traceCoords = [];
 
 const drawEventHandlers = {
   create: () => handleDrawChange(),
@@ -62,6 +76,24 @@ function ensureDrawAssets() {
   return drawAssetsPromise;
 }
 
+function ensureTurfAssets() {
+  if (window.turf) {
+    return Promise.resolve(window.turf);
+  }
+
+  if (!turfAssetsPromise) {
+    turfAssetsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = TURF_JS;
+      script.onload = () => resolve(window.turf);
+      script.onerror = reject;
+      document.body.appendChild(script);
+    });
+  }
+
+  return turfAssetsPromise;
+}
+
 function bindUIEvents() {
   if (uiBound) return;
   uiBound = true;
@@ -79,20 +111,6 @@ function bindUIEvents() {
   const clearBtn = document.getElementById("clearSpotlightBtn");
   if (clearBtn) {
     clearBtn.addEventListener("click", clearSpotlightPolygon);
-  }
-
-  drawButtonRef = document.getElementById("startDrawBtn");
-  if (drawButtonRef) {
-    drawButtonRef.addEventListener("click", startSpotlightDraw);
-  }
-}
-
-function toggleDrawButton(active) {
-  if (!drawButtonRef) return;
-  if (active) {
-    drawButtonRef.classList.add("active");
-  } else {
-    drawButtonRef.classList.remove("active");
   }
 }
 
@@ -164,7 +182,7 @@ function updatePolygonSummary(polygon) {
   if (!summaryEl) return;
 
   if (!polygon) {
-    summaryEl.textContent = "Draw a polygon with the ⬠ control to highlight an area.";
+    summaryEl.textContent = "Use Trace Outline to highlight an area.";
     return;
   }
 
@@ -222,15 +240,13 @@ async function setupDrawControl(initialPolygon) {
   previewMap.on("draw.create", drawEventHandlers.create);
   previewMap.on("draw.update", drawEventHandlers.update);
   previewMap.on("draw.delete", drawEventHandlers.delete);
-
-  drawControl.deleteAll();
-  if (initialPolygon) {
-    drawControl.add({
-      type: "Feature",
-      properties: {},
-      geometry: JSON.parse(JSON.stringify(initialPolygon)),
-    });
+  if (!drawLayerStyleListenerAttached) {
+    previewMap.on("styledata", applyDrawLayerStyles);
+    drawLayerStyleListenerAttached = true;
   }
+  applyDrawLayerStyles();
+
+  refreshDrawGeometry(initialPolygon);
 }
 
 function getActivePolygonFromDraw() {
@@ -252,22 +268,72 @@ function getActivePolygonFromDraw() {
 }
 
 function handleDrawChange() {
-  currentSpotlightPolygon = getActivePolygonFromDraw();
-  updatePolygonSummary(currentSpotlightPolygon);
-  toggleDrawButton(false);
+  if (isRehydratingDraw) {
+    return;
+  }
+  const polygon = getActivePolygonFromDraw();
+  if (!polygon) {
+    latestSmoothRequestId += 1;
+    pendingSmoothPromise = null;
+    currentSpotlightPolygon = null;
+    setStatus(
+      document.getElementById("polygonStatus"),
+      "Polygon removed.",
+      "error"
+    );
+    updatePolygonSummary(null);
+    renderSpotlightOverlay(null);
+    return;
+  }
+
   setStatus(
     document.getElementById("polygonStatus"),
-    currentSpotlightPolygon
-      ? "Polygon updated. Click “Save Spotlight” to persist."
-      : "Polygon removed.",
-    currentSpotlightPolygon ? "" : "error"
+    "✨ Smoothing polygon...",
+    ""
   );
+  const smoothRequestId = ++latestSmoothRequestId;
+  const smoothPromise = smoothPolygonShape(polygon)
+    .then((smoothed) => {
+      if (smoothRequestId !== latestSmoothRequestId) {
+        return;
+      }
+      currentSpotlightPolygon = smoothed || polygon;
+      refreshDrawGeometry(currentSpotlightPolygon);
+      updatePolygonSummary(currentSpotlightPolygon);
+      renderSpotlightOverlay(currentSpotlightPolygon);
+      setStatus(
+        document.getElementById("polygonStatus"),
+        "Polygon refined. Save to persist.",
+        "success"
+      );
+    })
+    .catch((err) => {
+      console.error("Failed to smooth polygon:", err);
+      currentSpotlightPolygon = polygon;
+      refreshDrawGeometry(currentSpotlightPolygon);
+      updatePolygonSummary(currentSpotlightPolygon);
+      renderSpotlightOverlay(currentSpotlightPolygon);
+      setStatus(
+        document.getElementById("polygonStatus"),
+        "⚠️ Using original polygon (smoother unavailable).",
+        "error"
+      );
+    })
+    .finally(() => {
+      if (pendingSmoothPromise === smoothPromise) {
+        pendingSmoothPromise = null;
+      }
+    });
+  pendingSmoothPromise = smoothPromise;
 }
 
 function handleDrawDelete() {
+  if (isRehydratingDraw) {
+    return;
+  }
   currentSpotlightPolygon = null;
   updatePolygonSummary(null);
-  toggleDrawButton(false);
+  renderSpotlightOverlay(null);
   setStatus(
     document.getElementById("polygonStatus"),
     "Polygon cleared. Click “Save Spotlight” to persist removal.",
@@ -275,44 +341,146 @@ function handleDrawDelete() {
   );
 }
 
-function startSpotlightDraw() {
+function startTraceMode() {
   const statusEl = document.getElementById("polygonStatus");
   if (!previewMap) {
     setStatus(statusEl, "⚠️ Map preview is still initialising.", "error");
     return;
   }
-
-  const beginDrawMode = () => {
-    if (!drawControl) {
-      setStatus(statusEl, "⚠️ Drawing controls are still loading.", "error");
-      return;
-    }
-    try {
-      toggleDrawButton(true);
-      drawControl.changeMode("draw_polygon");
-      setStatus(
-        statusEl,
-        "✏️ Click around the map to define the spotlight polygon, double-click to finish.",
-        ""
-      );
-    } catch (err) {
-      console.error("Failed to trigger draw mode:", err);
-      setStatus(statusEl, "❌ Unable to start drawing just yet.", "error");
-    }
-  };
-
-  if (drawControl) {
-    beginDrawMode();
+  if (traceMoveHandler) {
+    setStatus(statusEl, "🖱️ Finish the current trace (release mouse) before starting a new one.", "error");
+    return;
+  }
+  if (tracePrimed) {
+    setStatus(statusEl, "Trace mode armed — click and hold on the map to continue tracing.", "");
+    return;
+  }
+  if (!drawControl) {
+    setStatus(statusEl, "⏳ Preparing drawing controls...", "");
+    setupDrawControl(currentSpotlightPolygon)
+      .then(() => startTraceMode())
+      .catch((err) => {
+        console.error("Failed to prepare trace controls:", err);
+        setStatus(statusEl, "❌ Unable to initialise trace mode.", "error");
+      });
     return;
   }
 
-  setStatus(statusEl, "⏳ Preparing drawing controls...", "");
-  setupDrawControl(currentSpotlightPolygon)
-    .then(beginDrawMode)
-    .catch((err) => {
-      console.error("Failed to prepare draw control:", err);
-      setStatus(statusEl, "❌ Unable to start drawing.", "error");
-    });
+  tracePrimed = true;
+  setStatus(
+    statusEl,
+    "Trace mode armed. Click and hold the mouse to start tracing the island outline.",
+    ""
+  );
+
+  const beginHandler = (event) => {
+    previewMap.off("mousedown", beginHandler);
+    tracePrimed = false;
+    beginTraceSession(event, statusEl);
+  };
+
+  previewMap.once("mousedown", beginHandler);
+}
+
+function beginTraceSession(event, statusEl) {
+  if (!previewMap) return;
+  traceCoords = [];
+  previewMap.dragPan.disable();
+  previewMap.getCanvas().style.cursor = "crosshair";
+  addTraceCoordinate(event.lngLat, true);
+  renderTraceLine(traceCoords);
+
+  traceMoveHandler = (moveEvent) => {
+    addTraceCoordinate(moveEvent.lngLat, false);
+  };
+
+  const finishTrace = (evt) => {
+    previewMap.off("mousemove", traceMoveHandler);
+    previewMap.off("mouseup", finishTrace);
+    traceMoveHandler = null;
+    previewMap.dragPan.enable();
+    previewMap.getCanvas().style.cursor = "";
+    renderTraceLine(null);
+    if (evt && evt.lngLat) {
+      addTraceCoordinate(evt.lngLat, true);
+    }
+    finalizeTracePolygon(statusEl);
+  };
+
+  previewMap.on("mousemove", traceMoveHandler);
+  previewMap.once("mouseup", finishTrace);
+}
+
+function addTraceCoordinate(lngLat, force) {
+  if (!lngLat) return;
+  const coord = [lngLat.lng, lngLat.lat];
+  if (!traceCoords.length) {
+    traceCoords.push(coord);
+    renderTraceLine(traceCoords);
+    return;
+  }
+
+  if (!force) {
+    const last = traceCoords[traceCoords.length - 1];
+    const lastPoint = previewMap.project({ lng: last[0], lat: last[1] });
+    const currentPoint = previewMap.project(lngLat);
+    const distance = Math.hypot(
+      currentPoint.x - lastPoint.x,
+      currentPoint.y - lastPoint.y
+    );
+    if (distance < TRACE_DISTANCE_THRESHOLD_PX) {
+      return;
+    }
+  }
+  traceCoords.push(coord);
+  renderTraceLine(traceCoords);
+}
+
+function finalizeTracePolygon(statusEl) {
+  if (traceCoords.length < 3) {
+    traceCoords = [];
+    setStatus(statusEl, "❌ Trace needs at least three points.", "error");
+    return;
+  }
+  const closedRing = ensureClosedRing(traceCoords.slice());
+  traceCoords = [];
+  const polygon = {
+    type: "Polygon",
+    coordinates: [closedRing],
+  };
+  currentSpotlightPolygon = polygon;
+  refreshDrawGeometry(currentSpotlightPolygon);
+  updatePolygonSummary(currentSpotlightPolygon);
+  renderSpotlightOverlay(currentSpotlightPolygon);
+  setStatus(statusEl, "✅ Trace captured. Adjust or save when ready.", "success");
+}
+
+function renderTraceLine(coords) {
+  if (!previewMap || !previewMap.getStyle()) return;
+  const data = coords && coords.length
+    ? {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates: coords },
+      }
+    : { type: "FeatureCollection", features: [] };
+
+  if (previewMap.getSource(TRACE_SOURCE_ID)) {
+    previewMap.getSource(TRACE_SOURCE_ID).setData(data);
+    return;
+  }
+
+  previewMap.addSource(TRACE_SOURCE_ID, { type: "geojson", data });
+  previewMap.addLayer({
+    id: TRACE_LAYER_ID,
+    type: "line",
+    source: TRACE_SOURCE_ID,
+    paint: {
+      "line-color": "#0ea5e9",
+      "line-width": 2,
+      "line-dasharray": [0.5, 0.75],
+    },
+  });
 }
 
 function buildSettingsPayload() {
@@ -396,11 +564,24 @@ function submitMapSettings() {
     .catch(() => {});
 }
 
-function saveSpotlightPolygon() {
+async function ensureSmoothingComplete() {
+  if (!pendingSmoothPromise) {
+    return currentSpotlightPolygon;
+  }
+  try {
+    await pendingSmoothPromise;
+  } catch (err) {
+    console.warn("Pending smoothing failed:", err);
+  }
+  return currentSpotlightPolygon;
+}
+
+async function saveSpotlightPolygon() {
+  await ensureSmoothingComplete();
   if (!currentSpotlightPolygon) {
     setStatus(
       document.getElementById("polygonStatus"),
-      "❌ Draw a polygon before saving.",
+      "❌ Highlight an area before saving.",
       "error"
     );
     return;
@@ -415,18 +596,20 @@ function saveSpotlightPolygon() {
       if (data.spotlight_polygon) {
         currentSpotlightPolygon = data.spotlight_polygon;
         updatePolygonSummary(currentSpotlightPolygon);
+        refreshDrawGeometry(currentSpotlightPolygon);
       }
     })
     .catch(() => {});
 }
 
-function clearSpotlightPolygon() {
+async function clearSpotlightPolygon() {
+  await ensureSmoothingComplete();
   if (drawControl) {
     drawControl.deleteAll();
   }
   currentSpotlightPolygon = null;
   updatePolygonSummary(null);
-  toggleDrawButton(false);
+  renderSpotlightOverlay(null);
 
   sendSettingsUpdate(
     { spotlight_polygon: null },
@@ -445,6 +628,8 @@ function updateMapPreview(styleURL, center, polygonOverride) {
       setPreviewMarker(center);
     }
     setupDrawControl(targetPolygon);
+    applyDrawLayerStyles();
+    renderSpotlightOverlay(targetPolygon);
   };
 
   if (styleURL) {
@@ -467,7 +652,6 @@ function bootstrapMapManager(config) {
 
   populateFormFields(styleURL, centre);
   updatePolygonSummary(currentSpotlightPolygon);
-  toggleDrawButton(false);
 
   if (!previewMap) {
     previewMap = new mapboxgl.Map({
@@ -481,6 +665,7 @@ function bootstrapMapManager(config) {
       setPreviewMarker(centre);
       previewMap.resize();
       setupDrawControl(currentSpotlightPolygon);
+      renderSpotlightOverlay(currentSpotlightPolygon);
     });
     return;
   }
@@ -488,8 +673,185 @@ function bootstrapMapManager(config) {
   ensureMapReady(previewMap).then(() => {
     setPreviewMarker(centre);
     setupDrawControl(currentSpotlightPolygon);
+    renderSpotlightOverlay(currentSpotlightPolygon);
   });
 }
+
+function refreshDrawGeometry(polygon) {
+  if (!drawControl) return;
+  isRehydratingDraw = true;
+  drawControl.deleteAll();
+  if (polygon) {
+    drawControl.add({
+      type: "Feature",
+      properties: {},
+      geometry: JSON.parse(JSON.stringify(polygon)),
+    });
+  }
+  setTimeout(() => {
+    isRehydratingDraw = false;
+  }, 0);
+}
+
+async function smoothPolygonShape(polygon) {
+  if (!polygon) return null;
+  await ensureTurfAssets();
+  const baseRing = (polygon.coordinates && polygon.coordinates[0]) || [];
+  const candidateRing = dedupeRing(baseRing);
+  if (candidateRing.length < 4) {
+    return {
+      type: "Polygon",
+      coordinates: [ensureClosedRing(candidateRing)],
+    };
+  }
+
+  const fc = window.turf.featureCollection(
+    candidateRing.map((coord) => window.turf.point(coord))
+  );
+  const maxEdge = estimateHullEdgeLength(candidateRing);
+
+  let hull = window.turf.concave(fc, { maxEdge });
+  if (!hull && candidateRing.length >= 3) {
+    hull = window.turf.convex(fc);
+  }
+  if (!hull || !hull.geometry || hull.geometry.type !== "Polygon") {
+    return {
+      type: "Polygon",
+      coordinates: [ensureClosedRing(candidateRing)],
+    };
+  }
+
+  const smoothedCoordinates = (hull.geometry.coordinates || []).map((ring) =>
+    ensureClosedRing(ring)
+  );
+
+  return {
+    type: "Polygon",
+    coordinates: smoothedCoordinates.length
+      ? smoothedCoordinates
+      : [ensureClosedRing(candidateRing)],
+  };
+}
+
+function dedupeRing(ring) {
+  if (!Array.isArray(ring)) return [];
+  const cleaned = [];
+  ring.forEach((coord) => {
+    if (
+      !Array.isArray(coord) ||
+      coord.length !== 2 ||
+      Number.isNaN(coord[0]) ||
+      Number.isNaN(coord[1])
+    ) {
+      return;
+    }
+    const last = cleaned[cleaned.length - 1];
+    if (!last || last[0] !== coord[0] || last[1] !== coord[1]) {
+      cleaned.push([Number(coord[0]), Number(coord[1])]);
+    }
+  });
+  if (cleaned.length && cleaned[0][0] === cleaned[cleaned.length - 1][0] && cleaned[0][1] === cleaned[cleaned.length - 1][1]) {
+    cleaned.pop();
+  }
+  return cleaned;
+}
+
+function ensureClosedRing(ring) {
+  if (!Array.isArray(ring) || !ring.length) {
+    return ring || [];
+  }
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  if (!last || first[0] !== last[0] || first[1] !== last[1]) {
+    return [...ring, [first[0], first[1]]];
+  }
+  return ring;
+}
+
+function estimateHullEdgeLength(coords) {
+  if (!window.turf || coords.length < 2) {
+    return 0.5;
+  }
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+  coords.forEach(([lng, lat]) => {
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  });
+  const lower = window.turf.point([minLng, minLat]);
+  const upper = window.turf.point([maxLng, maxLat]);
+  const diagonal = window.turf.distance(lower, upper, { units: "kilometers" }) || 0.5;
+  return Math.max(diagonal * 0.4, 0.1);
+}
+
+function applyDrawLayerStyles() {
+  if (!previewMap || !previewMap.getStyle()) return;
+  const fillInactive = "#fb923c";
+  const fillActive = "#fde047";
+  const borderColor = "#ea580c";
+  const layers = [
+    { id: "gl-draw-polygon-fill-inactive", props: { "fill-color": fillInactive, "fill-opacity": 0.4 } },
+    { id: "gl-draw-polygon-fill-active", props: { "fill-color": fillActive, "fill-opacity": 0.6 } },
+    { id: "gl-draw-polygon-stroke-inactive", props: { "line-color": borderColor, "line-width": 2 } },
+    { id: "gl-draw-polygon-stroke-active", props: { "line-color": borderColor, "line-width": 3 } },
+  ];
+  layers.forEach(({ id, props }) => {
+    if (previewMap.getLayer(id)) {
+      Object.entries(props).forEach(([prop, value]) => {
+        try {
+          previewMap.setPaintProperty(id, prop, value);
+        } catch (err) {
+          console.warn(`Failed to style ${id}`, err);
+        }
+      });
+    }
+  });
+}
+
+function renderSpotlightOverlay(polygon) {
+  if (!previewMap || !previewMap.getStyle()) return;
+  const data = polygon
+    ? {
+        type: "Feature",
+        properties: {},
+        geometry: JSON.parse(JSON.stringify(polygon)),
+      }
+    : { type: "FeatureCollection", features: [] };
+
+  if (previewMap.getSource(SPOTLIGHT_SOURCE_ID)) {
+    previewMap.getSource(SPOTLIGHT_SOURCE_ID).setData(data);
+    return;
+  }
+
+  previewMap.addSource(SPOTLIGHT_SOURCE_ID, {
+    type: "geojson",
+    data,
+  });
+  previewMap.addLayer({
+    id: SPOTLIGHT_FILL_LAYER_ID,
+    type: "fill",
+    source: SPOTLIGHT_SOURCE_ID,
+    paint: {
+      "fill-color": "#22d3ee",
+      "fill-opacity": 0.25,
+    },
+  });
+  previewMap.addLayer({
+    id: SPOTLIGHT_LINE_LAYER_ID,
+    type: "line",
+    source: SPOTLIGHT_SOURCE_ID,
+    paint: {
+      "line-color": "#0e7490",
+      "line-width": 3,
+      "line-dasharray": [1, 1],
+    },
+  });
+}
+
 
 function fetchMapConfig() {
   if (hasBootstrappedConfig) return;
@@ -523,4 +885,4 @@ window.attachMapManagerUI = function attachMapManagerUI(mapInstance, cfg) {
 window.submitMapSettings = submitMapSettings;
 window.saveSpotlightPolygon = saveSpotlightPolygon;
 window.clearSpotlightPolygon = clearSpotlightPolygon;
-window.startSpotlightDraw = startSpotlightDraw;
+window.startTraceMode = startTraceMode;
