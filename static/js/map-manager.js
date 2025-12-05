@@ -8,7 +8,8 @@ const SPOTLIGHT_FILL_LAYER_ID = "spotlight-preview-fill";
 const SPOTLIGHT_LINE_LAYER_ID = "spotlight-preview-line";
 const TRACE_SOURCE_ID = "spotlight-trace-line";
 const TRACE_LAYER_ID = "spotlight-trace-line-layer";
-const TRACE_DISTANCE_THRESHOLD_PX = 3;
+const TRACE_DISTANCE_THRESHOLD_PX = 4;
+const TRACE_MAX_STEP_THRESHOLD_PX = 40;
 
 let previewMap = null;
 let previewMarker = null;
@@ -384,6 +385,19 @@ function startTraceMode() {
 
 function beginTraceSession(event, statusEl) {
   if (!previewMap) return;
+  if (
+    event.originalEvent &&
+    event.originalEvent.target &&
+    event.originalEvent.target.closest &&
+    event.originalEvent.target.closest(".mapboxgl-ctrl")
+  ) {
+    setStatus(
+      statusEl,
+      "⚠️ Trace must start on the map, not on controls.",
+      "error"
+    );
+    return;
+  }
   traceCoords = [];
   previewMap.dragPan.disable();
   previewMap.getCanvas().style.cursor = "crosshair";
@@ -421,6 +435,14 @@ function addTraceCoordinate(lngLat, force) {
   }
 
   if (!force) {
+    // Only trace while primary mouse button is down
+    const buttons = lngLat.originalEvent
+      ? lngLat.originalEvent.buttons
+      : undefined;
+    if (buttons !== undefined && buttons === 0) {
+      return;
+    }
+
     const last = traceCoords[traceCoords.length - 1];
     const lastPoint = previewMap.project({ lng: last[0], lat: last[1] });
     const currentPoint = previewMap.project(lngLat);
@@ -429,6 +451,10 @@ function addTraceCoordinate(lngLat, force) {
       currentPoint.y - lastPoint.y
     );
     if (distance < TRACE_DISTANCE_THRESHOLD_PX) {
+      return;
+    }
+    if (distance > TRACE_MAX_STEP_THRESHOLD_PX) {
+      // Ignore large, likely accidental jumps
       return;
     }
   }
@@ -444,9 +470,10 @@ function finalizeTracePolygon(statusEl) {
   }
   const closedRing = ensureClosedRing(traceCoords.slice());
   traceCoords = [];
+  const cleanedRing = postProcessTraceRing(closedRing);
   const polygon = {
     type: "Polygon",
-    coordinates: [closedRing],
+    coordinates: [cleanedRing],
   };
   currentSpotlightPolygon = polygon;
   refreshDrawGeometry(currentSpotlightPolygon);
@@ -754,6 +781,73 @@ function dedupeRing(ring) {
     cleaned.pop();
   }
   return cleaned;
+}
+
+function postProcessTraceRing(ring) {
+  if (!Array.isArray(ring) || ring.length < 5) {
+    return ring || [];
+  }
+  // Work on an open ring (drop duplicated last point if present)
+  let open = ring.slice();
+  if (
+    open.length > 1 &&
+    open[0][0] === open[open.length - 1][0] &&
+    open[0][1] === open[open.length - 1][1]
+  ) {
+    open = open.slice(0, -1);
+  }
+  const distanceCleaned = removeDistanceOutliers(open);
+  const spikeCleaned = removeAngleSpikes(distanceCleaned);
+  return ensureClosedRing(spikeCleaned.length ? spikeCleaned : open);
+}
+
+function removeDistanceOutliers(openRing) {
+  const n = openRing.length;
+  if (n < 5) return openRing;
+  const dist2 = [];
+  for (let i = 0; i < n - 1; i += 1) {
+    const dx = openRing[i + 1][0] - openRing[i][0];
+    const dy = openRing[i + 1][1] - openRing[i][1];
+    dist2.push(dx * dx + dy * dy);
+  }
+  const sorted = dist2.slice().sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)] || 0;
+  const maxAllowed =
+    median > 0 ? median * 8 : sorted[sorted.length - 1] || 0;
+
+  const result = [openRing[0]];
+  for (let i = 1; i < n; i += 1) {
+    const d2 = dist2[i - 1];
+    if (d2 <= maxAllowed || i === n - 1) {
+      result.push(openRing[i]);
+    }
+  }
+  return result.length >= 3 ? result : openRing;
+}
+
+function removeAngleSpikes(openRing) {
+  const n = openRing.length;
+  if (n < 5) return openRing;
+  const result = [];
+  for (let i = 0; i < n; i += 1) {
+    const prev = openRing[(i - 1 + n) % n];
+    const curr = openRing[i];
+    const next = openRing[(i + 1) % n];
+    const v1x = curr[0] - prev[0];
+    const v1y = curr[1] - prev[1];
+    const v2x = next[0] - curr[0];
+    const v2y = next[1] - curr[1];
+    const len1 = Math.hypot(v1x, v1y) || 1e-9;
+    const len2 = Math.hypot(v2x, v2y) || 1e-9;
+    const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+    const clampedDot = Math.max(-1, Math.min(1, dot));
+    const angle = Math.acos(clampedDot);
+    const isSpike = angle < (15 * Math.PI) / 180 && Math.max(len1, len2) > 3 * Math.min(len1, len2);
+    if (!isSpike) {
+      result.push(curr);
+    }
+  }
+  return result.length >= 3 ? result : openRing;
 }
 
 function ensureClosedRing(ring) {
