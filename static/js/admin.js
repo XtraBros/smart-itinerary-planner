@@ -201,98 +201,14 @@ layout.registerComponent('html-component', function(container, state) {
                 }
 
                 case 'graph-viewer': {
-                    console.log('Loading Mapbox for graph-viewer...');
-                
-                    // Inject Mapbox CSS if not already present
-                    if (!document.querySelector("link[href*='mapbox-gl.css']")) {
-                        const mapboxCSS = document.createElement('link');
-                        mapboxCSS.rel = 'stylesheet';
-                        mapboxCSS.href = 'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css';
-                        document.head.appendChild(mapboxCSS);
-                    }
-                
-                    loadScript("https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js")
-                        .then(() => fetch('/config'))
-                        .then(res => res.json())
-                        .then(data => {
-                            mapboxgl.accessToken = data.config.MAPBOX_ACCESS_TOKEN;
-                
-                            // Clear any previous content
-                            el.innerHTML = '';
-                
-                            // Create a unique container div for this instance
-                            const mapDiv = document.createElement('div');
-                            const mapId = `map-${Date.now()}`; // ensure unique ID
-                            mapDiv.id = mapId;
-                            mapDiv.style.width = '100%';
-                            mapDiv.style.height = '100%';
-                            el.appendChild(mapDiv);
-                
-                            const mapInstance = new mapboxgl.Map({
-                                container: mapId,
-                                style: 'mapbox://styles/mapbox/streets-v12',
-                                center: [103.82, 1.25],
-                                zoom: 15
-                            });
-                
-                            mapInstance.on('load', async () => {
-                                const response = await fetch('/admin/graph_data');
-                                const geojson = await response.json();
-                
-                                mapInstance.addSource('graph', {
-                                    type: 'geojson',
-                                    data: geojson
-                                });
-                
-                                mapInstance.addLayer({
-                                    id: 'nodes',
-                                    type: 'circle',
-                                    source: 'graph',
-                                    filter: ['==', '$type', 'Point'],
-                                    paint: {
-                                        'circle-radius': 6,
-                                        'circle-color': '#FF5733'
-                                    }
-                                });
-                
-                                mapInstance.addLayer({
-                                    id: 'edges',
-                                    type: 'line',
-                                    source: 'graph',
-                                    filter: ['==', '$type', 'LineString'],
-                                    paint: {
-                                        'line-width': [
-                                            'interpolate',
-                                            ['linear'],
-                                            ['get', 'weight'],
-                                            0, 1,
-                                            100, 6
-                                        ],
-                                        'line-color': '#00BFFF',
-                                        'line-opacity': 0.6
-                                    }
-                                });
-                
-                                mapInstance.on('click', 'nodes', (e) => {
-                                    const name = e.features[0].properties.name;
-                                    new mapboxgl.Popup()
-                                        .setLngLat(e.lngLat)
-                                        .setHTML(`<strong>${name}</strong>`)
-                                        .addTo(mapInstance);
-                                });
-                
-                                mapInstance.on('mouseenter', 'nodes', () => {
-                                    mapInstance.getCanvas().style.cursor = 'pointer';
-                                });
-                                mapInstance.on('mouseleave', 'nodes', () => {
-                                    mapInstance.getCanvas().style.cursor = '';
-                                });
-                            });
-                        })
-                        .catch(err => {
-                            console.error('Failed to initialize Mapbox graph-viewer:', err);
-                        });
-                
+                    el.innerHTML = '';
+                    const iframe = document.createElement('iframe');
+                    iframe.src = '/admin/map_graph';
+                    iframe.style.border = 'none';
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.allow = 'geolocation';
+                    el.appendChild(iframe);
                     break;
                 }
 

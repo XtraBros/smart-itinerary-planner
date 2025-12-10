@@ -2,16 +2,220 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Mapbox Graph</title>
+    <title>POI Graph Viewer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
     <style>
-        body { margin: 0; padding: 0; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        html, body {
+            height: 100%;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        #map-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        .map-overlay {
+            position: absolute;
+            left: 12px;
+            background: rgba(17,17,17,0.8);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 10;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        #status { top: 12px; }
+        #reload-container {
+            top: 12px;
+            right: 12px;
+            left: auto;
+            background: rgba(17,17,17,0.8);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            padding: 8px 12px;
+            z-index: 100;
+        }
+        #reload-graph {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #0ea5e9;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
     </style>
 </head>
 <body>
-    <div id="map"></div>
+    <div id="map-container">
+        <div id="map"></div>
+        <div id="status" class="map-overlay">
+            <span id="status-text">Loading POI graph…</span>
+        </div>
+        <div id="reload-container" class="map-overlay">
+            <button id="reload-graph">Reload Graph</button>
+        </div>
+    </div>
+
+    <script>
+        const MAPBOX_TOKEN = "{{ mapbox_token or '' }}";
+        const statusTextEl = document.getElementById('status-text');
+        const reloadBtn = document.getElementById('reload-graph');
+        const statusEl = document.getElementById('status');
+        const reloadContainer = document.getElementById('reload-container');
+        let statusTimeout = null;
+
+        if (!MAPBOX_TOKEN) {
+            statusTextEl.textContent = "MAPBOX_ACCESS_TOKEN is not configured.";
+        }
+
+        mapboxgl.accessToken = MAPBOX_TOKEN;
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [103.8198, 1.3521],
+            zoom: 13
+        });
+        map.addControl(new mapboxgl.NavigationControl());
+
+        async function loadGraph() {
+            try {
+                const response = await fetch("/admin/graph_data");
+                if (!response.ok) {
+                    throw new Error(`Failed to load graph (${response.status})`);
+                }
+                const geojson = await response.json();
+                renderGraph(geojson);
+                statusTextEl.textContent = "POI graph loaded.";
+                hideStatusAfterDelay();
+            } catch (err) {
+                console.error(err);
+                statusTextEl.textContent = err.message || "Failed to load POI graph.";
+                showStatus();
+            }
+        }
+
+        function renderGraph(data) {
+            const features = data.features || [];
+            const nodeFeatures = features.filter(f => f.properties?.feature_type === "node");
+            const edgeFeatures = features.filter(f => f.properties?.feature_type === "edge");
+
+            map.on('load', () => {
+                map.addSource('graph-edges', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: edgeFeatures }
+                });
+                map.addLayer({
+                    id: 'graph-edges-layer',
+                    type: 'line',
+                    source: 'graph-edges',
+                    paint: {
+                        'line-color': '#f97316',
+                        'line-width': 4,
+                        'line-opacity': 0.92
+                    }
+                });
+
+                map.addSource('graph-nodes', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: nodeFeatures }
+                });
+                map.addLayer({
+                    id: 'graph-nodes-layer',
+                    type: 'circle',
+                    source: 'graph-nodes',
+                    paint: {
+                        'circle-radius': 5,
+                        'circle-color': '#1d4ed8',
+                        'circle-stroke-width': 1.5,
+                        'circle-stroke-color': '#bfdbfe'
+                    }
+                });
+                map.addLayer({
+                    id: 'graph-node-labels',
+                    type: 'symbol',
+                    source: 'graph-nodes',
+                    layout: {
+                        'text-field': ['get', 'name'],
+                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                        'text-offset': [0, 1.2],
+                        'text-anchor': 'top',
+                        'text-size': 11
+                    },
+                    paint: {
+                        'text-color': '#0f172a',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 1
+                    }
+                });
+
+                if (nodeFeatures.length) {
+                    const bounds = nodeFeatures.reduce((b, feature) => {
+                        const [lng, lat] = feature.geometry.coordinates;
+                        return b.extend([lng, lat]);
+                    }, new mapboxgl.LngLatBounds(
+                        nodeFeatures[0].geometry.coordinates,
+                        nodeFeatures[0].geometry.coordinates
+                    ));
+                    map.fitBounds(bounds, { padding: 40 });
+                }
+            });
+        }
+
+        function showStatus() {
+            statusEl.style.display = "block";
+            reloadContainer.style.top = "70px";
+            if (statusTimeout) {
+                clearTimeout(statusTimeout);
+                statusTimeout = null;
+            }
+        }
+
+        function hideStatusAfterDelay(delay = 3000) {
+            showStatus();
+            statusTimeout = setTimeout(() => {
+                statusEl.style.display = "none";
+                reloadContainer.style.top = "12px";
+            }, delay);
+        }
+
+        reloadBtn.addEventListener("click", async () => {
+            showStatus();
+            statusTextEl.textContent = "Rebuilding graph…";
+            reloadBtn.disabled = true;
+            try {
+                const resp = await fetch("/admin/rebuild_graph", { method: "POST" });
+                if (!resp.ok) {
+                    throw new Error("Failed to rebuild graph");
+                }
+                statusTextEl.textContent = "Graph rebuilt, reloading…";
+                await loadGraph();
+            } catch (err) {
+                console.error(err);
+                statusTextEl.textContent = err.message || "Failed to rebuild graph.";
+                hideStatusAfterDelay(4000);
+            } finally {
+                reloadBtn.disabled = false;
+            }
+        });
+
+        loadGraph();
+    </script>
 </body>
 </html>
