@@ -1,10 +1,13 @@
 from openai import OpenAI
 from helpers.text_processing import process_formatted_history, detect_nearby_intent
 from helpers.pref import get_user_preferences
+from helpers.poi_graph_mapbox import suggest_waypoint_pois
+from helpers.graph_manager import ensure_mapbox_graph
 import json
 import numpy as np
 import pandas as pd
 import os
+import traceback
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.schema import BaseMessage
 
@@ -19,7 +22,7 @@ with open(config_file_path, 'r') as file:
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 model_name = config['GPT_MODEL']
 
-TASK_TYPES = ["generic", "navigation", "introduction", "recommendation", "itinerary"]
+TASK_TYPES = ["generic", "navigation", "introduction", "recommendation", "itinerary", "waypoint"]
 
 CLASSIFIER_PROMPT = """
 You are a task classifier for a travel assistant app.
@@ -46,6 +49,7 @@ When to use each task type:
 - "introduction": For questions seeking information about a specific point of interest (POI).
 - "recommendation": For requests for suggestions on places to visit, eat, or activities to do.
 - "itinerary": For requests to plan a trip or create a schedule of activities.
+- "waypoint": For queries asking to visit or discover POIs along a route between two other POIs (e.g., "find a cafe on my way from A to B").
 
 Return ONLY valid JSON in this exact format:
 {{"task": "<one of {task_types}>", "spatial": <true or false>}}
@@ -58,6 +62,35 @@ Latest user message:
 
 Conversation history (other prior messages):
 {chat_history}
+"""
+
+WAYPOINT_EXTRACTION_PROMPT = """
+You extract structured information for users who want to visit a POI while travelling between two other POIs.
+Return ONLY JSON with the format:
+{{
+  "start": "<starting point or empty string>",
+  "end": "<ending point or empty string>",
+  "categories": ["category words inferred from the request"],
+  "tags": ["tag keywords inferred from the request"],
+  "needs_clarification": <true or false>,
+  "clarification_message": "<message to ask the user for missing info>"
+}}
+
+Rules:
+- If the user explicitly names start and end, keep them verbatim.
+- If either start or end is missing or ambiguous, set "needs_clarification" to true and craft a concise question in "clarification_message".
+- Derive categories or tags from the requested POI type (e.g., "coffee shop" -> category "coffee shop", tag "coffee").
+- Use the conversation history for additional context, but the latest user request has priority.
+- Snap the user's intent to actual POIs using this retrieved data. Use the names of POIs as given in the POI data.
+
+Conversation history:
+{chat_history}
+
+Latest user request:
+{query}
+
+Relevant POI data (JSON):
+{poi_json}
 """
 
 def normalize_poi_data(poi_data):
@@ -128,6 +161,64 @@ def classify_task(app, query: str):
     task = message["task"].lower()
     spatial = message["spatial"]
     return task, spatial
+
+
+def extract_waypoint_request(app, query: str, user_location: dict):
+    history = process_formatted_history(app.memory.load_memory_variables({}))
+    poi_df = getattr(app, "poi_df", None)
+    fallback_data = []
+    if poi_df is not None and not poi_df.empty:
+        fallback_data = normalize_poi_data(poi_df.head(30).to_dict(orient="records"))
+
+    rpm = getattr(app, "rpm", None)
+    retrieved_data = fallback_data
+    if rpm is not None:
+        try:
+            kwargs = {"query_text": query, "top_k": 20, "intent": "semantic"}
+            if user_location and user_location.get("lat") is not None and user_location.get("lng") is not None:
+                kwargs["lat"] = user_location["lat"]
+                kwargs["lon"] = user_location["lng"]
+            raw = rpm.decide_retrieval(**kwargs)
+            normalized = normalize_poi_data(raw)
+            if normalized:
+                retrieved_data = normalized
+        except Exception:
+            traceback.print_exc()
+
+    poi_json = json.dumps(retrieved_data[:30], ensure_ascii=False)
+    # print(poi_json)
+    prompt = WAYPOINT_EXTRACTION_PROMPT.format(
+        chat_history=history,
+        query=query,
+        poi_json=poi_json
+    )
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": query},
+        ],
+    )
+    text = response.choices[0].message.content.strip()
+    print(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = {
+            "start": "",
+            "end": "",
+            "categories": [],
+            "tags": [],
+            "needs_clarification": True,
+            "clarification_message": "Could you tell me where you are starting from and where you are headed?",
+        }
+
+    if not data.get("start") or not data.get("end"):
+        data["needs_clarification"] = True
+        if not data.get("clarification_message"):
+            data["clarification_message"] = "Could you tell me which POIs you're starting from and heading to?"
+
+    return data
 
 
 class RetrievalStrategy:
@@ -490,6 +581,79 @@ Chat history:
     print("========== HANDLE ITINERARY END ==========\n")
 
 
+def handle_waypoint(app, query: str, user_location: dict, spatial_type: bool = False):
+    extraction = extract_waypoint_request(app, query, user_location)
+    start = extraction.get("start", "").strip()
+    end = extraction.get("end", "").strip()
+    categories = extraction.get("categories") or []
+    tags = extraction.get("tags") or []
+    needs_clarification = extraction.get("needs_clarification") or not (start and end)
+    clarification = extraction.get("clarification_message") or "Could you tell me your starting point and destination?"
+
+    if needs_clarification:
+        yield {"type": "content", "content": clarification}
+        app.memory.save_context({"input": query}, {"output": clarification})
+        yield {"type": "done", "task": "waypoint"}
+        return
+
+    try:
+        graph_data = ensure_mapbox_graph(app)
+        result = suggest_waypoint_pois(
+            start,
+            end,
+            graph_data["nodes"],
+            graph_data["edges"],
+            app.poi_df,
+            categories=categories,
+            tags=tags,
+        )
+    except Exception as exc:
+        message = f"I couldn't look up graph routes right now: {exc}"
+        yield {"type": "content", "content": message}
+        app.memory.save_context({"input": query}, {"output": message})
+        yield {"type": "done", "task": "waypoint"}
+        return
+
+    poi_payload = []
+    for cand in result.get("candidates", []):
+        details = cand["poi"]["details"].copy()
+        details["detour_m"] = cand["detour_m"]
+        details["total_distance_m"] = cand["total_distance_m"]
+        poi_payload.append(details)
+
+    fallback = result.get("fallback")
+    if not poi_payload and fallback:
+        details = fallback["poi"]["details"].copy()
+        details["detour_m"] = fallback["detour_m"]
+        details["total_distance_m"] = fallback["total_distance_m"]
+        poi_payload.append(details)
+
+    yield {"type": "poi_data", "content": poi_payload}
+
+    if result.get("candidates"):
+        best = result["candidates"][0]
+        detour_text = f"about {int(best['detour_m'])} metres" if best["detour_m"] else "a very small"
+        reply = (
+            f"I found {best['poi']['name']} between {start} and {end}. "
+            f"It only adds {detour_text} of detour and keeps you on track."
+        )
+    elif fallback:
+        reply = (
+            f"I couldn't keep the detour under the preferred limit, but {fallback['poi']['name']} "
+            f"is the closest option between {start} and {end}. "
+            f"It would add roughly {int(fallback['detour_m'])} metres."
+        )
+    else:
+        reply = (
+            f"I couldn't find a POI that fits your request along the route from {start} to {end}. "
+            "Would you like me to search the general area instead?"
+        )
+
+    yield {"type": "content", "content": reply}
+    app.memory.save_context({"input": query}, {"output": reply})
+    yield {"type": "done", "task": "waypoint"}
+
+
 # Registry of task handlers
 TASK_HANDLERS = {
     "generic": handle_generic,
@@ -497,4 +661,5 @@ TASK_HANDLERS = {
     "introduction": handle_introduction,
     "recommendation": handle_recommendation,
     "itinerary": handle_itinerary,
+    "waypoint": handle_waypoint,
 }

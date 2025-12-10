@@ -724,6 +724,31 @@ def _build_route_geojson(segments: List[Dict]) -> Dict:
     return {"type": "FeatureCollection", "features": features}
 
 
+def _shortest_path_with_segments(
+    G: nx.Graph,
+    start: str,
+    end: str,
+) -> Tuple[List[str], List[Dict], float]:
+    path = nx.shortest_path(G, start, end, weight="distance_m")
+    segments = []
+    total_distance = 0.0
+    for u, v in zip(path[:-1], path[1:]):
+        data = G[u][v]
+        distance_m = data.get("distance_m") or data.get("weight") or 0.0
+        total_distance += distance_m
+        segments.append(
+            {
+                "from": u,
+                "to": v,
+                "distance_m": distance_m,
+                "duration_s": data.get("duration_s"),
+                "geometry": data.get("geometry"),
+                "fallback": data.get("fallback", False),
+            }
+        )
+    return path, segments, total_distance
+
+
 def plan_route_through_pois(
     poi_names: List[str],
     nodes: List[Dict],
@@ -752,7 +777,7 @@ def plan_route_through_pois(
 
     for start, end in zip(poi_names[:-1], poi_names[1:]):
         try:
-            path = nx.shortest_path(G, start, end, weight="distance_m")
+            path, segs, dist = _shortest_path_with_segments(G, start, end)
         except nx.NetworkXNoPath:
             raise ValueError(f"No path found between '{start}' and '{end}'.")
 
@@ -760,21 +785,8 @@ def plan_route_through_pois(
             route_nodes.extend(path)
         else:
             route_nodes.extend(path[1:])
-
-    for u, v in zip(route_nodes[:-1], route_nodes[1:]):
-        data = G[u][v]
-        distance_m = data.get("distance_m") or data.get("weight") or 0.0
-        total_distance += distance_m
-        segments.append(
-            {
-                "from": u,
-                "to": v,
-                "distance_m": distance_m,
-                "duration_s": data.get("duration_s"),
-                "geometry": data.get("geometry"),
-                "fallback": data.get("fallback", False),
-            }
-        )
+        segments.extend(segs)
+        total_distance += dist
 
     requested_set = set(poi_names)
     passed_pois = []
@@ -808,4 +820,95 @@ def plan_route_through_pois(
         "requested_pois": requested_details,
         "passed_pois": passed_pois,
         "route_geojson": _build_route_geojson(segments),
+    }
+
+
+def suggest_waypoint_pois(
+    start_poi: str,
+    end_poi: str,
+    nodes: List[Dict],
+    edges: List[Dict],
+    poi_df: pd.DataFrame,
+    categories: List[str] | None = None,
+    tags: List[str] | None = None,
+    max_detour_m: float = 800.0,
+    max_results: int = 3,
+) -> Dict:
+    """
+    Suggest POIs that lie "along the way" between start and end using the graph.
+    If no POIs meet the detour threshold, include the closest detour as fallback.
+    """
+    categories = [c.lower() for c in (categories or []) if c]
+    tags = [t.lower() for t in (tags or []) if t]
+
+    poi_lookup = _build_poi_lookup(poi_df)
+    available_nodes = {node["name"] for node in nodes}
+    for poi in (start_poi, end_poi):
+        if poi not in available_nodes:
+            raise ValueError(f"POI '{poi}' not found in graph.")
+
+    G = build_networkx_graph(nodes, edges)
+
+    try:
+        base_path, base_segments, base_distance = _shortest_path_with_segments(G, start_poi, end_poi)
+    except nx.NetworkXNoPath:
+        raise ValueError(f"No path found between '{start_poi}' and '{end_poi}'.")
+
+    df = poi_df.copy()
+    if categories:
+        df = df[df["category"].str.lower().isin(categories)]
+    if tags and "tags" in df.columns:
+        df = df[df["tags"].astype(str).str.lower().apply(lambda x: any(tag in x for tag in tags))]
+
+    df = df[df["name"].isin(available_nodes)]
+    df = df[(df["name"] != start_poi) & (df["name"] != end_poi)]
+
+    candidates = []
+    for _, row in df.iterrows():
+        poi_name = row["name"]
+        try:
+            path_start, seg_start, dist_start = _shortest_path_with_segments(G, start_poi, poi_name)
+            path_end, seg_end, dist_end = _shortest_path_with_segments(G, poi_name, end_poi)
+        except nx.NetworkXNoPath:
+            continue
+
+        detour = (dist_start + dist_end) - base_distance
+        total_route = path_start[:-1] + path_end
+        segments = seg_start + seg_end
+
+        candidates.append(
+            {
+                "poi": {"name": poi_name, "details": poi_lookup.get(poi_name, {"name": poi_name})},
+                "detour_m": detour,
+                "total_distance_m": dist_start + dist_end,
+                "route_nodes": total_route,
+                "segments": segments,
+                "route_geojson": _build_route_geojson(segments),
+            }
+        )
+
+    if not candidates:
+        return {
+            "base_route": {
+                "route_nodes": base_path,
+                "segments": base_segments,
+                "total_distance_m": base_distance,
+                "route_geojson": _build_route_geojson(base_segments),
+            },
+            "candidates": [],
+            "fallback": None,
+        }
+
+    candidates.sort(key=lambda c: c["detour_m"])
+    filtered = [c for c in candidates if c["detour_m"] <= max_detour_m]
+    fallback = candidates[0]
+    return {
+        "base_route": {
+            "route_nodes": base_path,
+            "segments": base_segments,
+            "total_distance_m": base_distance,
+            "route_geojson": _build_route_geojson(base_segments),
+        },
+        "candidates": filtered[:max_results] if filtered else [],
+        "fallback": fallback if not filtered else None,
     }

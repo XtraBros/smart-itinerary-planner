@@ -18,9 +18,12 @@ from helpers.config_store import (
 )
 from helpers import account_store
 from helpers.poi_graph_mapbox import (
-    build_mapbox_poi_graph,
-    build_mapbox_poi_graph_html,
     plan_route_through_pois,
+)
+from helpers.graph_manager import (
+    ensure_mapbox_graph,
+    update_graph_after_data_change,
+    get_mapbox_token,
 )
 
 backend_bp = Blueprint("backend", __name__)
@@ -70,95 +73,6 @@ def persist_rag_units_config():
         app.reload_runtime_for_account(account_id)
 
 
-def _get_mapbox_token():
-    token = os.environ.get("MAPBOX_ACCESS_TOKEN") or ""
-    if not token:
-        raise ValueError("MAPBOX_ACCESS_TOKEN environment variable not set")
-    return token
-
-
-def _load_cached_graph():
-    if not os.path.exists(GRAPH_CACHE_PATH):
-        return None
-    try:
-        with open(GRAPH_CACHE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        traceback.print_exc()
-        return None
-
-
-def _save_cached_graph(graph_data):
-    try:
-        with open(GRAPH_CACHE_PATH, "w", encoding="utf-8") as f:
-            json.dump(graph_data, f)
-    except Exception:
-        traceback.print_exc()
-
-
-def _clear_cached_graph():
-    app.mapbox_graph = None
-    app.graph_dirty = True
-    try:
-        os.remove(GRAPH_CACHE_PATH)
-    except FileNotFoundError:
-        pass
-    except Exception:
-        traceback.print_exc()
-
-
-def _rebuild_mapbox_graph(write_html=False):
-    if getattr(app, "poi_df", None) is None or app.poi_df.empty:
-        _clear_cached_graph()
-        return None
-
-    token = _get_mapbox_token()
-    if write_html:
-        output_path = os.path.join("templates", "graph.html")
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        graph_data = build_mapbox_poi_graph_html(app.poi_df, output_path, mapbox_token=token)
-    else:
-        nodes, edges = build_mapbox_poi_graph(app.poi_df, mapbox_token=token)
-        graph_data = {"nodes": nodes, "edges": edges}
-
-    _save_cached_graph(graph_data)
-    app.mapbox_graph = graph_data
-    app.graph_dirty = False
-    return graph_data
-
-
-def _update_graph_after_data_change():
-    app.graph_dirty = True
-    try:
-        _rebuild_mapbox_graph(write_html=True)
-    except Exception:
-        traceback.print_exc()
-
-
-def _ensure_mapbox_graph(write_html=False):
-    if getattr(app, "poi_df", None) is None or app.poi_df.empty:
-        raise ValueError("POI dataframe not available")
-
-    if getattr(app, "graph_dirty", False):
-        return _rebuild_mapbox_graph(write_html=write_html)
-
-    if getattr(app, "mapbox_graph", None) and not write_html:
-        return app.mapbox_graph
-
-    graph_data = None
-    cached = _load_cached_graph()
-    if cached:
-        app.mapbox_graph = cached
-        app.graph_dirty = False
-        graph_data = cached
-    else:
-        graph_data = _rebuild_mapbox_graph(write_html=write_html)
-
-    if graph_data is None:
-        raise ValueError("Unable to build Mapbox graph")
-    return graph_data
-
-
 @backend_bp.route('/')
 def backend_home():
     return render_template("layout.html")
@@ -197,7 +111,7 @@ def map_manager():
 @backend_bp.route("/map_graph")
 def map_graph():
     try:
-        token = _get_mapbox_token()
+        token = get_mapbox_token()
     except ValueError as exc:
         token = ""
         print(f"[map_graph] warning: {exc}")
@@ -246,7 +160,7 @@ def init_rag():
                 platform.build_balltree()
                 app.poi_df = platform.balltree_df
                 app.balltree = platform.balltree
-                _update_graph_after_data_change()
+                update_graph_after_data_change(app)
             except Exception:
                 # Not fatal, but warn
                 traceback.print_exc()
@@ -346,7 +260,7 @@ def remove_rag_unit():
             app.poi_df = pd.DataFrame()
             app.balltree = None
         app.rag = rag
-        _update_graph_after_data_change()
+        update_graph_after_data_change(app)
         persist_rag_units_config()
         return jsonify({"message": f"RAG Unit {unit_id} removed."}), 200
 
@@ -392,7 +306,7 @@ def add_rag_unit():
         rag.balltree, app.balltree_df = rag.build_balltree()
         app.rag = rag
         persist_rag_units_config()
-        _update_graph_after_data_change()
+        update_graph_after_data_change(app)
 
         return jsonify({"message": f"CSV Unit '{new_unit.id}' added successfully"}), 200
 
@@ -519,7 +433,7 @@ def update_unit_data(unit_id):
         traceback.print_exc()
 
     app.rag = rag
-    _update_graph_after_data_change()
+    update_graph_after_data_change(app)
     return jsonify({"message": "POI data updated", "columns": columns}), 200
 
 @backend_bp.route('/update_map_style', methods=['POST'])
@@ -596,7 +510,7 @@ def show_graph():
     and save it as templates/graph.html, then render it.
     """
     try:
-        _ensure_mapbox_graph(write_html=True)
+        ensure_mapbox_graph(app, write_html=True)
         return render_template("graph.html")
 
     except Exception as e:
@@ -628,7 +542,7 @@ def rebuild_graph():
         app.poi_df = combined_df
 
         # Rebuild graph and cache
-        _ensure_mapbox_graph(write_html=True)
+        ensure_mapbox_graph(app, write_html=True)
         return jsonify({"message": "Graph rebuilt successfully."})
 
     except Exception as exc:
@@ -640,7 +554,7 @@ def get_graph_data():
     Return GeoJSON-like structure of nodes + edges from the Mapbox graph for client-side rendering.
     """
     try:
-        graph_data = _ensure_mapbox_graph()
+        graph_data = ensure_mapbox_graph(app)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
@@ -711,7 +625,7 @@ def plan_route_api():
         if not isinstance(poi_names, list) or len(poi_names) < 2:
             return jsonify({"error": "Provide at least two POI names in 'poi_names'."}), 400
 
-        graph_data = _ensure_mapbox_graph()
+        graph_data = ensure_mapbox_graph(app)
         plan = plan_route_through_pois(
             poi_names,
             graph_data["nodes"],

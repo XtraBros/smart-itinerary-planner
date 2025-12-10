@@ -4,7 +4,8 @@ from helpers.text_processing import *
 from helpers.prompts import *
 from helpers.route_solver import *
 from helpers.tasks import TASK_HANDLERS, classify_task
-import ast
+from helpers.poi_graph_mapbox import suggest_waypoint_pois
+from helpers.graph_manager import ensure_mapbox_graph
 
 routes_bp = Blueprint("routes", __name__)
 
@@ -105,6 +106,37 @@ def ops_router():
         
     return Response(stream_with_context(stream()), mimetype="application/json")
 
+@routes_bp.route('/suggest_waypoint', methods=['POST'])
+def suggest_waypoint():
+    try:
+        data = request.get_json() or {}
+        start_poi = data.get("start")
+        end_poi = data.get("end")
+        if not start_poi or not end_poi:
+            return jsonify({"error": "'start' and 'end' fields are required"}), 400
+
+        categories = data.get("categories") or []
+        tags = data.get("tags") or []
+        detour_limit = float(data.get("max_detour_m", 800))
+        max_results = int(data.get("max_results", 3))
+
+        graph_data = ensure_mapbox_graph(current_app)
+        result = suggest_waypoint_pois(
+            start_poi,
+            end_poi,
+            graph_data["nodes"],
+            graph_data["edges"],
+            current_app.poi_df,
+            categories=categories,
+            tags=tags,
+            max_detour_m=detour_limit,
+            max_results=max_results,
+        )
+        return jsonify(result)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @routes_bp.route('/find_nearby_pois', methods=['POST'])
@@ -285,4 +317,3 @@ def fetch_required_data(rag, df, routing_info: dict) -> dict:
 
     # placeholder for future expansion (events, weather, etc.)
     return gathered
-
